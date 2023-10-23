@@ -1,4 +1,4 @@
-# EstimateCompliance
+# EstimateModulus
 Author: Michael Burgess (mburgjr)
 
 Estimate material compliance from Gelsight Wedge contact.
