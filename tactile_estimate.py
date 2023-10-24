@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import warnings
 import matplotlib.pyplot as plt
+
+from scipy.ndimage import convolve
 from scipy.optimize import minimize
 
 # Measured from calipers on surface in x and y directions
@@ -25,6 +27,16 @@ class TactileMaterialEstimate():
     # Return mask of which pixels are in contact with object
     def contact_mask(self, depth):
         return depth >= self.depth_threshold
+    
+    # Return mask of only where depth is concave
+    def concave_mask(self, depth):
+        laplacian_kernel = np.array([[0, 1, 0],
+                                    [1, -4, 1],
+                                    [0, 1, 0]])
+        laplacian = convolve(depth, laplacian_kernel, mode='constant', cval=0)
+
+        # Create a mask: 1 for convex regions, 0 for concave regions
+        return (laplacian <= 0).astype(int)
 
     # Return mask to disgard outside pixels
     def crop_edges(self, depth, margin=55):
@@ -60,11 +72,15 @@ class TactileMaterialEstimate():
         return cropped_depth, cropped_force
     
     # Convert depth image to 3D data
-    def depth_to_XYZ(self, depth):
-        # Mask depth for contact area only
+    def depth_to_XYZ(self, depth, concave_mask=True, crop_edges=True):
+        # Mask depth to consider contact area only
         contact_mask = self.contact_mask(depth)
-        masked_depth = depth * contact_mask
-        filtered_depth = self.crop_edges(masked_depth)
+        filtered_depth = depth * contact_mask
+
+        if concave_mask: # Only consider convex points on surface
+            filtered_depth = self.concave_mask(depth) * filtered_depth
+        if crop_edges: # Remove edge regions which could be noisy
+            filtered_depth = self.crop_edges(filtered_depth)
 
         # Extract data
         X, Y, Z = [], [], []
@@ -114,21 +130,6 @@ class TactileMaterialEstimate():
 
         # Solve least squares for sphere
         C, _, _, _ = np.linalg.lstsq(A, f)
-        
-        # # Set up the constraint bounds
-        # constraint_bounds = [
-        #     (-20, 70),      # Center X
-        #     (-20, 70),      # Center Y
-        #     (0, 500),       # Center Z
-        #     (float('-inf'), float('inf'))
-        # ]
-
-        # # Execute constrained least squares optimization
-        # C_initial_guess = np.zeros((4,1))
-        # def objective_function(C, A, f):
-        #     return np.linalg.norm(A @ C - f)
-        # result = minimize(objective_function, C_initial_guess, args=(A, f), bounds=constraint_bounds)
-        # C = result.x
 
         # Solve for the radius
         radius = np.sqrt((C[0]*C[0]) + (C[1]*C[1]) + (C[2]*C[2]) + C[3])
@@ -142,7 +143,7 @@ class TactileMaterialEstimate():
 
         # Create discrete graph of sphere mesh
         r, x0, y0, z0 = sphere
-        u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
+        u, v = np.mgrid[0:2*np.pi:20j, 0:np.cos(-z0/r):10j]
         sphere_x = x0 + np.cos(u)*np.sin(v)*r
         sphere_y = y0 + np.sin(u)*np.sin(v)*r
         sphere_z = z0 + np.cos(v)*r
@@ -152,9 +153,9 @@ class TactileMaterialEstimate():
         axes = fig.add_subplot(111, projection='3d')
         axes.scatter(X, Y, Z, zdir='z', s=20, c='b', rasterized=True)
         axes.plot_wireframe(sphere_x, sphere_y, sphere_z, color="r")
-        axes.set_xlabel('$x$ (mm)',fontsize=16)
-        axes.set_ylabel('\n$y$ (mm)',fontsize=16)
-        axes.set_zlabel('\n$z$ (mm)',fontsize=16)
+        axes.set_xlabel('$X$ [m]',fontsize=16)
+        axes.set_ylabel('\n$Y$ [m]',fontsize=16)
+        axes.set_zlabel('\n$Z$ [m]',fontsize=16)
         plt.show()
 
     # Compute radius of contact from sphere fit
