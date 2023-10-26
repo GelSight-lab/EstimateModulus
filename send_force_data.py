@@ -1,5 +1,22 @@
 import time
+import sys
 import socket
+
+import RPi.GPIO as GPIO
+from hx711 import HX711
+
+referenceUnit = 1
+
+def cleanAndExit():
+    GPIO.cleanup() 
+    print("Cleaned!")
+    sys.exit()
+
+hx = HX711(5, 6)
+hx.set_reading_format("MSB", "MSB")
+hx.set_reference_unit(referenceUnit)
+hx.reset()
+hx.tare()
 
 # Define the IP address and port of the receiving device
 server_ip = "10.10.10.50"  # Replace with the IP address of the receiving device
@@ -12,7 +29,19 @@ client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((server_ip, server_port))
 
 while True:
-    client_socket.send(str(3.14159).encode())
-    time.sleep(1)
+    try:
+        val = hx.get_weight(5)
+        print(val)
 
+        client_socket.send(str(val).encode())
+
+        hx.power_down()
+        hx.power_up()
+        time.sleep(0.1)
+
+    except (KeyboardInterrupt, SystemExit):
+        cleanAndExit()
+        client_socket.close()
+
+cleanAndExit()
 client_socket.close()

@@ -1,8 +1,8 @@
 import socket
 
 # Define the IP address and port to listen on
-server_ip = "0.0.0.0"  # Listen on all available network interfaces
-server_port = 12345   # The same port number you used on the Raspberry Pi
+server_ip = "10.10.10.50"  # Listen on all available network interfaces
+server_port = 8888   # The same port number you used on the Raspberry Pi
 
 # Create a socket object and bind it to the specified address and port
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
