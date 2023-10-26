@@ -7,8 +7,7 @@ from hx711py.hx711 import HX711
 def cleanAndExit():
     print("Cleaning...")
 
-    if not EMULATE_HX711:
-        GPIO.cleanup()
+    GPIO.cleanup()
         
     print("Bye!")
     sys.exit()
