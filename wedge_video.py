@@ -43,7 +43,9 @@ class GelsightWedgeVideo():
         self.image_size = (480, 640)            # The size of original image from camera
         self.FPS = 30.0                         # Default FPS from Raspberry Pi camera
 
-        self._IP = ''                       # IP address of Raspberry Pi stream via mjpg_streamer
+        self._url = ''                      # URL address of Raspberry Pi stream via mjpg_streamer
+        self._bytes = b''                   # Bytes data from URL during stream
+        self._url_stream = None             # Access to URL data with urllib request
         self._curr_rgb_image = None         # Current raw RGB image streamed from camera
         self._stream_thread = Thread        # Streaming thread
         self._plot_thread = Thread          # Plotting thread
@@ -144,8 +146,8 @@ class GelsightWedgeVideo():
         return max_depth
 
     # Initiate streaming thread
-    def start_stream(self, IP, plot=False, plot_diff=False, plot_depth=False):
-        self._IP = IP
+    def start_stream(self, URL, plot=False, plot_diff=False, plot_depth=False):
+        self._url = URL
         self._reset_frames()
         self._stream_active = True
         self._plotting = plot
@@ -157,22 +159,28 @@ class GelsightWedgeVideo():
             self._plot_thread = Thread(target=self._plot, kwargs={'plot_diff': plot_diff, 'plot_depth': plot_depth})
             self._plot_thread.daemon = True
             self._plot_thread.start()
+        self._url_stream = urllib.request.urlopen(self._url)
+        self._bytes = b''
         return
     
+    # During streaming, read object from URL
+    def _decode_image_from_stream(self):
+        self._bytes += self._url_stream.read(1024)
+        a = self._bytes.find(b'\xff\xd8')
+        b = self._bytes.find(b'\xff\xd9')
+        if a != -1 and b != -1:
+            jpg = self._bytes[a:b+2]
+            self._bytes = self._bytes[b+2:]
+            self._curr_rgb_image = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+            self._raw_rgb_frames.append(self._curr_rgb_image)
+            return True # Return whether or not an image was saved
+        return False
+    
     # Facilitate streaming thread, read data from Raspberry Pi camera
-    def _stream(self):
-        stream = urllib.request.urlopen(self._IP)
-        bytes = b''
+    def _stream(self, verbose=True):
         while self._stream_active:
-            print('Streaming...')
-            bytes += stream.read(1024)
-            a = bytes.find(b'\xff\xd8')
-            b = bytes.find(b'\xff\xd9')
-            if a != -1 and b != -1:
-                jpg = bytes[a:b+2]
-                bytes = bytes[b+2:]
-                self._curr_rgb_image = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
-                self._raw_rgb_frames.append(self._curr_rgb_image)
+            if verbose: print('Streaming...')
+            _ = self._decode_image_from_stream()
         return
 
     # Plot relevant images during streaming
@@ -201,14 +209,15 @@ class GelsightWedgeVideo():
         return
 
     # Terminate streaming thread
-    def end_stream(self):
-        self._IP = ''
+    def end_stream(self, verbose=True):
+        self._url = ''
         self._stream_active = False
         self._stream_thread.join()
-        if self._plotting:
-            self._plot_thread.join()
+        self._bytes = b''
+        self._url_stream = None
+        if self._plotting: self._plot_thread.join()
         time.sleep(1)
-        print('Done streaming.')
+        if verbose: print('Done streaming.')
         return
     
     # Plot video for your viewing pleasure
@@ -271,8 +280,8 @@ class GelsightWedgeVideo():
 if __name__ == "__main__":
     # Typical data recording workflow might be...
     wedge_video = GelsightWedgeVideo(config_csv="./config.csv")
-    IP_address = 'http://10.10.10.200:8080/?action=stream'
-    # wedge_video.start_stream(IP_address, plot=True, plot_diff=True, plot_depth=True)
+    url_address = 'http://10.10.10.200:8080/?action=stream'
+    # wedge_video.start_stream(url_address, plot=True, plot_diff=True, plot_depth=True)
     # time.sleep(10)
     # wedge_video.end_stream()
     # print(wedge_video.max_depth())

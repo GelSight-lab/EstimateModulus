@@ -20,7 +20,7 @@ class ContactForce():
         return np.array(self._forces)
 
     # Open socket to begin streaming values
-    def _start_stream(self, IP, port=8888):
+    def start_stream(self, IP, port=8888):
         self._IP = IP
         # Create a socket object and bind it to the specified address and port
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -29,7 +29,7 @@ class ContactForce():
         return
 
     # Read force measurement from socket
-    def read_values(self):
+    def _read_values(self):
         client_socket, _ = self._socket.accept()
         received_data = client_socket.recv(1024)
         if not received_data:
@@ -38,9 +38,10 @@ class ContactForce():
         return
     
     # Close socket when done measuring
-    def _end_stream(self):
+    def end_stream(self, verbose=True):
         self._IP = None
         self._socket.close()
+        if verbose: print('Done streaming.')
         return
 
     # Save array of force measurements to path
