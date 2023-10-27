@@ -230,7 +230,7 @@ class GelsightWedgeVideo():
         cv2.destroyAllWindows()
         return
     
-    # Crop frames to first press via threshold
+    # Crop frames to first press via thresholding
     def auto_crop(self, depth_threshold=0.5, diff_offset=15):
         i_start, i_end = len(self._raw_rgb_frames), len(self._raw_rgb_frames)-1
         for i in range(len(self._raw_rgb_frames)):

@@ -44,6 +44,14 @@ class ContactForce():
         return
 
     # Save array of force measurements to path
+    def load(self, path_to_file):
+        self._reset_values()
+        assert path_to_file[-4:] == '.pkl'
+        with open(path_to_file, 'rb') as file:
+            self._forces = pickle.load(file)
+        return
+
+    # Save array of force measurements to path
     def save(self, path_to_file):
         assert path_to_file[-4:] == '.pkl'
         with open(path_to_file, 'wb') as file:
