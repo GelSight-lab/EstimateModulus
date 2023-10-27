@@ -35,7 +35,7 @@ DEPTH_TO_MM = 27.5
 
 class GelsightWedgeVideo():
     '''
-    Class to streamline recording of data from Gelsight Wedge's and package into training
+    Class to streamline processing of data from Gelsight Wedge's
     '''
     def __init__(self, config_csv="./config.csv", warped_size=(400, 300)):
         self.corners = read_csv(config_csv)     # CSV with pixel coordinates of mirror corners in the order (topleft,topright,bottomleft,bottomright)
@@ -59,6 +59,7 @@ class GelsightWedgeVideo():
     # Clear all video data from the object
     def _reset_frames(self):
         self._raw_rgb_frames = []
+        self._forces = []
         self._warped_rgb_frames = []
         self._diff_images = []
         self._grad_images = []
