@@ -149,8 +149,14 @@ class GelsightWedgeVideo():
             if depth.max() >= max_depth:    max_depth = depth.max()
         return max_depth
     
+    # Convert IP addres to streaming url
     def IP_to_URL(self, IP, port=8080):
         return 'http://{}:{}/?action=stream'.format(IP, port)
+    
+    # Clear bytes data and open url
+    def _prepare_stream(self):
+        self._url_stream = urllib.request.urlopen(self._url)
+        self._bytes = b''
 
     # Initiate streaming thread
     def start_stream(self, IP=None, plot=False, plot_diff=False, plot_depth=False):
@@ -162,6 +168,7 @@ class GelsightWedgeVideo():
         self._reset_frames()
         self._stream_active = True
         self._plotting = plot
+
         self._stream_thread = Thread(target=self._stream, kwargs={})
         self._stream_thread.daemon = True
         self._stream_thread.start()
@@ -171,9 +178,8 @@ class GelsightWedgeVideo():
             self._plot_thread = Thread(target=self._plot, kwargs={'plot_diff': plot_diff, 'plot_depth': plot_depth})
             self._plot_thread.daemon = True
             self._plot_thread.start()
-            
-        self._url_stream = urllib.request.urlopen(self._url)
-        self._bytes = b''
+
+        self._prepare_stream()
         return
     
     # During streaming, read object from URL
@@ -220,13 +226,17 @@ class GelsightWedgeVideo():
                 break
         cv2.destroyAllWindows()
         return
+    
+    # Close url and clear stream data
+    def _wipe_stream_info(self):
+        self._bytes = b''
+        self._url_stream = None
 
     # Terminate streaming thread
     def end_stream(self, verbose=True):
         self._stream_active = False
         self._stream_thread.join()
-        self._bytes = b''
-        self._url_stream = None
+        self._wipe_stream_info()
         if self._plotting: self._plot_thread.join()
         time.sleep(1)
         if verbose: print('Done streaming.')

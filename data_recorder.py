@@ -26,7 +26,22 @@ class GraspRecorder():
     
     # Initiate streaming thread
     def start_stream(self, plot=False, plot_diff=False, plot_depth=False):
-        pass
+        self._reset_data()
+        self._stream_active = True
+        self._plotting = plot
+
+        self._stream_thread = Thread(target=self._stream, kwargs={})
+        self._stream_thread.daemon = True
+        self._stream_thread.start()
+        time.sleep(1)
+
+        if plot:
+            self._plot_thread = Thread(target=self.wedge_video._plot, kwargs={'plot_diff': plot_diff, 'plot_depth': plot_depth})
+            self._plot_thread.daemon = True
+            self._plot_thread.start()
+
+        self.wedge_video._prepare_stream()
+        return
     
     # Facilitate streaming thread, read data from Raspberry Pi camera
     def _stream(self, verbose=True):
@@ -39,8 +54,11 @@ class GraspRecorder():
 
     # Terminate streaming thread
     def end_stream(self, verbose=True):
-        self.wedge_video.end_stream(verbose=False)
+        self._stream_thread.join()
+        self._plot_thread.join()
+        self.wedge_video._wipe_stream_info()
         self.contact_force.end_stream(verbose=False)
+        time.sleep(1)
         if verbose: print('Done streaming.')
         return
     
