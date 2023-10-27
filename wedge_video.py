@@ -43,6 +43,7 @@ class GelsightWedgeVideo():
         self.image_size = (480, 640)            # The size of original image from camera
         self.FPS = 30.0                         # Default FPS from Raspberry Pi camera
 
+        self._IP = ''                       # IP address of Raspberry Pi stream via mjpg_streamer
         self._url = ''                      # URL address of Raspberry Pi stream via mjpg_streamer
         self._bytes = b''                   # Bytes data from URL during stream
         self._url_stream = None             # Access to URL data with urllib request
@@ -144,10 +145,14 @@ class GelsightWedgeVideo():
             depth = self.depth_images()[i,:,:]
             if depth.max() >= max_depth:    max_depth = depth.max()
         return max_depth
+    
+    def IP_to_URL(self, IP, port=8080):
+        return 'http://{}:{}/?action=stream'.format(IP, port)
 
     # Initiate streaming thread
-    def start_stream(self, URL, plot=False, plot_diff=False, plot_depth=False):
-        self._url = URL
+    def start_stream(self, IP, plot=False, plot_diff=False, plot_depth=False):
+        self._IP = IP
+        self._url = self.IP_to_URL(self._IP)
         self._reset_frames()
         self._stream_active = True
         self._plotting = plot
@@ -280,8 +285,8 @@ class GelsightWedgeVideo():
 if __name__ == "__main__":
     # Typical data recording workflow might be...
     wedge_video = GelsightWedgeVideo(config_csv="./config.csv")
-    url_address = 'http://10.10.10.200:8080/?action=stream'
-    # wedge_video.start_stream(url_address, plot=True, plot_diff=True, plot_depth=True)
+    IP = '10.10.10.200'
+    # wedge_video.start_stream(IP, plot=True, plot_diff=True, plot_depth=True)
     # time.sleep(10)
     # wedge_video.end_stream()
     # print(wedge_video.max_depth())
