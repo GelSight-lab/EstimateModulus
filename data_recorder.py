@@ -1,5 +1,5 @@
 import os
-import cv2
+import time
 import numpy as np
 
 from wedge_video import GelsightWedgeVideo
@@ -51,7 +51,9 @@ class GraspRecorder():
     
     # Crop data to first press via thresholding
     def auto_crop(self, depth_threshold=0.5, diff_offset=15):
-        pass
+        i_start, i_end = self.wedge_video.auto_crop(depth_threshold=depth_threshold, diff_offset=diff_offset, return_indices=True)
+        self.contact_force.crop(i_start, i_end)
+        return
 
     # Read frames from a video file
     def upload(self, folder, file_name):
@@ -67,4 +69,15 @@ class GraspRecorder():
     
 
 if __name__ == "__main__":
-    pass
+    # Typical data collection workflow might be...
+
+    # Define streaming addresses
+    wedge_video     =   GelsightWedgeVideo(IP="10.10.10.200", config_csv="./config.csv")
+    contact_force   =   ContactForce(IP="10.10.10.50", port=8888)
+    data_recorder   =   GraspRecorder(wedge_video=wedge_video, contact_force=contact_force)
+
+    # Record example data and save
+    data_recorder.start_stream(plot=True, plot_diff=True, plot_depth=True)
+    time.sleep(10)
+    data_recorder.end_stream()
+    data_recorder.save('./', 'example')

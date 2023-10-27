@@ -6,10 +6,12 @@ class ContactForce():
     '''
     Class to read and record contact force data sent from grasping gauge
     '''
-    def __init__(self):
-        self._IP = None
-        self._socket = None
-        self._forces = []
+    def __init__(self, IP=None, port=8888):
+        self._IP = IP           # IP address where force values are written to from Raspberry Pi
+        self._port = port       # Port where force values are written to from Raspberry Pi
+
+        self._socket = None     # Grants access to data from URL
+        self._forces = []       # Store force measurements from gaueg sequentially (in Newtons)
 
     # Clear all force measurements from the object
     def _reset_values(self):
@@ -19,9 +21,17 @@ class ContactForce():
     def forces(self):
         return np.array(self._forces)
 
+    # Return array of force measurements
+    def crop(self, i_start, i_end):
+        self._forces = self._forces[i_start:i_end]
+        return
+
     # Open socket to begin streaming values
-    def start_stream(self, IP, port=8888):
-        self._IP = IP
+    def start_stream(self, IP=None, port=None):
+        if IP != None:      self._IP = IP
+        if port != None:    self._port = port
+        assert self._IP != None and self._port != None
+
         # Create a socket object and bind it to the specified address and port
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.bind(self._IP, port)

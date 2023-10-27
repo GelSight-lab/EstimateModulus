@@ -37,14 +37,17 @@ class GelsightWedgeVideo():
     '''
     Class to streamline processing of data from Gelsight Wedge's
     '''
-    def __init__(self, config_csv="./config.csv", warped_size=(400, 300)):
+    def __init__(self, config_csv="./config.csv", IP=None, warped_size=(400, 300)):
         self.corners = read_csv(config_csv)     # CSV with pixel coordinates of mirror corners in the order (topleft,topright,bottomleft,bottomright)
         self.warped_size = warped_size          # The size of the image to output from warping process
         self.image_size = (480, 640)            # The size of original image from camera
         self.FPS = 30.0                         # Default FPS from Raspberry Pi camera
 
-        self._IP = ''                       # IP address of Raspberry Pi stream via mjpg_streamer
+        self._IP = IP                       # IP address of Raspberry Pi stream via mjpg_streamer
         self._url = ''                      # URL address of Raspberry Pi stream via mjpg_streamer
+        if self._IP != None:
+            self._url = self.IP_to_URL(self._IP)
+
         self._bytes = b''                   # Bytes data from URL during stream
         self._url_stream = None             # Access to URL data with urllib request
         self._curr_rgb_image = None         # Current raw RGB image streamed from camera
@@ -150,9 +153,12 @@ class GelsightWedgeVideo():
         return 'http://{}:{}/?action=stream'.format(IP, port)
 
     # Initiate streaming thread
-    def start_stream(self, IP, plot=False, plot_diff=False, plot_depth=False):
-        self._IP = IP
-        self._url = self.IP_to_URL(self._IP)
+    def start_stream(self, IP=None, plot=False, plot_diff=False, plot_depth=False):
+        if IP != None:
+            self._IP = IP
+            self._url = self.IP_to_URL(self._IP)
+        assert self._IP != None
+
         self._reset_frames()
         self._stream_active = True
         self._plotting = plot
@@ -160,10 +166,12 @@ class GelsightWedgeVideo():
         self._stream_thread.daemon = True
         self._stream_thread.start()
         time.sleep(1)
+
         if plot:
             self._plot_thread = Thread(target=self._plot, kwargs={'plot_diff': plot_diff, 'plot_depth': plot_depth})
             self._plot_thread.daemon = True
             self._plot_thread.start()
+            
         self._url_stream = urllib.request.urlopen(self._url)
         self._bytes = b''
         return
@@ -215,7 +223,6 @@ class GelsightWedgeVideo():
 
     # Terminate streaming thread
     def end_stream(self, verbose=True):
-        self._url = ''
         self._stream_active = False
         self._stream_thread.join()
         self._bytes = b''
@@ -245,7 +252,7 @@ class GelsightWedgeVideo():
         return
     
     # Crop frames to first press via thresholding
-    def auto_crop(self, depth_threshold=0.5, diff_offset=15):
+    def auto_crop(self, depth_threshold=0.5, diff_offset=15, return_indices=False):
         i_start, i_end = len(self._raw_rgb_frames), len(self._raw_rgb_frames)-1
         for i in range(len(self._raw_rgb_frames)):
             max_depth_i = self.depth_images()[i].max()
@@ -259,6 +266,8 @@ class GelsightWedgeVideo():
             warnings.warn("No press detected! Cannot crop.", Warning)            
         else:
             self._raw_rgb_frames = self._raw_rgb_frames[i_start - diff_offset:i_end + diff_offset]
+
+        if return_indices: return i_start, i_end
 
     # Read frames from a video file
     def upload(self, path_to_file):
@@ -283,10 +292,9 @@ class GelsightWedgeVideo():
     
 
 if __name__ == "__main__":
-    # Typical data recording workflow might be...
-    wedge_video = GelsightWedgeVideo(config_csv="./config.csv")
-    IP = '10.10.10.200'
-    # wedge_video.start_stream(IP, plot=True, plot_diff=True, plot_depth=True)
+    # Typical video recording workflow might be...
+    wedge_video = GelsightWedgeVideo(IP="10.10.10.200", config_csv="./config.csv")
+    # wedge_video.start_stream(plot=True, plot_diff=True, plot_depth=True)
     # time.sleep(10)
     # wedge_video.end_stream()
     # print(wedge_video.max_depth())
