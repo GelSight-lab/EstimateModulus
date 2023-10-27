@@ -53,8 +53,8 @@ class GelsightWedgeVideo():
         self._curr_rgb_image = None         # Current raw RGB image streamed from camera
         self._stream_thread = Thread        # Streaming thread
         self._plot_thread = Thread          # Plotting thread
-        self._plotting = False              # Boolean of whether or not we're plotting during stream
         self._stream_active = False         # Boolean of whether or not we're currently streaming
+        self._plotting = False              # Boolean of whether or not we're plotting during stream
 
         self._raw_rgb_frames = []           # List of raw RGB frames recorded from camera (in shape: [(640,480,3)])
         self._warped_rgb_frames = []        # Images from camera now cropped / warped to the mirror (in shape: [(640,480,3)])
@@ -236,8 +236,10 @@ class GelsightWedgeVideo():
     def end_stream(self, verbose=True):
         self._stream_active = False
         self._stream_thread.join()
-        self._wipe_stream_info()
         if self._plotting: self._plot_thread.join()
+        self._plotting = False
+
+        self._wipe_stream_info()
         time.sleep(1)
         if verbose: print('Done streaming.')
         return

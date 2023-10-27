@@ -18,6 +18,7 @@ class GraspRecorder():
         self._stream_thread = Thread        # Streaming thread
         self._plot_thread = Thread          # Plotting thread
         self._stream_active = False         # Boolean of whether or not we're currently streaming
+        self._plotting = False              # Boolean of whether or not we're plotting during stream
     
     # Clear all data from the object
     def _reset_data(self):
@@ -54,8 +55,11 @@ class GraspRecorder():
 
     # Terminate streaming thread
     def end_stream(self, verbose=True):
+        self._stream_active = False
         self._stream_thread.join()
-        self._plot_thread.join()
+        if self._plotting: self._plot_thread.join()
+        self._plotting = False
+
         self.wedge_video._wipe_stream_info()
         self.contact_force.end_stream(verbose=False)
         time.sleep(1)
