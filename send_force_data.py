@@ -3,7 +3,7 @@ import sys
 import socket
 
 import RPi.GPIO as GPIO
-from hx711 import HX711
+from hx711py.hx711 import HX711
 
 referenceUnit = 1
 
@@ -31,16 +31,18 @@ client_socket.connect((server_ip, server_port))
 while True:
     try:
         val = hx.get_weight(5)
-        print(val)
+        val_str = "{:.2f}".format(val)
+        print(val_str)
 
-        client_socket.send(str(val).encode())
-
-        hx.power_down()
-        hx.power_up()
-        time.sleep(0.1)
+        client_socket.send(val_str.encode())
+        
+        # hx.power_down()
+        # hx.power_up()
+        # time.sleep(0.01)
 
     except (KeyboardInterrupt, SystemExit):
         cleanAndExit()
+        print('ERROR')
         client_socket.close()
 
 cleanAndExit()
