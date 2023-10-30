@@ -22,7 +22,8 @@ def update_received_value():
         if float_str.count('.') > 1:
             float_str = float_str[float_str.rfind('.', 0, float_str.rfind('.'))+3:]
         received_float = float(float_str)
-        print(received_float)
+        force = received_float*(0.002)
+        print(force)
         time.sleep(1)
 
 # Start receiving data
