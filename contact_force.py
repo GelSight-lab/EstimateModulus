@@ -44,7 +44,12 @@ class ContactForce():
         received_data = client_socket.recv(1024)
         if not received_data:
             raise ValueError()
-        self._forces.append(float(received_data.decode()))
+        
+        # Interpret data
+        float_str = received_data.decode()
+        if float_str.count('.') > 1:
+            float_str = float_str[float_str.rfind('.', 0, float_str.rfind('.'))+3:]
+        self._forces.append(float(float_str))
         return
     
     # Close socket when done measuring
