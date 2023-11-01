@@ -31,6 +31,10 @@ class GraspRecorder():
         self._stream_active = True
         self._plotting = plot
 
+        self.wedge_video._prepare_stream()
+
+        self.contact_force.start_stream()
+
         self._stream_thread = Thread(target=self._stream, kwargs={})
         self._stream_thread.daemon = True
         self._stream_thread.start()
@@ -41,7 +45,6 @@ class GraspRecorder():
             self._plot_thread.daemon = True
             self._plot_thread.start()
 
-        self.wedge_video._prepare_stream()
         return
     
     # Facilitate streaming thread, read data from Raspberry Pi camera
@@ -85,8 +88,9 @@ class GraspRecorder():
 
     # Save collected data to video and pickle files
     def save(self, folder, file_name):
-        self.wedge_video.download(os.join(folder, file_name, '.avi'))
-        self.contact_force.save(os.join(folder, file_name, '.pkl'))
+        file_path = os.path.join(folder, file_name)
+        self.wedge_video.download(file_path + '.avi')
+        self.contact_force.save(file_path + '.pkl')
         return
     
 
@@ -94,7 +98,7 @@ if __name__ == "__main__":
     # Typical data collection workflow might be...
 
     # Define streaming addresses
-    wedge_video     =   GelsightWedgeVideo(IP="10.10.10.200", config_csv="./config.csv")
+    wedge_video     =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv")
     contact_force   =   ContactForce(IP="10.10.10.50", port=8888)
     data_recorder   =   GraspRecorder(wedge_video=wedge_video, contact_force=contact_force)
 

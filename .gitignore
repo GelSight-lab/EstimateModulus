@@ -1,2 +1,3 @@
 *.avi
+*.pkl
 __pycache__

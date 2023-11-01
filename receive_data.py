@@ -11,7 +11,7 @@ server_socket.bind((server_ip, server_port))
 
 # Function to update the float_label with received data
 def update_received_value():
-    client_socket, client_address = server_socket.accept()
+    client_socket, _ = server_socket.accept()
     
     while True:
         received_data = client_socket.recv(1024)  # You may need to adjust the buffer size
@@ -22,7 +22,7 @@ def update_received_value():
         if float_str.count('.') > 1:
             float_str = float_str[float_str.rfind('.', 0, float_str.rfind('.'))+3:]
         received_float = float(float_str)
-        force = received_float*(0.002)
+        force = received_float*(0.002)*0.01
         print(force)
         time.sleep(1)
 

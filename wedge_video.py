@@ -169,6 +169,8 @@ class GelsightWedgeVideo():
         self._stream_active = True
         self._plotting = plot
 
+        self._prepare_stream()
+
         self._stream_thread = Thread(target=self._stream, kwargs={})
         self._stream_thread.daemon = True
         self._stream_thread.start()
@@ -178,8 +180,6 @@ class GelsightWedgeVideo():
             self._plot_thread = Thread(target=self._plot, kwargs={'plot_diff': plot_diff, 'plot_depth': plot_depth})
             self._plot_thread.daemon = True
             self._plot_thread.start()
-
-        self._prepare_stream()
         return
     
     # During streaming, read object from URL

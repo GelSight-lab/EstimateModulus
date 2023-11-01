@@ -17,7 +17,7 @@ class ContactForce():
 
     # Clear all force measurements from the object
     def _reset_values(self):
-        self.forces = []
+        self._forces = []
 
     # Return array of force measurements
     def forces(self):
@@ -52,7 +52,7 @@ class ContactForce():
         float_str = received_data.decode()
         if float_str.count('.') > 1:
             float_str = float_str[float_str.rfind('.', 0, float_str.rfind('.'))+3:]
-        force = float(float_str)*(0.002024) - 33.63
+        force = float(float_str)*(0.002)*0.01
         self._forces.append(force)
         if verbose: print(float_str)
         return
