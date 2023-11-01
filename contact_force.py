@@ -83,11 +83,8 @@ class ContactForce():
 if __name__ == "__main__":
     # Read data from source
     contact_force = ContactForce(IP="10.10.10.50")
-    # contact_force.start_stream()
-    # for i in range(100):
-    #     contact_force._read_values(verbose=True)
-    #     time.sleep(1)
-    # contact_force.end_stream()
-
-    contact_force.load('./example.pkl')
-    print(contact_force.forces())
+    contact_force.start_stream()
+    for i in range(100):
+        contact_force._read_values(verbose=True)
+        time.sleep(1)
+    contact_force.end_stream()
