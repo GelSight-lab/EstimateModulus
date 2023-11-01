@@ -312,10 +312,11 @@ if __name__ == "__main__":
     # print(wedge_video.max_depth())
 
     wedge_video.upload('./example.avi')
-    wedge_video.auto_crop()
-    wedge_video.download('./example_cropped.avi')
+    print(wedge_video._raw_rgb_frames)
+    # wedge_video.auto_crop()
+    # wedge_video.download('./example_cropped.avi')
 
-    wedge_video = GelsightWedgeVideo(config_csv="./config.csv")
-    wedge_video.upload('./example_cropped.avi')
-    wedge_video.watch()
+    # wedge_video = GelsightWedgeVideo(config_csv="./config.csv")
+    # wedge_video.upload('./example_cropped.avi')
+    # wedge_video.watch()
 

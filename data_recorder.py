@@ -81,16 +81,15 @@ class GraspRecorder():
         return
 
     # Read frames from a video file
-    def upload(self, folder, file_name):
-        self.wedge_video.upload(os.join(folder, file_name, '.avi'))
-        self.contact_force.load(os.join(folder, file_name, '.pkl'))
+    def load(self, path_to_file):
+        self.wedge_video.upload(path_to_file + '.avi')
+        self.contact_force.load(path_to_file + '.pkl')
         return
 
     # Save collected data to video and pickle files
-    def save(self, folder, file_name):
-        file_path = os.path.join(folder, file_name)
-        self.wedge_video.download(file_path + '.avi')
-        self.contact_force.save(file_path + '.pkl')
+    def save(self, path_to_file):
+        self.wedge_video.download(path_to_file + '.avi')
+        self.contact_force.save(path_to_file + '.pkl')
         return
     
 
@@ -106,4 +105,4 @@ if __name__ == "__main__":
     data_recorder.start_stream(plot=True, plot_diff=True, plot_depth=True)
     time.sleep(10)
     data_recorder.end_stream()
-    data_recorder.save('./', 'example')
+    data_recorder.save('./example')
