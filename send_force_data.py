@@ -12,38 +12,49 @@ def cleanAndExit():
     print("Cleaned!")
     sys.exit()
 
-hx = HX711(5, 6)
-hx.set_reading_format("MSB", "MSB")
-hx.set_reference_unit(referenceUnit)
-hx.reset()
-hx.tare()
-
 # Define the IP address and port of the receiving device
 server_ip = "10.10.10.50"  # Replace with the IP address of the receiving device
 server_port = 8888   # Replace with the port number you want to use
 
-# Create a socket object
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def send_data():
 
-# Connect to the server
-client_socket.connect((server_ip, server_port))
+    hx = HX711(5, 6)
+    hx.set_reading_format("MSB", "MSB")
+    hx.set_reference_unit(referenceUnit)
+    hx.reset()
+    hx.tare()
 
-while True:
-    try:
-        val = hx.get_weight(5)
-        val_str = "{:.2f}".format(val)
-        print(val_str)
+    # Create a socket object
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.settimeout(10000)
+    
+    # Connect to the server
+    while True:
+        try:
+            client_socket.connect((server_ip, server_port))
+            break
+        except TimeoutError:
+            pass
 
-        client_socket.send(val_str.encode())
-        
-        # hx.power_down()
-        # hx.power_up()
-        # time.sleep(0.01)
+    while True:
+        try:
+            val = hx.get_weight(5)
+            val_str = "{:.2f}".format(val)
+            print(val_str)
+            client_socket.send(val_str.encode())
 
-    except (KeyboardInterrupt, SystemExit):
-        cleanAndExit()
-        print('ERROR')
-        client_socket.close()
+        except (ConnectionResetError, ConnectionRefusedError, ConnectionError, ConnectionAbortedError):
+            client_socket.close()
+            return True
+
+        except (KeyboardInterrupt, SystemExit):
+            print('ERROR')
+            cleanAndExit()
+            client_socket.close()
+            return False
+
+keep_sending = True
+while keep_sending:
+    keep_sending = send_data()
 
 cleanAndExit()
-client_socket.close()

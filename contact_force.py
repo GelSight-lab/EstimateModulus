@@ -54,7 +54,7 @@ class ContactForce():
             float_str = float_str[float_str.rfind('.', 0, float_str.rfind('.'))+3:]
         force = float(float_str)*(0.002)*0.01
         self._forces.append(force)
-        if verbose: print(float_str)
+        if verbose: print(force)
         return
     
     # Close socket when done measuring
@@ -84,7 +84,6 @@ if __name__ == "__main__":
     # Read data from source
     contact_force = ContactForce(IP="10.10.10.50")
     contact_force.start_stream()
-    for i in range(100):
+    for i in range(1000):
         contact_force._read_values(verbose=True)
-        time.sleep(1)
     contact_force.end_stream()
