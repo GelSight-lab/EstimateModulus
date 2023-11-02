@@ -7,7 +7,7 @@ from contact_force import ContactForce
 
 from threading import Thread
 
-class GraspRecorder():
+class DataRecorder():
     '''
     Class to streamline recording of data from Gelsight Wedge's / force gauge and package into training
     '''
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     # Define streaming addresses
     wedge_video     =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv")
     contact_force   =   ContactForce(IP="10.10.10.50", port=8888)
-    data_recorder   =   GraspRecorder(wedge_video=wedge_video, contact_force=contact_force)
+    data_recorder   =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force)
 
     # Record example data and save
     data_recorder.start_stream(plot=True, plot_diff=True, plot_depth=True)
