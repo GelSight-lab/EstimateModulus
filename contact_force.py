@@ -3,6 +3,8 @@ import pickle
 import numpy as np
 import time
 
+from threading import Thread
+
 class ContactForce():
     '''
     Class to read and record contact force data sent from grasping gauge
@@ -11,9 +13,12 @@ class ContactForce():
         self._IP = IP           # IP address where force values are written to from Raspberry Pi
         self._port = port       # Port where force values are written to from Raspberry Pi
 
-        self._socket = None             # Grants access to data from URL
-        self._client_socket = None      # What we read from
-        self._forces = []               # Store force measurements from gaueg sequentially (in Newtons)
+        self._socket = None                 # Grants access to data from URL
+        self._client_socket = None          # Socket that we read from
+        self._stream_thread = None          # Thread to receive measurements from sensor and update value
+        self._stream_active = False         # Boolean of whether or not we're currently streaming
+        self._latest_measurement = None     # Most recent reading from the sensor
+        self._forces = []                   # Store force measurements from gaueg sequentially (in Newtons)
 
     # Clear all force measurements from the object
     def _reset_values(self):
@@ -29,10 +34,13 @@ class ContactForce():
         return
 
     # Open socket to begin streaming values
-    def start_stream(self, IP=None, port=None):
+    def start_stream(self, IP=None, port=None, read_only=False):
         if IP != None:      self._IP = IP
         if port != None:    self._port = port
         assert self._IP != None and self._port != None
+
+        self._reset_values()
+        self._stream_active = True
 
         # Create a socket object and bind it to the specified address and port
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,6 +48,21 @@ class ContactForce():
         self._socket.listen(1)
         
         self._client_socket, _ = self._socket.accept()
+
+        self._stream_thread = Thread(target=self._stream, kwargs={'read_only': read_only})
+        self._stream_thread.daemon = True
+        self._stream_thread.start()
+        return
+    
+    # Function to facilitate continuous reading of values from stream
+    # (If read_only is True, will not save measurements to local force array.
+    #   Instead, must directly execute _record_latest() to record the most recently recieved measurement.)
+    def _stream(self, read_only=False, verbose=False):
+        while self._stream_active:
+            if verbose: print('Streaming force measurements...')
+            self._read_values()
+            if not read_only:
+                self._record_latest()
         return
 
     # Read force measurement from socket
@@ -52,13 +75,19 @@ class ContactForce():
         float_str = received_data.decode()
         if float_str.count('.') > 1:
             float_str = float_str[float_str.rfind('.', 0, float_str.rfind('.'))+3:]
-        force = float(float_str)*(0.002)*0.01
-        self._forces.append(force)
-        if verbose: print(force)
+        self._latest_measurement = float(float_str)*(0.002)*0.01
+        if verbose: print(self._latest_measurement)
+        return
+    
+    # Save the latest measurement from stream to local data
+    def _record_latest(self, verbose=False):
+        self._forces.append(self._latest_measurement)
+        if verbose: print(self._latest_measurement)
         return
     
     # Close socket when done measuring
     def end_stream(self, verbose=True):
+        self._stream_active = False
         self._IP = None
         self._socket.close()
         if verbose: print('Done streaming.')

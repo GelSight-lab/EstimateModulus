@@ -15,6 +15,7 @@ data_recorder   =   DataRecorder(wedge_video=wedge_video, contact_force=contact_
 # Start recording
 DataRecorder()
 data_recorder.start_stream(plot=True, plot_diff=True, plot_depth=True)
+time.sleep(5)
 
 # Close gripper
 # fa.close_gripper()

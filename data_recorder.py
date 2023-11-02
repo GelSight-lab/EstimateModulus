@@ -33,7 +33,7 @@ class DataRecorder():
 
         self.wedge_video._prepare_stream()
 
-        self.contact_force.start_stream()
+        self.contact_force.start_stream(read_only=True)
 
         self._stream_thread = Thread(target=self._stream, kwargs={})
         self._stream_thread.daemon = True
@@ -53,7 +53,7 @@ class DataRecorder():
             if verbose: print('Streaming...')
             img_found = self.wedge_video._decode_image_from_stream()
             if img_found:
-                self.contact_force._read_values()
+                self.contact_force._record_latest()
         return
 
     # Terminate streaming thread
