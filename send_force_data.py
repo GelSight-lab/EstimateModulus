@@ -33,7 +33,7 @@ def send_data():
         try:
             client_socket.connect((server_ip, server_port))
             break
-        except TimeoutError:
+        except (TimeoutError):
             pass
 
     while True:

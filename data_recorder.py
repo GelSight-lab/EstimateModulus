@@ -26,29 +26,25 @@ class DataRecorder():
         self.contact_force._reset_values()
     
     # Initiate streaming thread
-    def start_stream(self, plot=False, plot_diff=False, plot_depth=False):
+    def start_stream(self, verbose=True, plot=False, plot_diff=False, plot_depth=False):
         self._reset_data()
         self._stream_active = True
-        self._plotting = plot
 
         self.wedge_video._prepare_stream()
-
         self.contact_force.start_stream(read_only=True)
 
-        self._stream_thread = Thread(target=self._stream, kwargs={})
+        self._stream_thread = Thread(target=self._stream, kwargs={"verbose": verbose})
         self._stream_thread.daemon = True
         self._stream_thread.start()
         time.sleep(1)
 
         if plot:
-            self._plot_thread = Thread(target=self.wedge_video._plot, kwargs={'plot_diff': plot_diff, 'plot_depth': plot_depth})
-            self._plot_thread.daemon = True
-            self._plot_thread.start()
+            self.wedge_video._start_plotting(plot_diff=plot_diff, plot_depth=plot_depth)
 
         return
     
     # Facilitate streaming thread, read data from Raspberry Pi camera
-    def _stream(self, verbose=True):
+    def _stream(self, verbose=False):
         while self._stream_active:
             if verbose: print('Streaming...')
             img_found = self.wedge_video._decode_image_from_stream()
@@ -57,11 +53,11 @@ class DataRecorder():
         return
 
     # Terminate streaming thread
-    def end_stream(self, verbose=True):
+    def end_stream(self, verbose=False):
         self._stream_active = False
         self._stream_thread.join()
-        if self._plotting: self._plot_thread.join()
-        self._plotting = False
+        if self.wedge_video._plotting:
+            self.wedge_video._stop_plotting()
 
         self.wedge_video._wipe_stream_info()
         self.contact_force.end_stream(verbose=False)
@@ -102,7 +98,7 @@ if __name__ == "__main__":
     data_recorder   =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force)
 
     # Record example data and save
-    data_recorder.start_stream(plot=True, plot_diff=True, plot_depth=True)
+    data_recorder.start_stream(verbose=True, plot=True, plot_diff=True, plot_depth=True)
     time.sleep(10)
-    data_recorder.end_stream()
+    data_recorder.end_stream(verbose=True)
     data_recorder.save('./example')

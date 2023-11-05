@@ -21,7 +21,8 @@ class TactileMaterialEstimate():
         #     "https://static1.squarespace.com/static/5b1ecdd4372b96e84200cf1d/t/5b608e1a758d46a989c0bf93/1533054492488/XP-565+%281%29.pdf"
         # Estimated from Shore A hardness:
         #     "https://www.dow.com/content/dam/dcc/documents/en-us/tech-art/11/11-37/11-3716-01-durometer-hardness-for-silicones.pdf"
-        self.gel_compliance = 0.54e+6 # N/m^2
+        self.shore_A_00_hardness = 58 # From durometer measurement
+        self.gel_compliance = 5.28e+6 # N/m^2
         self.gel_poisson_ratio = 0.485 # [\]
 
     # Return mask of which pixels are in contact with object

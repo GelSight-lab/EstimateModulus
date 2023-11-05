@@ -167,7 +167,6 @@ class GelsightWedgeVideo():
 
         self._reset_frames()
         self._stream_active = True
-        self._plotting = plot
 
         self._prepare_stream()
 
@@ -177,9 +176,15 @@ class GelsightWedgeVideo():
         time.sleep(1)
 
         if plot:
-            self._plot_thread = Thread(target=self._plot, kwargs={'plot_diff': plot_diff, 'plot_depth': plot_depth})
-            self._plot_thread.daemon = True
-            self._plot_thread.start()
+            self._start_plotting(plot_diff=plot_diff, plot_depth=plot_depth)
+        return
+    
+    # Start plotting thread
+    def _start_plotting(self, plot_diff=False, plot_depth=False):
+        self._plotting = True
+        self._plot_thread = Thread(target=self._plot, kwargs={'plot_diff': plot_diff, 'plot_depth': plot_depth})
+        self._plot_thread.daemon = True
+        self._plot_thread.start()
         return
     
     # During streaming, read object from URL
@@ -196,7 +201,7 @@ class GelsightWedgeVideo():
         return False
     
     # Facilitate streaming thread, read data from Raspberry Pi camera
-    def _stream(self, verbose=True):
+    def _stream(self, verbose=False):
         while self._stream_active:
             if verbose: print('Streaming...')
             _ = self._decode_image_from_stream()
@@ -205,7 +210,8 @@ class GelsightWedgeVideo():
     # Plot relevant images during streaming
     def _plot(self, plot_diff=False, plot_depth=False):
         if plot_depth:  Vis3D = ClassVis3D(n=self.warped_size[0], m=self.warped_size[1])
-        while self._stream_active:
+        while self._plotting:
+            print('Plotting...')
             cv2.imshow('raw_RGB', self._curr_rgb_image)
 
             # Plot difference image
@@ -227,21 +233,27 @@ class GelsightWedgeVideo():
         cv2.destroyAllWindows()
         return
     
-    # Close url and clear stream data
+    # Close URL and clear stream data
     def _wipe_stream_info(self):
         self._bytes = b''
         self._url_stream = None
 
     # Terminate streaming thread
-    def end_stream(self, verbose=True):
+    def end_stream(self, verbose=False):
         self._stream_active = False
         self._stream_thread.join()
-        if self._plotting: self._plot_thread.join()
-        self._plotting = False
+        if self._plotting:
+            self._stop_plotting()
 
         self._wipe_stream_info()
         time.sleep(1)
         if verbose: print('Done streaming.')
+        return
+    
+    # Terminate plotting thread
+    def _stop_plotting(self):
+        self._plotting = False
+        if self._plotting: self._plot_thread.join()
         return
     
     # Plot video for your viewing pleasure

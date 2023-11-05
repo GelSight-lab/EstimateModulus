@@ -34,7 +34,7 @@ class ContactForce():
         return
 
     # Open socket to begin streaming values
-    def start_stream(self, IP=None, port=None, read_only=False):
+    def start_stream(self, IP=None, port=None, read_only=False, verbose=False):
         if IP != None:      self._IP = IP
         if port != None:    self._port = port
         assert self._IP != None and self._port != None
@@ -49,7 +49,7 @@ class ContactForce():
         
         self._client_socket, _ = self._socket.accept()
 
-        self._stream_thread = Thread(target=self._stream, kwargs={'read_only': read_only})
+        self._stream_thread = Thread(target=self._stream, kwargs={'read_only': read_only, 'verbose': verbose})
         self._stream_thread.daemon = True
         self._stream_thread.start()
         return
@@ -86,9 +86,10 @@ class ContactForce():
         return
     
     # Close socket when done measuring
-    def end_stream(self, verbose=True):
+    def end_stream(self, verbose=False):
         self._stream_active = False
         self._IP = None
+        self._stream_thread.join()
         self._socket.close()
         if verbose: print('Done streaming.')
         return
@@ -110,8 +111,13 @@ class ContactForce():
     
 
 if __name__ == "__main__":
-    # Read data from source
+    # # Read data from source
     contact_force = ContactForce(IP="10.10.10.50")
-    contact_force.start_stream()
-    time.sleep(10)
-    contact_force.end_stream()
+    # contact_force.start_stream(verbose=True)
+    # time.sleep(3)
+    # contact_force.end_stream()
+
+    # print(f'Read {len(contact_force.forces())} values in 3 seconds.')
+
+    contact_force.load('./example.pkl')
+    print(contact_force.forces())
