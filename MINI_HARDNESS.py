@@ -20,6 +20,7 @@ torch.cuda.empty_cache()
 # TODO: Make this whole thing object oriented
 
 TRAIN = True
+USE_WANDB = False
 AVI_DIR = "./hardness_dataset/robotData"
 
 N_FRAMES        = 5
@@ -59,23 +60,24 @@ preprocess = transforms.Compose([
     ),
 ])
 
-wandb.init(
-    # Set the wandb project where this run will be logged
-    project="MINI_HARDNESS",
-    
-    # Track hyperparameters and run metadata
-    config={
-        "epochs": epochs,
-        "batch_size": batch_size,
-        "N_frames": N_FRAMES,
-        "img_size": (IMG_X, IMG_Y),
-        "feature_size": feature_size,
-        "learning_rate": learning_rate,
-        "step_size": step_size,
-        "gamma": gamma,
-        "architecture": "ENCODE_DECODE",
-    }
-)
+if USE_WANDB:
+    wandb.init(
+        # Set the wandb project where this run will be logged
+        project="MINI_HARDNESS",
+        
+        # Track hyperparameters and run metadata
+        config={
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "N_frames": N_FRAMES,
+            "img_size": (IMG_X, IMG_Y),
+            "feature_size": feature_size,
+            "learning_rate": learning_rate,
+            "step_size": step_size,
+            "gamma": gamma,
+            "architecture": "ENCODE_DECODE",
+        }
+    )
 
 class CustomDataset(Dataset):
     def __init__(self, video_files, labels, frame_tensor=torch.zeros((N_FRAMES, 3, IMG_X, IMG_Y)), label_tensor=torch.zeros((1))):
@@ -313,13 +315,13 @@ def train(_encoder, _decoder):
     optimizer = torch.optim.Adam(params, lr=learning_rate)
     scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=gamma)
 
-    wandb.init()
+    if USE_WANDB: wandb.init()
     _encoder.train(); _decoder.train()
     loss = None
     
     memory_allocated = torch.cuda.memory_allocated()
     memory_cached = torch.cuda.memory_reserved()
-    wandb.log({"memory_allocated": memory_allocated, "memory_reserved": memory_cached, "loss": 0, "epoch": 0})
+    if USE_WANDB: wandb.log({"memory_allocated": memory_allocated, "memory_reserved": memory_cached, "loss": 0, "epoch": 0})
 
     for epoch in range(epochs):
 
@@ -344,11 +346,11 @@ def train(_encoder, _decoder):
         memory_cached = torch.cuda.memory_reserved()
 
         # Log memory usage to WandB
-        wandb.log({"memory_allocated": memory_allocated, "memory_reserved": memory_cached, "loss": loss, "epoch": epoch})
+        if USE_WANDB: wandb.log({"memory_allocated": memory_allocated, "memory_reserved": memory_cached, "loss": loss, "epoch": epoch})
         
         scheduler.step()
     
-    wandb.finish()
+    if USE_WANDB: wandb.finish()
 
     torch.save(encoder.state_dict(), './encoder.pth')
     torch.save(decoder.state_dict(), './decoder.pth')
