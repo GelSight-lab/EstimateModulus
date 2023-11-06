@@ -29,7 +29,7 @@ class ContactForce():
         return np.array(self._forces)
 
     # Return array of force measurements
-    def crop(self, i_start, i_end):
+    def clip(self, i_start, i_end):
         self._forces = self._forces[i_start:i_end]
         return
 

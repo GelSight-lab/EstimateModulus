@@ -275,8 +275,25 @@ class GelsightWedgeVideo():
         cv2.destroyAllWindows()
         return
     
-    # Crop frames to first press via thresholding
-    def auto_crop(self, depth_threshold=0.5, diff_offset=15, return_indices=False):
+    # Clip frames to indices
+    def clip(self, i_start, i_end):
+        assert i_end < len(self._raw_rgb_frames)
+        i_start = max(0, i_start)
+        self._raw_rgb_frames = self._raw_rgb_frames[i_start:i_end]
+
+        # Clip all other frame data, if applicable
+        if len(self._warped_rgb_frames) == len(self._raw_rgb_frames):
+            self._warped_rgb_frames = self._warped_rgb_frames[i_start:i_end]
+        if len(self._diff_images) == len(self._raw_rgb_frames):
+            self._diff_images = self._diff_images[i_start:i_end]
+        if len(self._grad_images) == len(self._raw_rgb_frames):
+            self._grad_images = self._grad_images[i_start:i_end]
+        if len(self._depth_images) == len(self._raw_rgb_frames):
+            self._depth_images = self._depth_images[i_start:i_end]
+        return
+    
+    # Automatically clip frames to first press via thresholding
+    def auto_clip(self, depth_threshold=0.5, diff_offset=15, return_indices=False):
         i_start, i_end = len(self._raw_rgb_frames), len(self._raw_rgb_frames)-1
         for i in range(len(self._raw_rgb_frames)):
             max_depth_i = self.depth_images()[i].max()
@@ -287,11 +304,12 @@ class GelsightWedgeVideo():
             if max_depth_i < depth_threshold and i >= i_start: break
 
         if i_start >= i_end:
-            warnings.warn("No press detected! Cannot crop.", Warning)            
+            warnings.warn("No press detected! Cannot clip.", Warning)            
         else:
+            self.clip(i_start - diff_offset, i_end + diff_offset)
             self._raw_rgb_frames = self._raw_rgb_frames[i_start - diff_offset:i_end + diff_offset]
 
-        if return_indices: return i_start, i_end
+        if return_indices: return i_start - diff_offset, i_end + diff_offset
 
     # Read frames from a video file
     def upload(self, path_to_file):
@@ -325,10 +343,10 @@ if __name__ == "__main__":
 
     wedge_video.upload('./example.avi')
     print(wedge_video._raw_rgb_frames)
-    # wedge_video.auto_crop()
-    # wedge_video.download('./example_cropped.avi')
+    # wedge_video.auto_clip()
+    # wedge_video.download('./example_clipped.avi')
 
     # wedge_video = GelsightWedgeVideo(config_csv="./config.csv")
-    # wedge_video.upload('./example_cropped.avi')
+    # wedge_video.upload('./example_clipped.avi')
     # wedge_video.watch()
 
