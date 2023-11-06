@@ -166,13 +166,9 @@ class TactileMaterialEstimate():
     # Compute depth of contact from sphere fit
     def estimate_contact_depth(self, sphere):
         return sphere[0] + sphere[3]
-
-    # Use measured force and depth to estimate aggregate compliance E_star
-    def fit_compliance(self, depth_images, forces):
-        # Using Hertzian contact mechanics...
-        #   dF/dd = 2*E_star*a
-        # Following model from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
-
+    
+    # Return force, contact depth, and contact radius
+    def _get_contact_data(self, depth_images, forces):
         # Fit to depth and radius for each frame
         F, d, a = [], [], []
         for i in range(depth_images.shape[0]):
@@ -181,6 +177,26 @@ class TactileMaterialEstimate():
                 F.append(forces[i])
                 d.append(self.estimate_contact_depth(sphere))
                 a.append(self.estimate_contact_radius(sphere))
+        return F, d, a
+    
+    # Plot force versus contact depth
+    def plot_F_vs_d(self, depth_images, forces):
+        F, d, _ = self._get_contact_data(depth_images, forces)
+        plt.plot(d, F, 'r.', label="Raw measurements", markersize=10)
+        plt.xlabel('Depth [m]')
+        plt.ylabel('Force [N]')
+        plt.legend()
+        plt.show()
+        return
+
+    # Use measured force and depth to estimate aggregate compliance E_star
+    def fit_compliance(self, depth_images, forces):
+        # Using Hertzian contact mechanics...
+        #   dF/dd = 2*E_star*a
+        # Following model from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
+
+        # Fit to depth and radius for each frame
+        F, d, a = self._get_contact_data(depth_images, forces)
 
         # Least squares regression for E_star
         dd = np.squeeze(np.diff(np.array(d), axis=0))
