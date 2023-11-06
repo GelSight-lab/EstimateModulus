@@ -32,9 +32,20 @@ class DataRecorder():
         if self._wedge_video_count > 1:
             self.other_wedge_video._reset_frames()
         self.contact_force._reset_values()
+
+    # Return forces
+    def forces(self):
+        return self.contact_force.forces()
+    
+    # Return depth images
+    def depth_images(self, other_finger=False):
+        if other_finger:
+            assert self._wedge_video_count > 1
+            return self.other_wedge_video.depth_images()
+        return self.wedge_video.depth_images()
     
     # Initiate streaming thread
-    def start_stream(self, verbose=True, plot=False, plot_other=True, plot_diff=False, plot_depth=False):
+    def start_stream(self, verbose=True, plot=False, plot_other=False, plot_diff=False, plot_depth=False):
         self._reset_data()
         self._stream_active = True
 
@@ -123,9 +134,9 @@ if __name__ == "__main__":
 
     # Define streaming addresses
     wedge_video         =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv") # Force-sensing finger
-    other_wedge_video   =   GelsightWedgeVideo(IP="10.10.10.200", config_csv="./config.csv") # Other finger
+    # other_wedge_video   =   GelsightWedgeVideo(IP="10.10.10.200", config_csv="./config.csv") # Other finger
     contact_force       =   ContactForce(IP="10.10.10.50", port=8888)
-    data_recorder       =   DataRecorder(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force)
+    data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force)
 
     # Record example data and save
     data_recorder.start_stream(verbose=True, plot=True, plot_diff=True, plot_depth=True)

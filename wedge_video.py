@@ -65,7 +65,6 @@ class GelsightWedgeVideo():
     # Clear all video data from the object
     def _reset_frames(self):
         self._raw_rgb_frames = []
-        self._forces = []
         self._warped_rgb_frames = []
         self._diff_images = []
         self._grad_images = []
@@ -307,7 +306,6 @@ class GelsightWedgeVideo():
             warnings.warn("No press detected! Cannot clip.", Warning)            
         else:
             self.clip(i_start - diff_offset, i_end + diff_offset)
-            self._raw_rgb_frames = self._raw_rgb_frames[i_start - diff_offset:i_end + diff_offset]
 
         if return_indices: return i_start - diff_offset, i_end + diff_offset
 
@@ -335,14 +333,13 @@ class GelsightWedgeVideo():
 
 if __name__ == "__main__":
     # Typical video recording workflow might be...
-    wedge_video = GelsightWedgeVideo(IP="10.10.10.200", config_csv="./config.csv")
-    # wedge_video.start_stream(plot=True, plot_diff=True, plot_depth=True)
-    # time.sleep(10)
-    # wedge_video.end_stream()
-    # print(wedge_video.max_depth())
+    wedge_video = GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv")
+    wedge_video.start_stream(plot=True, plot_diff=True, plot_depth=True)
+    time.sleep(10)
+    wedge_video.end_stream()
+    print(wedge_video.max_depth())
 
-    wedge_video.upload('./example.avi')
-    print(wedge_video._raw_rgb_frames)
+    # wedge_video.upload('./example.avi')
     # wedge_video.auto_clip()
     # wedge_video.download('./example_clipped.avi')
 

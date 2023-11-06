@@ -181,8 +181,6 @@ class TactileMaterialEstimate():
                 F.append(forces[i])
                 d.append(self.estimate_contact_depth(sphere))
                 a.append(self.estimate_contact_radius(sphere))
-                if i == 32:
-                    self.plot_sphere_fit(depth_images[i], sphere)
 
         # Least squares regression for E_star
         dd = np.squeeze(np.diff(np.array(d), axis=0))
@@ -200,17 +198,15 @@ class TactileMaterialEstimate():
 
 if __name__ == "__main__":
 
-    from wedge_video import GelsightWedgeVideo
-    wedge_video = GelsightWedgeVideo()
-    wedge_video.upload("test_finger_press.avi")
+    from data_recorder import DataRecorder
+    data_recorder = DataRecorder()
+    data_recorder.load("./grasp_small_sphere")
+    data_recorder.auto_clip()
+    depth_images = data_recorder.depth_images()
+    press_force = data_recorder.forces()
 
     estimator = TactileMaterialEstimate()
-
-    depth_images = wedge_video.depth_images()
-    press_force = 20 + np.arange(depth_images.shape[0]) * (20/depth_images.shape[0]) # [N]
-
     depth_images, press_force = estimator.crop_press(depth_images, press_force)
-
     E_finger, v_finger = estimator.fit_compliance(depth_images, press_force)
     print('Estimated modulus of finger:', E_finger)
 
