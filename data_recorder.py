@@ -75,7 +75,7 @@ class DataRecorder():
             if self._wedge_video_count > 1:
                 _ = self.other_wedge_video._decode_image_from_stream()
             if img_found:
-                self.contact_force._record_latest()
+                self.contact_force._request_value()
         return
 
     # Terminate streaming thread
