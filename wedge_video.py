@@ -278,7 +278,6 @@ class GelsightWedgeVideo():
     def clip(self, i_start, i_end):
         assert i_end < len(self._raw_rgb_frames)
         i_start = max(0, i_start)
-        self._raw_rgb_frames = self._raw_rgb_frames[i_start:i_end]
 
         # Clip all other frame data, if applicable
         if len(self._warped_rgb_frames) == len(self._raw_rgb_frames):
@@ -289,6 +288,8 @@ class GelsightWedgeVideo():
             self._grad_images = self._grad_images[i_start:i_end]
         if len(self._depth_images) == len(self._raw_rgb_frames):
             self._depth_images = self._depth_images[i_start:i_end]
+
+        self._raw_rgb_frames = self._raw_rgb_frames[i_start:i_end]
         return
     
     # Automatically clip frames to first press via thresholding
@@ -306,8 +307,8 @@ class GelsightWedgeVideo():
             warnings.warn("No press detected! Cannot clip.", Warning)            
         else:
             self.clip(i_start - diff_offset, i_end + diff_offset)
-
-        if return_indices: return i_start - diff_offset, i_end + diff_offset
+            if return_indices:
+                return i_start - diff_offset, i_end + diff_offset
 
     # Read frames from a video file
     def upload(self, path_to_file):

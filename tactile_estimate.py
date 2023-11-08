@@ -216,7 +216,7 @@ if __name__ == "__main__":
 
     from data_recorder import DataRecorder
     data_recorder = DataRecorder()
-    data_recorder.load("./grasp_small_sphere")
+    data_recorder.load("./example_data/soft_black_foam")
     data_recorder.auto_clip()
     depth_images = data_recorder.depth_images()
     press_force = data_recorder.forces()
@@ -224,6 +224,6 @@ if __name__ == "__main__":
     estimator = TactileMaterialEstimate()
     depth_images, press_force = estimator.crop_press(depth_images, press_force)
     E_finger, v_finger = estimator.fit_compliance(depth_images, press_force)
-    print('Estimated modulus of finger:', E_finger)
+    print('Estimated modulus:', E_finger)
 
     # TRY STOCHASTIC APPROACH???
