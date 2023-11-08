@@ -17,11 +17,15 @@ class ContactForce():
         self._client_socket = None          # Socket that we read from
         self._stream_thread = None          # Thread to receive measurements from sensor and update value
         self._stream_active = False         # Boolean of whether or not we're currently streaming
-        self._latest_measurement = None     # Most recent reading from the sensor
-        self._forces = []                   # Store force measurements from gaueg sequentially (in Newtons)
+        self._forces = []                   # Force value in Newtons at times requested
+        self._times_requested = []          # Times of measurement requested
+        self._measured_forces = []          # All measurements from gauge at recorded times
+        self._times_measured = []           # Times of measurements recorded
 
     # Clear all force measurements from the object
     def _reset_values(self):
+        self._times_requested = []
+        self._times_measured = []
         self._forces = []
 
     # Return array of force measurements
@@ -60,29 +64,46 @@ class ContactForce():
     def _stream(self, read_only=False, verbose=False):
         while self._stream_active:
             if verbose: print('Streaming force measurements...')
-            self._read_values()
+            self._read_value()
             if not read_only:
-                self._record_latest()
+                self._request_value()
         return
 
     # Read force measurement from socket
-    def _read_values(self, verbose=False):
+    def _read_value(self, verbose=False):
         received_data = self._client_socket.recv(1024)
         if not received_data:
             raise ValueError()
         
         # Interpret data
+        self._times_measured.append(time.time())
         float_str = received_data.decode()
         if float_str.count('.') > 1:
             float_str = float_str[float_str.rfind('.', 0, float_str.rfind('.'))+3:]
-        self._latest_measurement = float(float_str)*(0.002)*0.01
-        if verbose: print(self._latest_measurement)
+        self._measured_forces.append(float(float_str)*(0.002)*0.01)
+        if verbose: print(self._measured_forces[-1])
         return
     
     # Save the latest measurement from stream to local data
-    def _record_latest(self, verbose=False):
-        self._forces.append(self._latest_measurement)
-        if verbose: print(self._latest_measurement)
+    def _request_value(self):
+        self._times_requested.append(time.time())
+        return
+    
+    # Smooth measurements based on time requested / recorded
+    # Necessary because force bandwidth is slower than video
+    def _post_process_measurements(self):
+        self._forces = []
+        for t_req in self._times_requested:
+            for i in range(len(self._measured_forces)):
+                if i == len(self._measured_forces) - 1:
+                    # Take last measured
+                    self._forces.append(self._measured_forces[i])
+                if t_req > self._times_measured[i]:
+                    # Interpolate between measured values
+                    F_t = (self._measured_forces[i+1] - self._measured_forces[i]) * \
+                            (t_req - self._times_measured[i])/(self._times_measured[i+1] - self._times_measured[i])
+                    self._forces.append(F_t)
+                    break
         return
     
     # Close socket when done measuring
@@ -91,6 +112,7 @@ class ContactForce():
         self._IP = None
         self._stream_thread.join()
         self._socket.close()
+        self._post_process_measurements()
         if verbose: print('Done streaming.')
         return
 
