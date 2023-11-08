@@ -34,6 +34,8 @@ class ContactForce():
 
     # Return array of force measurements
     def clip(self, i_start, i_end):
+        i_start = max(0, i_start)
+        i_end = min(i_end, len(self._forces)-1)
         self._forces = self._forces[i_start:i_end]
         return
 

@@ -216,14 +216,22 @@ if __name__ == "__main__":
 
     from data_recorder import DataRecorder
     data_recorder = DataRecorder()
-    data_recorder.load("./example_data/soft_black_foam")
-    data_recorder.auto_clip()
-    depth_images = data_recorder.depth_images()
-    press_force = data_recorder.forces()
 
-    estimator = TactileMaterialEstimate()
-    depth_images, press_force = estimator.crop_press(depth_images, press_force)
-    E_finger, v_finger = estimator.fit_compliance(depth_images, press_force)
-    print('Estimated modulus:', E_finger)
+    objs = ["foam_brick", "large_soft_sphere", "golf_ball", "small_rigid_sphere", "lego"]
+    for obj_name in objs:
+        # Load data and clip
+        data_recorder.load("./example_data/" + obj_name)
+        data_recorder.auto_clip()
+        # data_recorder.wedge_video.watch()
 
-    # TRY STOCHASTIC APPROACH???
+        # Extract dynamic data
+        depth_images = data_recorder.depth_images()
+        press_force = data_recorder.forces()
+
+        # Fit using our Hertzian estimator
+        estimator = TactileMaterialEstimate()
+        depth_images, press_force = estimator.crop_press(depth_images, press_force)
+        E_finger, v_finger = estimator.fit_compliance(depth_images, press_force)
+        print(f'\nEstimated modulus of {obj_name}:', E_finger, '\n')
+
+    # TODO: TRY STOCHASTIC APPROACH???
