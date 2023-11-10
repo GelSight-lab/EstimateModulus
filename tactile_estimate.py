@@ -3,6 +3,9 @@ import numpy as np
 import warnings
 import matplotlib.pyplot as plt
 
+from data_recorder import DataRecorder
+data_recorder = DataRecorder()
+
 from scipy.ndimage import convolve
 from scipy.optimize import minimize
 
@@ -11,10 +14,17 @@ WARPED_PX_TO_MM = (11, 11)
 RAW_PX_TO_MM = (12.5, 11)
 PX_TO_MM = np.sqrt(WARPED_PX_TO_MM[0]**2 + WARPED_PX_TO_MM[1]**2)
 
-class TactileMaterialEstimate():
+class EstimateModulus():
     def __init__(self, depth_threshold=0.05, assumed_poissons_ratio=0.45):
         self.assumed_poisson_ratio = assumed_poissons_ratio # [\]
         self.depth_threshold = depth_threshold # [mm]
+
+        self.depth_images = []      # Depth images
+        self.forces = []            # Measured contact forces
+        self.F = []                 # Contact forces for fitting
+        self.d = []                 # Contact depth for fitting
+        self.dFdd = []              # Discrete derivative of force with respect to contact depth
+        self.a = []                 # Contact radius for fitting
 
         # Gel material: Silicone XP-565
         # Datasheet:
@@ -24,6 +34,34 @@ class TactileMaterialEstimate():
         self.shore_A_00_hardness = 58 # From durometer measurement
         self.gel_compliance = 5.28e+6 # N/m^2
         self.gel_poisson_ratio = 0.485 # [\]
+
+    # Clear out the data values
+    def _reset_data(self):
+        self.depth_images = []
+        self.forces = []
+        self.F = []
+        self.d = []
+        self.dFdd = []
+        self.a = []
+
+    # Directly load measurement data
+    def load(self, depth_images, forces):
+        self._reset_data()
+        self.depth_images = depth_images
+        self.forces = forces
+        return
+
+    # Load data from a file
+    def load_from_file(self, path_to_file):
+        self._reset_data()
+        data_recorder = DataRecorder()
+        data_recorder.load(path_to_file)
+        data_recorder.auto_clip()
+
+        # Extract the data we need
+        self.depth_images = data_recorder.depth_images()
+        self.forces = data_recorder.forces()
+        return
 
     # Return mask of which pixels are in contact with object
     def contact_mask(self, depth):
@@ -54,23 +92,23 @@ class TactileMaterialEstimate():
         # Solve for best A given data and equation of form y = A*x
         return np.dot(x, y) / np.dot(x, x)
     
-    # Crop a press sequence to only the loading sequence (positive force)
-    def crop_press(self, depth, force):
-        max_depth = np.zeros((depth.shape[0], 1))
-        for i in range(depth.shape[0]):
-            max_depth[i] = depth[i].max()
+    # Cip a press sequence to only the loading sequence (positive force)
+    def clip_press(self):
+        # Find maximum depth over press
+        max_depth = np.zeros((self.depth_images.shape[0], 1))
+        for i in range(self.depth_images.shape[0]):
+            max_depth[i] = self.depth_images[i].max()
 
         i_start = np.argmin(max_depth >= self.depth_threshold)
         i_peak = np.argmax(max_depth)
 
         if i_start >= i_peak:
-            warnings.warn("No press detected! Cannot crop.", Warning)
-            cropped_depth, cropped_force = depth, force
+            warnings.warn("No press detected! Cannot clip.", Warning)
         else:
-            cropped_depth = depth[i_start:i_peak, :, :]
-            cropped_force = force[i_start:i_peak]
-
-        return cropped_depth, cropped_force
+            # Clip from start to peak depth
+            self.depth_images = self.depth_images[i_start:i_peak, :, :]
+            self.forces = self.forces[i_start:i_peak]
+        return
     
     # Convert depth image to 3D data
     def depth_to_XYZ(self, depth, concave_mask=True, crop_edges=True):
@@ -168,41 +206,66 @@ class TactileMaterialEstimate():
         return sphere[0] + sphere[3]
     
     # Return force, contact depth, and contact radius
-    def _get_contact_data(self, depth_images, forces):
+    def _compute_contact_data(self):
+        if len(self.F) > 0 and len(self.d) > 0 and len(self.a) > 0:
+            assert len(self.F) == len(self.d) == len(self.a)
+            return self.F, self.d, self.a
+        
         # Fit to depth and radius for each frame
-        F, d, a = [], [], []
-        for i in range(depth_images.shape[0]):
-            sphere = self.fit_depth_to_sphere(depth_images[i])
+        self.F, self.d, self.a = [], [], []
+        for i in range(self.depth_images.shape[0]):
+            sphere = self.fit_depth_to_sphere(self.depth_images[i])
             if self.estimate_contact_depth(sphere) > 0:
-                F.append(forces[i])
-                d.append(self.estimate_contact_depth(sphere))
-                a.append(self.estimate_contact_radius(sphere))
-        return F, d, a
+                self.F.append(-self.forces[i])
+                self.d.append(self.estimate_contact_depth(sphere))
+                self.a.append(self.estimate_contact_radius(sphere))
+        return
+    
+    # Return force, contact depth, and contact radius
+    def _compute_dFdd(self):
+        # Fit to depth and radius for each frame
+        if len(self.dFdd) > 0:
+            assert len(self.F) == len(self.d) == len(self.a) == len(self.dFdd) + 1
+            return self.dFdd
+        dd = np.squeeze(np.diff(np.array(self.d), axis=0))
+        self.dFdd = np.diff(np.array(self.F), axis=0) / np.clip(dd, 0.00001, 1)
+        return
     
     # Plot force versus contact depth
-    def plot_F_vs_d(self, depth_images, forces):
-        F, d, _ = self._get_contact_data(depth_images, forces)
-        plt.plot(d, F, 'r.', label="Raw measurements", markersize=10)
+    def plot_F_vs_d(self, plot_fit=True, plot_title=None):
+        plt.figure()
         plt.xlabel('Depth [m]')
         plt.ylabel('Force [N]')
-        plt.legend()
-        plt.show()
+        plt.title(plot_title)
+
+        self._compute_contact_data()
+        plt.plot(self.d, self.F, 'r.', label="Raw measurements", markersize=10)
+        
+        if plot_fit:
+            self._compute_dFdd()
+            E_star = self.linear_coeff_fit(2*np.squeeze(np.array(self.a[:-1])), self.dFdd)
+
+            F_fit = np.zeros_like(self.F)
+            F_fit[0] = self.F[0]
+            for i in range(1, F_fit.shape[0]):
+                F_fit[i] = 2*a[i-1]*E_star*(self.d[i] - self.d[i-1]) + F_fit[i-1]
+            plt.plot(self.d, F_fit, 'b-', label="Fit", markersize=10)
+
+        plt.legend(); plt.show(block=False)
         return
 
     # Use measured force and depth to estimate aggregate compliance E_star
-    def fit_compliance(self, depth_images, forces):
+    def fit_compliance(self):
         # Using Hertzian contact mechanics...
         #   dF/dd = 2*E_star*a
         # Following model from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
 
         # Fit to depth and radius for each frame
-        F, d, a = self._get_contact_data(depth_images, forces)
+        self._compute_contact_data()
 
         # Least squares regression for E_star
-        dd = np.squeeze(np.diff(np.array(d), axis=0))
-        dFdd = np.diff(np.array(F), axis=0) / np.clip(dd, 0.00001, 1)
-        a = np.squeeze(np.array(a[:-1]))
-        E_star = self.linear_coeff_fit(2*a, dFdd)
+        self._compute_dFdd()
+        E_star = self.linear_coeff_fit(2*self.a, self.dFdd)
 
         # Compute compliance from E_star by assuming Poisson's ratio
         poisson_ratio = self.assumed_poisson_ratio
@@ -214,24 +277,20 @@ class TactileMaterialEstimate():
 
 if __name__ == "__main__":
 
-    from data_recorder import DataRecorder
-    data_recorder = DataRecorder()
-
-    objs = ["foam_brick", "large_soft_sphere", "golf_ball", "small_rigid_sphere", "lego"]
+    objs = ["large_soft_sphere", "foam_brick", "golf_ball", "small_rigid_sphere", "lego"]
     for obj_name in objs:
+        
         # Load data and clip
-        data_recorder.load("./example_data/" + obj_name)
-        data_recorder.auto_clip()
-        # data_recorder.wedge_video.watch()
-
-        # Extract dynamic data
-        depth_images = data_recorder.depth_images()
-        press_force = data_recorder.forces()
+        estimator = EstimateModulus()
+        data_recorder.load_from_file("./example_data/" + obj_name)
+        assert len(estimator.depth_images) == len(estimator.forces)
 
         # Fit using our Hertzian estimator
-        estimator = TactileMaterialEstimate()
-        depth_images, press_force = estimator.crop_press(depth_images, press_force)
-        E_finger, v_finger = estimator.fit_compliance(depth_images, press_force)
+        estimator.clip_press()
+        E_finger, v_finger = estimator.fit_compliance()
         print(f'\nEstimated modulus of {obj_name}:', E_finger, '\n')
+
+        # Plot
+        estimator.plot_F_vs_d(plot_title=obj_name)
 
     # TODO: TRY STOCHASTIC APPROACH???
