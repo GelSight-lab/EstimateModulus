@@ -15,9 +15,10 @@ RAW_PX_TO_MM = (12.5, 11)
 PX_TO_MM = np.sqrt(WARPED_PX_TO_MM[0]**2 + WARPED_PX_TO_MM[1]**2)
 
 class EstimateModulus():
-    def __init__(self, depth_threshold=0.05, assumed_poissons_ratio=0.45):
+    def __init__(self, depth_threshold=0.05, sensor_width=0.033, assumed_poissons_ratio=0.45):
         self.assumed_poisson_ratio = assumed_poissons_ratio # [\]
         self.depth_threshold = depth_threshold # [mm]
+        self.sensor_width = sensor_width # [m]
 
         self.depth_images = []      # Depth images
         self.forces = []            # Measured contact forces
@@ -221,6 +222,8 @@ class EstimateModulus():
                 F.append(-self.forces[i])
                 d.append(self.estimate_contact_depth(sphere))
                 a.append(self.estimate_contact_radius(sphere))
+                if self.estimate_contact_radius(sphere) > self.sensor_width/2:
+                    raise ValueError("Contact radius larger than sensor!")
         self.F = np.squeeze(np.array(F))
         self.d = np.squeeze(np.array(d))
         self.a = np.squeeze(np.array(a))
@@ -282,7 +285,7 @@ class EstimateModulus():
 
 if __name__ == "__main__":
 
-    objs = ["large_soft_sphere", "foam_brick", "golf_ball", "small_rigid_sphere", "lego"]
+    objs = ["foam_brick"] # ["large_soft_sphere", "foam_brick", "golf_ball", "small_rigid_sphere", "lego"]
     for obj_name in objs:
         
         # Load data and clip
