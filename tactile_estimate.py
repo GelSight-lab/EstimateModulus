@@ -47,6 +47,7 @@ class EstimateModulus():
     # Directly load measurement data
     def load(self, depth_images, forces):
         self._reset_data()
+        assert len(depth_images) == len(forces)
         self.depth_images = depth_images
         self.forces = forces
         return
@@ -59,6 +60,7 @@ class EstimateModulus():
         data_recorder.auto_clip()
 
         # Extract the data we need
+        assert len(data_recorder.depth_images()) == len(data_recorder.forces())
         self.depth_images = data_recorder.depth_images()
         self.forces = data_recorder.forces()
         return
@@ -212,13 +214,16 @@ class EstimateModulus():
             return self.F, self.d, self.a
         
         # Fit to depth and radius for each frame
-        self.F, self.d, self.a = [], [], []
+        F, d, a = [], [], []
         for i in range(self.depth_images.shape[0]):
             sphere = self.fit_depth_to_sphere(self.depth_images[i])
             if self.estimate_contact_depth(sphere) > 0:
-                self.F.append(-self.forces[i])
-                self.d.append(self.estimate_contact_depth(sphere))
-                self.a.append(self.estimate_contact_radius(sphere))
+                F.append(-self.forces[i])
+                d.append(self.estimate_contact_depth(sphere))
+                a.append(self.estimate_contact_radius(sphere))
+        self.F = np.squeeze(np.array(F))
+        self.d = np.squeeze(np.array(d))
+        self.a = np.squeeze(np.array(a))
         return
     
     # Return force, contact depth, and contact radius
@@ -243,12 +248,12 @@ class EstimateModulus():
         
         if plot_fit:
             self._compute_dFdd()
-            E_star = self.linear_coeff_fit(2*np.squeeze(np.array(self.a[:-1])), self.dFdd)
+            E_star = self.linear_coeff_fit(2*self.a[:-1], self.dFdd)
 
             F_fit = np.zeros_like(self.F)
             F_fit[0] = self.F[0]
             for i in range(1, F_fit.shape[0]):
-                F_fit[i] = 2*a[i-1]*E_star*(self.d[i] - self.d[i-1]) + F_fit[i-1]
+                F_fit[i] = 2*self.a[i-1]*E_star*(self.d[i] - self.d[i-1]) + F_fit[i-1]
             plt.plot(self.d, F_fit, 'b-', label="Fit", markersize=10)
 
         plt.legend(); plt.show(block=False)
@@ -265,7 +270,7 @@ class EstimateModulus():
 
         # Least squares regression for E_star
         self._compute_dFdd()
-        E_star = self.linear_coeff_fit(2*self.a, self.dFdd)
+        E_star = self.linear_coeff_fit(2*self.a[:-1], self.dFdd)
 
         # Compute compliance from E_star by assuming Poisson's ratio
         poisson_ratio = self.assumed_poisson_ratio
@@ -282,7 +287,7 @@ if __name__ == "__main__":
         
         # Load data and clip
         estimator = EstimateModulus()
-        data_recorder.load_from_file("./example_data/" + obj_name)
+        estimator.load_from_file("./example_data/" + obj_name)
         assert len(estimator.depth_images) == len(estimator.forces)
 
         # Fit using our Hertzian estimator
