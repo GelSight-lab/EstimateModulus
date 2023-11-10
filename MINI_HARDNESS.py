@@ -5,10 +5,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 import wandb
 
-from tqdm import tqdm
 from datetime import datetime
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
@@ -20,7 +18,7 @@ torch.cuda.empty_cache()
 # TODO: Make this whole thing object oriented
 
 TRAIN = True
-USE_WANDB = False
+USE_WANDB = True
 AVI_DIR = "./hardness_dataset/robotData"
 
 N_FRAMES        = 5
@@ -28,13 +26,15 @@ IMG_X, IMG_Y    = 180, 240
 
 batch_size      = 32
 feature_size    = 512
-epochs          = 100
+epochs          = 1000
 gamma           = 0.9
 learning_rate   = 1e-5
 step_size       = 10
+validation_pct  = 0.2
+random_state    = 42
 
 # Read data folder
-video_files = sorted(os.listdir(AVI_DIR))
+video_files = sorted(os.listdir(AVI_DIR)) # [:50]
 hardness = [int(avi_file.split('_')[1]) for avi_file in video_files]
 
 assert len(video_files) == len(hardness)
@@ -51,14 +51,14 @@ def conv3D_output_size(img_size, padding, kernel_size, stride):
 				  np.floor((img_size[2] + 2 * padding[2] - (kernel_size[2] - 1) - 1) / stride[2] + 1).astype(int))
 	return output_shape 
 
-# Define a preprocessing transform to match CNN's requirements
-preprocess = transforms.Compose([
-    transforms.ToTensor(),  # Convert the image to a PyTorch tensor
-    transforms.Normalize(
-        mean=[0.485, 0.456, 0.406], # Normalization mean values for ImageNet
-        std=[0.229, 0.224, 0.225]   # Normalization standard deviation values
-    ),
-])
+# # Define a preprocessing transform to match CNN's requirements
+# preprocess = transforms.Compose([
+#     transforms.ToTensor(),  # Convert the image to a PyTorch tensor
+#     transforms.Normalize(
+#         mean=[0.485, 0.456, 0.406], # Normalization mean values for ImageNet
+#         std=[0.229, 0.224, 0.225]   # Normalization standard deviation values
+#     ),
+# ])
 
 if USE_WANDB:
     wandb.init(
@@ -75,7 +75,12 @@ if USE_WANDB:
             "learning_rate": learning_rate,
             "step_size": step_size,
             "gamma": gamma,
+            "validation_pct": validation_pct,
+            "random_state": random_state,
             "architecture": "ENCODE_DECODE",
+            "optimizer": "Adam",
+            "loss": "MSE",
+            "scheduler": "None",
         }
     )
 
@@ -92,6 +97,7 @@ class CustomDataset(Dataset):
 
         self.frame_tensor = frame_tensor
         self.label_tensor = label_tensor
+        self.index_cache = {}
 
     def __len__(self):
         return len(self.labels)
@@ -101,19 +107,23 @@ class CustomDataset(Dataset):
         self.sampled_frames = []
         self.intensity = []
 
-        while True:
-            self.ret, self.frame = self.cap.read()
-            if not self.ret:
-                break
-            self.intensity.append(np.mean(self.frame))
-            self.ret, self.frame = None, None
-        self.cap.release()
-        cv2.destroyAllWindows()
+        if avi_path in self.index_cache:
+            self.indices = self.index_cache[avi_path]
+        else:
+            while True:
+                self.ret, self.frame = self.cap.read()
+                if not self.ret:
+                    break
+                self.intensity.append(np.mean(self.frame))
+                self.ret, self.frame = None, None
+            self.cap.release()
+            cv2.destroyAllWindows()
 
-        # Choose frames based on intensity (as proxy for force)
-        self.intensity = np.array(self.intensity)
-        self.indices = np.linspace(np.argmax(self.intensity > np.mean(self.intensity)), np.where(self.intensity > np.mean(self.intensity))[0][-1], num=N_FRAMES, dtype=int).tolist()
-        self.intensity = []
+            # Choose frames based on intensity (as proxy for force)
+            self.intensity = np.array(self.intensity)
+            self.indices = np.linspace(np.argmax(self.intensity > np.mean(self.intensity)), np.where(self.intensity > np.mean(self.intensity))[0][-1], num=N_FRAMES, dtype=int).tolist()
+            self.index_cache[avi_path] = self.indices
+            self.intensity = []
 
         # Get frames
         self.i = 0
@@ -129,6 +139,7 @@ class CustomDataset(Dataset):
             self.ret, self.frame = None, None
             self.i += 1
 
+        assert len(self.sampled_frames) == N_FRAMES
         self.sampled_frames = np.array(self.sampled_frames)        
 
         # Clear data
@@ -143,12 +154,12 @@ class CustomDataset(Dataset):
         # TODO: Optimize memory here
         self.extracted_frames = self.extract_frames_from_path(os.path.join(AVI_DIR, self.video_files[idx]))
         for i in range(self.frame_tensor.shape[0]):
-            self.frame_tensor[i,:,:,:] = preprocess(self.extracted_frames[i,:,:,:])
+            self.frame_tensor[i,:,:,:] = torch.movedim(torch.Tensor(self.extracted_frames[i,:,:,:] / 255), 2, 0)
 
+        self.label_tensor = self.label_tensor.zero_()
         self.label_tensor[0] = self.labels[idx]
 
-        return self.frame_tensor, self.label_tensor
-
+        return self.frame_tensor.clone(), self.label_tensor.clone()
 
 class EncoderCNN(nn.Module):
     def __init__(self,
@@ -167,7 +178,7 @@ class EncoderCNN(nn.Module):
 
         # CNN architectures
         self.ch1, self.ch2, self.ch3, self.ch4 = 8, 16, 32, 64
-        self.k1, self.k2, self.k3, self.k4 = (5, 5), (3, 3), (3, 3), (3, 3)  # 2D kernal size
+        self.k1, self.k2, self.k3, self.k4 = (5, 5), (3, 3), (3, 3), (3, 3)  # 2D kernel size
         self.s1, self.s2, self.s3, self.s4 = (2, 2), (2, 2), (2, 2), (2, 2)  # 2D strides
         self.pd1, self.pd2, self.pd3, self.pd4 = (0, 0), (0, 0), (0, 0), (0, 0)  # 2D padding
 
@@ -176,10 +187,12 @@ class EncoderCNN(nn.Module):
                                                  self.pd1, self.k1, self.s1)  # Conv1 output shape
         self.conv2_outshape = conv2D_output_size(self.conv1_outshape, self.pd2,
                                                  self.k2, self.s2)
+        self.conv2_outshape = (int(self.conv2_outshape[0] / 2), int(self.conv2_outshape[1] / 2))
         self.conv3_outshape = conv2D_output_size(self.conv2_outshape, self.pd3,
                                                  self.k3, self.s3)
         self.conv4_outshape = conv2D_output_size(self.conv3_outshape, self.pd4,
                                                  self.k4, self.s4)
+        self.conv4_outshape = (int(self.conv4_outshape[0] / 2), int(self.conv4_outshape[1] / 2))
 
         # Fully connected layer hidden nodes
         self.fc_hidden1, self.fc_hidden2 = fc_hidden1, fc_hidden2
@@ -193,7 +206,6 @@ class EncoderCNN(nn.Module):
                       padding=self.pd1),
             nn.BatchNorm2d(self.ch1, momentum=0.01),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2),
         )
         self.conv2 = nn.Sequential(
             nn.Conv2d(in_channels=self.ch1,
@@ -203,9 +215,7 @@ class EncoderCNN(nn.Module):
                       padding=self.pd2),
             nn.BatchNorm2d(self.ch2, momentum=0.01),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2),
         )
-
         self.conv3 = nn.Sequential(
             nn.Conv2d(in_channels=self.ch2,
                       out_channels=self.ch3,
@@ -214,9 +224,7 @@ class EncoderCNN(nn.Module):
                       padding=self.pd3),
             nn.BatchNorm2d(self.ch3, momentum=0.01),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2),
         )
-
         self.conv4 = nn.Sequential(
             nn.Conv2d(in_channels=self.ch3,
                       out_channels=self.ch4,
@@ -225,33 +233,43 @@ class EncoderCNN(nn.Module):
                       padding=self.pd4),
             nn.BatchNorm2d(self.ch4, momentum=0.01),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2),
         )
 
         self.drop = nn.Dropout(self.drop_p)
         self.pool = nn.MaxPool2d(2)
         self.fc1 = nn.Linear(
             self.ch4 * self.conv4_outshape[0] * self.conv4_outshape[1],
-            self.fc_hidden1)  # Fully connected layer, output k classes
+            self.fc_hidden1
+        ) # Fully connected layer, output k classes
         self.fc2 = nn.Linear(
             self.fc_hidden1,
-            self.CNN_embed_dim)  # Output = CNN embedding latent variables
+            self.CNN_embed_dim
+        ) # Output = CNN embedding latent variables
+        self.fc3 = nn.Linear(
+            self.CNN_embed_dim,
+            self.CNN_embed_dim
+        ) # Output = CNN embedding latent variables
+
 
     def forward(self, x):
         # CNNs
         x = self.conv1(x)
         x = self.conv2(x)
+        x = self.pool(x)
         x = self.conv3(x)
         x = self.conv4(x)
+        x = self.pool(x)
         x = x.view(x.size(0), -1)  # Flatten the output of conv
         x = self.drop(x)
         # FC layers
-        x = F.relu(self.fc1(x))
+        x = self.fc1(x)
+        x = F.relu(x)
         x = self.drop(x)
-        cnn_embed = self.fc2(x)
-
-        return cnn_embed
-
+        x = self.fc2(x) # CNN embedding
+        x = F.relu(x)
+        x = self.drop(x)
+        x = self.fc3(x) # CNN embedding
+        return x
 
 class DecoderFC(nn.Module):
     def __init__(self,
@@ -275,6 +293,7 @@ class DecoderFC(nn.Module):
         self.drop = nn.Dropout(self.drop_p)
 
     def forward(self, x):
+        x = torch.cat(x, -1)
         x = self.fc1(x)
         x = F.relu(x)
         x = self.drop(x)
@@ -289,50 +308,56 @@ class DecoderFC(nn.Module):
         return x
     
 encoder = EncoderCNN(img_x=IMG_X, img_y=IMG_Y, input_channels=3,
-                        CNN_embed_dim=feature_size).to(device)
+                        CNN_embed_dim=feature_size)
+encoder = encoder.to(device)
 
-decoder = DecoderFC(CNN_embed_dim=feature_size, output_dim=6).to(device)
+decoder = DecoderFC(CNN_embed_dim=feature_size, output_dim=1)
+decoder = decoder.to(device)
 
-# Parallelize model to multiple GPUs
-if torch.cuda.device_count() > 0:
-    print("Using", torch.cuda.device_count(), "GPUs!")
-    if torch.cuda.device_count() > 1:
-        encoder = nn.DataParallel(encoder)
-        decoder = nn.DataParallel(decoder)
+# # Parallelize model to multiple GPUs
+# if torch.cuda.device_count() > 0:
+#     print("Using", torch.cuda.device_count(), "GPUs!")
+#     if torch.cuda.device_count() > 1:
+#         encoder = nn.DataParallel(encoder)
+#         decoder = nn.DataParallel(decoder)
 
-X_train, X_val, y_train, y_val = train_test_split(video_files, hardness, test_size=0.2, random_state=42)
+X_train, X_val, y_train, y_val = train_test_split(video_files, hardness, test_size=validation_pct, random_state=random_state)
 
 kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
 train_dataset = CustomDataset(X_train, y_train, frame_tensor=torch.zeros((N_FRAMES, 3, 180, 240), device=device), label_tensor=torch.zeros((1), device=device))
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, **kwargs)
 
-model = None
-model.to(device)
-
 def train(_encoder, _decoder):
-    criterion = nn.HuberLoss()
+    criterion = nn.MSELoss() # nn.HuberLoss()
     params = list(_encoder.parameters()) + list(_decoder.parameters())
     optimizer = torch.optim.Adam(params, lr=learning_rate)
-    scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=gamma)
+    # scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=gamma)
 
     if USE_WANDB: wandb.init()
     _encoder.train(); _decoder.train()
+    
+    features = []
+    outputs = torch.zeros((batch_size), device=device)
     loss = None
     
     memory_allocated = torch.cuda.memory_allocated()
     memory_cached = torch.cuda.memory_reserved()
-    if USE_WANDB: wandb.log({"memory_allocated": memory_allocated, "memory_reserved": memory_cached, "loss": 0, "epoch": 0})
+    if USE_WANDB: wandb.log({"memory_allocated": memory_allocated, "memory_reserved": memory_cached})
 
     for epoch in range(epochs):
 
         epoch_loss, log_count = 0, 0
 
-        for x, y in train_loader:
+        for x, labels in train_loader:
             optimizer.zero_grad()
 
-            x = decoder(encoder(x))
-            loss = criterion(x.squeeze(1), y.squeeze(1))
-            loss.backward(retain_graph=True)
+            features = []
+            for i in range(N_FRAMES):
+                features.append(_encoder(x[:, i, :, :, :].clone()))
+            outputs = _decoder(features)
+
+            loss = criterion(outputs.squeeze(1), labels.squeeze(1))
+            loss.backward()
             optimizer.step()
 
             epoch_loss += loss.item()
@@ -346,16 +371,16 @@ def train(_encoder, _decoder):
         memory_cached = torch.cuda.memory_reserved()
 
         # Log memory usage to WandB
-        if USE_WANDB: wandb.log({"memory_allocated": memory_allocated, "memory_reserved": memory_cached, "loss": loss, "epoch": epoch})
+        if USE_WANDB: wandb.log({"memory_allocated": memory_allocated, "memory_reserved": memory_cached, "loss": (epoch_loss / log_count), "epoch": epoch})
         
-        scheduler.step()
+        # scheduler.step()
     
     if USE_WANDB: wandb.finish()
 
-    torch.save(encoder.state_dict(), './encoder.pth')
-    torch.save(decoder.state_dict(), './decoder.pth')
+    torch.save(_encoder.state_dict(), './encoder.pth')
+    torch.save(_decoder.state_dict(), './decoder.pth')
 
-    return encoder, decoder
+    return _encoder, _decoder
 
 
 if TRAIN == True:
