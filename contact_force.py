@@ -82,7 +82,7 @@ class ContactForce():
         float_str = received_data.decode()
         if float_str.count('.') > 1:
             float_str = float_str[float_str.rfind('.', 0, float_str.rfind('.'))+3:]
-        self._measured_forces.append(float(float_str)) # *(0.002)*0.01)
+        self._measured_forces.append(float(float_str) * 0.00002)
         if verbose: print(self._measured_forces[-1])
         return
     
@@ -96,16 +96,16 @@ class ContactForce():
     def _post_process_measurements(self):
         self._forces = []
         for t_req in self._times_requested:
-            for i in range(len(self._measured_forces)):
-                if i == len(self._measured_forces) - 1:
-                    # Take last measured
-                    self._forces.append(self._measured_forces[i])
-                if t_req > self._times_measured[i]:
+            for i in range(len(self._measured_forces) - 1):
+                if t_req > self._times_measured[i] and t_req <= self._times_measured[i+1]:
                     # Interpolate between measured values
-                    F_t = (self._measured_forces[i+1] - self._measured_forces[i]) * \
+                    F_t = self._measured_forces[i] + (self._measured_forces[i+1] - self._measured_forces[i]) * \
                             (t_req - self._times_measured[i])/(self._times_measured[i+1] - self._times_measured[i])
                     self._forces.append(F_t)
                     break
+                elif i == len(self._measured_forces) - 2:
+                    # Take last measured
+                    self._forces.append(self._measured_forces[i+1])
         return
     
     # Close socket when done measuring
@@ -139,7 +139,7 @@ if __name__ == "__main__":
     contact_force = ContactForce(IP="10.10.10.50")
     contact_force.start_stream(verbose=True)
     print('If measurements not being received, ssh directly into the pi.')
-    time.sleep(10)
+    time.sleep(100)
     contact_force.end_stream()
 
     print(f'Read {len(contact_force.forces())} values in 3 seconds.')

@@ -29,18 +29,18 @@ def send_data():
     client_socket.settimeout(10000)
     
     # Connect to the server
-    while True:
-        try:
-            client_socket.connect((server_ip, server_port))
-            break
+    # while True:
+    #     try:
+    client_socket.connect((server_ip, server_port))
+        #     break
 
-        except (TimeoutError, ConnectionRefusedError, ConnectionAbortedError, ConnectionError, ConnectionResetError):
-            pass
+        # except (TimeoutError, ConnectionRefusedError, ConnectionAbortedError, ConnectionError, ConnectionResetError):
+        #     pass
 
-        except (KeyboardInterrupt, SystemExit):
-            print('ERROR')
-            cleanAndExit()
-            return False
+        # except (KeyboardInterrupt, SystemExit):
+        #     print('ERROR')
+        #     cleanAndExit()
+        #     return False
 
     while True:
         try:
