@@ -222,8 +222,7 @@ class GelsightWedgeVideo():
             if plot_depth: 
                 if not plot_diff:
                     diff_img = self.calc_diff_image(self.warp_image(self._raw_rgb_frames[0]), self.warp_image(self._curr_rgb_image))
-                depth = self.img2depth(diff_img) / PX_TO_MM
-                Vis3D.update(depth)
+                Vis3D.update(self.img2depth(diff_img) / PX_TO_MM)
 
             if cv2.waitKey(1) & 0xFF == ord('q'): # Exit windows by pressing "q"
                 break
