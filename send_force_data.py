@@ -33,8 +33,14 @@ def send_data():
         try:
             client_socket.connect((server_ip, server_port))
             break
-        except (TimeoutError):
+
+        except (TimeoutError, ConnectionRefusedError, ConnectionAbortedError, ConnectionError, ConnectionResetError):
             pass
+
+        except (KeyboardInterrupt, SystemExit):
+            print('ERROR')
+            cleanAndExit()
+            return False
 
     while True:
         try:

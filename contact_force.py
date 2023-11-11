@@ -82,7 +82,7 @@ class ContactForce():
         float_str = received_data.decode()
         if float_str.count('.') > 1:
             float_str = float_str[float_str.rfind('.', 0, float_str.rfind('.'))+3:]
-        self._measured_forces.append(float(float_str)*(0.002)*0.01)
+        self._measured_forces.append(float(float_str)) # *(0.002)*0.01)
         if verbose: print(self._measured_forces[-1])
         return
     
@@ -137,11 +137,12 @@ class ContactForce():
 if __name__ == "__main__":
     # # Read data from source
     contact_force = ContactForce(IP="10.10.10.50")
-    # contact_force.start_stream(verbose=True)
-    # time.sleep(3)
-    # contact_force.end_stream()
+    contact_force.start_stream(verbose=True)
+    print('If measurements not being received, ssh directly into the pi.')
+    time.sleep(10)
+    contact_force.end_stream()
 
-    # print(f'Read {len(contact_force.forces())} values in 3 seconds.')
+    print(f'Read {len(contact_force.forces())} values in 3 seconds.')
 
-    contact_force.load('./example.pkl')
-    print(contact_force.forces())
+    # contact_force.load('./example.pkl')
+    # print(contact_force.forces())

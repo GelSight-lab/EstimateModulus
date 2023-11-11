@@ -179,9 +179,9 @@ class GelsightWedgeVideo():
         return
     
     # Start plotting thread
-    def _start_plotting(self, plot_diff=False, plot_depth=False):
+    def _start_plotting(self, plot_diff=False, plot_depth=False, verbose=False):
         self._plotting = True
-        self._plot_thread = Thread(target=self._plot, kwargs={'plot_diff': plot_diff, 'plot_depth': plot_depth})
+        self._plot_thread = Thread(target=self._plot, kwargs={'plot_diff': plot_diff, 'plot_depth': plot_depth, 'verbose': verbose})
         self._plot_thread.daemon = True
         self._plot_thread.start()
         return
@@ -207,10 +207,10 @@ class GelsightWedgeVideo():
         return
 
     # Plot relevant images during streaming
-    def _plot(self, plot_diff=False, plot_depth=False):
+    def _plot(self, plot_diff=False, plot_depth=False, verbose=False):
         if plot_depth:  Vis3D = ClassVis3D(n=self.warped_size[0], m=self.warped_size[1])
         while self._plotting:
-            print('Plotting...')
+            if verbose: print('Plotting...')
             cv2.imshow('raw_RGB', self._curr_rgb_image)
 
             # Plot difference image
@@ -257,10 +257,10 @@ class GelsightWedgeVideo():
     # Plot video for your viewing pleasure
     def watch(self, plot_diff=False, plot_depth=False):
         if plot_depth or plot_diff:
-            diff_images = self._diff_images()
+            diff_images = self.diff_images()
         if plot_depth:
-            depth_images = self._depth_images()
-            Vis3D = ClassVis3D(self.warped_size[1]//2, self.warped_size[1]//2)
+            depth_images = self.depth_images()
+            Vis3D = ClassVis3D(n=self.warped_size[0], m=self.warped_size[1])
         for i in range(len(self._raw_rgb_frames)):
             cv2.imshow('raw_RGB', self._raw_rgb_frames[i])
             if plot_diff:   cv2.imshow('diff_img', diff_images[i])

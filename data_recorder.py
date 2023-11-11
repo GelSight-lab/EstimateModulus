@@ -138,8 +138,17 @@ if __name__ == "__main__":
     contact_force       =   ContactForce(IP="10.10.10.50", port=8888)
     data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force)
 
-    # Record example data and save
-    data_recorder.start_stream(verbose=True, plot=True, plot_diff=True, plot_depth=True)
-    time.sleep(10)
-    data_recorder.end_stream(verbose=True)
-    data_recorder.save('./example')
+    # # Record example data and save
+    # data_recorder.start_stream(verbose=True, plot=True, plot_diff=True, plot_depth=True)
+    # time.sleep(10)
+    # data_recorder.end_stream(verbose=True)
+    # data_recorder.save('./example')
+
+    data_recorder.load('./example_data/foam_brick_2')
+    fb2 = data_recorder.forces()
+
+    data_recorder.load('./example_data/foam_brick_3')
+    fb3 = data_recorder.forces()
+
+    data_recorder.load('./example_data/foam_brick_4')
+    fb4 = data_recorder.forces()

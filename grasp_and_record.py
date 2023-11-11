@@ -5,29 +5,53 @@ from wedge_video import GelsightWedgeVideo
 from contact_force import ContactForce
 from data_recorder import DataRecorder
 
-fa = FrankaArm()
+franka_arm = FrankaArm()
 
 # Define streaming addresses
 wedge_video     =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv")
 contact_force   =   ContactForce(IP="10.10.10.50", port=8888)
 data_recorder   =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force)
 
-fa.goto_gripper(0.08)
+def open_gripper(_franka_arm): {
+    _franka_arm.goto_gripper(
+        0.08, # Maximum width in meters [m]
+        block=True,
+        skill_desc="OpenGripper"
+    )
+}
+
+def close_gripper(_franka_arm): {
+    _franka_arm.goto_gripper(
+        0.005, # Minimum width in meters [m]
+        force=20, # Maximum force in Newtons [N]
+        grasp=True,     
+        block=True,
+        skill_desc="CloseGripper"
+    )
+}
+
+# Startr with gripper in open position
+open_gripper(franka_arm)
+
+print('Starting stream...')
 
 # Start recording
-data_recorder.start_stream(plot=True, plot_diff=True, plot_depth=True)
+data_recorder.start_stream(plot=True, plot_diff=True, plot_depth=True, verbose=False)
 
 # Close gripper
-# fa.close_gripper()
-fa.goto_gripper(0.08)
+print("Grasping...")
+close_gripper(franka_arm)
+print("Grasped.")
 time.sleep(0.5)
-fa.goto_gripper(0.02)
-time.sleep(0.5)
-fa.goto_gripper(0.08)
 
-OBJECT_NAME = 'foam_earth'
+# Open gripper
+open_gripper(franka_arm)
+print("Ungrasped.")
+
+OBJECT_NAME = 'foam_brick_3'
 
 # Stop recording and save
-data_recorder.auto_clip()
 data_recorder.end_stream()
+print('Ended stream.')
+data_recorder.auto_clip()
 data_recorder.save(f'./example_data/{OBJECT_NAME}')
