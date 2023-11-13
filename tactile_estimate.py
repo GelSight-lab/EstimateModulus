@@ -20,10 +20,9 @@ PX_TO_MM = np.sqrt((IMG_R / SENSOR_PAD_DIM_MM[0])**2 + (IMG_C / SENSOR_PAD_DIM_M
 MM_TO_PX = 1/PX_TO_MM
 
 class EstimateModulus():
-    def __init__(self, depth_threshold=0.5, sensor_width=0.033, assumed_poissons_ratio=0.45):
+    def __init__(self, depth_threshold=0.5, assumed_poissons_ratio=0.45):
         self.assumed_poisson_ratio = assumed_poissons_ratio # [\]
         self.depth_threshold = depth_threshold # [mm]
-        self.sensor_width = sensor_width # [m]
 
         self.depth_images = []      # Depth images [in mm]
         self.forces = []            # Measured contact forces
@@ -40,7 +39,8 @@ class EstimateModulus():
         self.shore_A_00_hardness = 58 # From durometer measurement
         self.gel_compliance = 5.28e+6 # N/m^2
         self.gel_poisson_ratio = 0.485 # [\]
-        self.gel_depth = "PLEASE_MEASURE_ME" # [m]
+        self.gel_width = 0.035 # [m]
+        self.gel_depth = 0.0055 # [m] (slightly adjusted because of depth inaccuracies)
 
     # Clear out the data values
     def _reset_data(self):
@@ -96,9 +96,30 @@ class EstimateModulus():
         filtered_depth[:, depth.shape[1]-margin:depth.shape[1]] = 0
         return filtered_depth
     
+    # Filter all depth images using masks and cropping
+    def filter_depths(self, concave_mask=False, crop_edges=True):
+        for i in range(self.depth_images.shape[0]):
+            depth = self.depth_images[i,:,:]
+
+            # Mask depth to consider contact area only
+            contact_mask = self.contact_mask(depth)
+            filtered_depth = depth * contact_mask
+
+            if concave_mask: # Only consider convex points on surface
+                filtered_depth = self.concave_mask(depth) * filtered_depth
+            if crop_edges: # Remove edge regions which could be noisy
+                filtered_depth = self.crop_edges(filtered_depth)
+            self.depth_images[i,:,:] = filtered_depth
+
+        return
+    
     # Return maximum value in every depth image
     def max_depths(self, depth_images):
         return np.max(depth_images, axis=(1,2))
+    
+    # Return mean value in every depth image
+    def mean_depths(self, depth_images):
+        return np.mean(depth_images, axis=(1,2))
 
     # Fit linear equation with least squares
     def linear_coeff_fit(self, x, y):
@@ -124,24 +145,15 @@ class EstimateModulus():
         return
     
     # Convert depth image to 3D data
-    def depth_to_XYZ(self, depth, concave_mask=True, crop_edges=True):
-        # Mask depth to consider contact area only
-        contact_mask = self.contact_mask(depth)
-        filtered_depth = depth * contact_mask
-
-        if concave_mask: # Only consider convex points on surface
-            filtered_depth = self.concave_mask(depth) * filtered_depth
-        if crop_edges: # Remove edge regions which could be noisy
-            filtered_depth = self.crop_edges(filtered_depth)
-
+    def depth_to_XYZ(self, depth):
         # Extract data
         X, Y, Z = [], [], []
-        for i in range(filtered_depth.shape[0]):
-            for j in range(filtered_depth.shape[1]):
-                if abs(filtered_depth[i][j]) >= 0.0001:
+        for i in range(depth.shape[0]):
+            for j in range(depth.shape[1]):
+                if abs(depth[i][j]) >= 0.0001:
                     X.append(0.001 * i / PX_TO_MM) # Convert to meters
                     Y.append(0.001 * j / PX_TO_MM)
-                    Z.append(0.001 * filtered_depth[i][j])
+                    Z.append(0.001 * depth[i][j])
         data = np.vstack((np.array(X), np.array(Y), np.array(Z)))
 
         # Remove outliers via ~3-sigma rule
@@ -160,7 +172,7 @@ class EstimateModulus():
         return np.array(X), np.array(Y), np.array(Z)
 
     # Fit depth points to a sphere in 3D space to get contact depth and radius
-    def fit_depth_to_sphere(self, depth, min_datapoints=10):
+    def fit_depth_to_sphere(self, depth, min_datapoints=10, deeper_than=0):
         '''
         Modified approach from: https://jekel.me/2015/Least-Squares-Sphere-Fit/
         '''
@@ -169,24 +181,79 @@ class EstimateModulus():
         if X.shape[0] < min_datapoints:
             return [0, 0, 0, 0]
 
-        # Construct data matrix
-        A = np.zeros((len(X),4))
-        A[:,0] = X*2
-        A[:,1] = Y*2
-        A[:,2] = Z*2
-        A[:,3] = 1
+        # # Construct data matrix
+        # A = np.zeros((len(X),4))
+        # A[:,0] = X*2
+        # A[:,1] = Y*2
+        # A[:,2] = Z*2
+        # A[:,3] = 1
 
-        # Assemble the f matrix
-        f = np.zeros((len(X),1))
-        f[:,0] = (X*X) + (Y*Y) + (Z*Z)
+        # # Assemble the f matrix
+        # f = np.zeros((len(X),1))
+        # f[:,0] = (X*X) + (Y*Y) + (Z*Z)
 
-        # Solve least squares for sphere
-        C, _, _, _ = np.linalg.lstsq(A, f)
+        # # Solve least squares for sphere
+        # C, res, rank, s = np.linalg.lstsq(A, f, rcond=None)
 
-        # Solve for the radius
-        radius = np.sqrt((C[0]*C[0]) + (C[1]*C[1]) + (C[2]*C[2]) + C[3])
+        # # Solve for the radius
+        # radius = np.sqrt((C[0]*C[0]) + (C[1]*C[1]) + (C[2]*C[2]) + C[3])
 
-        return [radius, C[0], C[1], C[2]] # [ radius, center_x, center_y, center_z ]
+        # return [radius, C[0], C[1], C[2]] # [ radius, center_x, center_y, center_z ]
+
+        init_guess = [0.01, np.mean(X), np.mean(Y), np.mean(Z) - 0.01]
+
+        def sphere_res(params, x, y, z):
+            r, cx, cy, cz = params
+            distances = np.sqrt((x - cx)**2 + (y - cy)**2 + (z - cz)**2)
+            return np.sum((distances - r)**2)
+        
+        def center_constraint(x):
+            return -x[3] # c_z <= 0
+        
+        def contact_constraint(x):
+            return x[0] + x[3] - deeper_than  # r + c_z - d[-1] >= 0
+        
+        eps = 0.005
+        def contact_constraint(x):
+            return x[1] - np.mean(X) + eps
+        def contact_constraint(x):
+            return np.mean(X) - x[1] + eps
+        def contact_constraint(x):
+            return x[2] - np.mean(Y) + eps
+        def contact_constraint(x):
+            return np.mean(Y) - x[2] + eps
+
+        # Use optimization to minimize residuals
+        c = (   {"type": "ineq", "fun": center_constraint},
+                {"type": "ineq", "fun": contact_constraint} )
+        result = minimize(sphere_res, init_guess, args=(X, Y, Z), constraints=c)
+
+        # Extract fitted parameters
+        r, cx, cy, cz = result.x
+
+        # cx, cy = np.mean(X), np.mean(Y)
+        # init_guess = [0.005, np.mean(Z) - 0.005] # cz, r
+
+        # def sphere_res(params, x, y, z):
+        #     r, cz = params
+        #     distances = np.sqrt((x - cx)**2 + (y - cy)**2 + (z - cz)**2)
+        #     return np.sum((distances - r)**2)
+        
+        # def center_constraint(x):
+        #     return -x[1] # c_z <= 0
+        
+        # def contact_constraint(x):
+        #     return x[0] + x[1] - deeper_than  # r + c_z >= 0
+
+        # # Use optimization to minimize residuals
+        # c = (   {"type": "ineq", "fun": center_constraint},
+        #         {"type": "ineq", "fun": contact_constraint} )
+        # result = minimize(sphere_res, init_guess, args=(X, Y, Z), constraints=c)
+
+        # # Extract fitted parameters
+        # r, cz = result.x
+
+        return [r, cx, cy, cz]
     
     # Check sphere fit by plotting data and fit shape
     def plot_sphere_fit(self, depth, sphere):
@@ -195,7 +262,8 @@ class EstimateModulus():
 
         # Create discrete graph of sphere mesh
         r, x0, y0, z0 = sphere
-        u, v = np.mgrid[0:2*np.pi:20j, 0:np.cos(-z0/r):10j]
+        u, v = np.mgrid[0:2*np.pi:20j, 0:np.cos(-z0/r):10j] # Plot top half of sphere
+        # u, v = np.mgrid[0:2*np.pi:20j, 0:2*np.pi:20j] # Plot full sphere
         sphere_x = x0 + np.cos(u)*np.sin(v)*r
         sphere_y = y0 + np.sin(u)*np.sin(v)*r
         sphere_z = z0 + np.cos(v)*r
@@ -227,15 +295,20 @@ class EstimateModulus():
         # Fit to depth and radius for each frame
         F, d, a = [], [], []
         for i in range(self.depth_images.shape[0]):
-            sphere = self.fit_depth_to_sphere(self.depth_images[i])
+            sphere = [0, 0, 0, 0] # [r, cx, cy, cz]
+            if np.max(self.depth_images[i]) > 0:
+                if len(d) == 0:
+                    last_d = 0
+                else:
+                    last_d = d[-1]
+                sphere = self.fit_depth_to_sphere(self.depth_images[i], deeper_than=last_d)
             if self.estimate_contact_depth(sphere) > 0 and self.estimate_contact_radius(sphere) > 0:
                 F.append(-self.forces[i])
                 d.append(self.estimate_contact_depth(sphere))
                 a.append(self.estimate_contact_radius(sphere))
-                if len(d) == 7:
-                    self.plot_sphere_fit(self.depth_images[i], sphere)
-                if self.estimate_contact_radius(sphere) > self.sensor_width/2:
-                    raise ValueError("Contact radius larger than sensor!")
+                # self.plot_sphere_fit(self.depth_images[i], sphere)
+                if self.estimate_contact_radius(sphere) > self.gel_width/2:
+                    raise ValueError("Contact radius larger than sensor gel!")
         assert len(d) > 0, "Could not find any reasonable contact!"
         self.F = np.squeeze(np.array(F))
         self.d = np.squeeze(np.array(d))
@@ -281,6 +354,9 @@ class EstimateModulus():
         #   dF/dd = 2*E_star*a
         # Following model from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
 
+        # Filter depth images to mask and crop
+        self.filter_depths(concave_mask=False)
+
         # Fit to depth and radius for each frame
         self._compute_contact_data()
 
@@ -294,7 +370,7 @@ class EstimateModulus():
         return E, poisson_ratio
     
     # Alternative method that tries to compute modulus pixel by pixel
-    def fit_compliance_stoachastic(self):
+    def fit_compliance_stochastic(self):
         target_data = []
         for i in range(1, self.depth_images.shape[0]):
             depth = self.depth_images[i]
@@ -303,18 +379,17 @@ class EstimateModulus():
             contact_mask = self.contact_mask(depth)
             filtered_depth = 0.001 * depth * contact_mask
 
-            # Only consider convex points on surface
-            filtered_depth = self.concave_mask(depth) * filtered_depth
             # Remove edge regions which could be noisy
             filtered_depth = self.crop_edges(filtered_depth)
 
             # Collect data
             if np.max(filtered_depth) > 0:
                 for r in range(depth.shape[0]):
-                    for c in range(depth.shape[j]):
-                        dF = self.forces[i] - self.forces[i-1]
-                        du = self.depth_images[i][r][c] - self.depth_images[i-1][r][c]
-                        target_data.append(dF / du)
+                    for c in range(depth.shape[1]):
+                        if depth[r][c] > 0:
+                            dF = self.forces[i] - self.forces[i-1]
+                            du = self.depth_images[i][r][c] - self.depth_images[i-1][r][c]
+                            if dF/du > 0: target_data.append(dF / du)
 
         # Use all data to fit function
         target_data = np.array(target_data)
@@ -329,12 +404,21 @@ class EstimateModulus():
 
 if __name__ == "__main__":
 
-    objs = ["small_rigid_sphere", "lego", "golf_ball", "large_soft_sphere", "foam_brick"]
+    ##################################################
+    # GET ESTIMATED MODULUS (E) FOR SET OF TEST DATA #
+    ##################################################
+
+    objs = ["foam_brick_1", "foam_brick_2", "foam_brick_3", \
+            "foam_earth_1", "foam_earth_2", "foam_earth_3", \
+            "orange_ball_1", "orange_ball_2", "orange_ball_3", \
+            "small_rigid_sphere_1", "small_rigid_sphere_2", "small_rigid_sphere_3", \
+            "lego_1", "lego_2", "lego_3", \
+        ]
     for obj_name in objs:
         
         # Load data and clip
         estimator = EstimateModulus()
-        estimator.load_from_file("./example_data/" + obj_name)
+        estimator.load_from_file("./example_data/2023-11-11/" + obj_name)
         assert len(estimator.depth_images) == len(estimator.forces)
 
         # Fit using our Hertzian estimator
@@ -345,4 +429,54 @@ if __name__ == "__main__":
         # # Plot
         # estimator.plot_F_vs_d(plot_title=obj_name)
 
-    # TODO: TRY STOCHASTIC APPROACH???
+    """
+    #####################################################
+    # PLOT RAW DATA TO INVESTIGATE NOISE / CORRELATIONS #
+    #####################################################
+
+    fig1 = plt.figure(1)
+    fig2 = plt.figure(2)
+    fig3 = plt.figure(3)
+    fig4 = plt.figure(4)
+    fig5 = plt.figure(5)
+    sp1 = fig1.add_subplot(211)
+    sp2 = fig2.add_subplot(211)
+    sp3 = fig3.add_subplot(211)
+    sp4 = fig4.add_subplot(211)
+    sp5 = fig5.add_subplot(211)
+    sp1.set_title('Forces')
+    sp2.set_title('Avg. Depths')
+    sp3.set_title('Max Depths')
+    sp4.set_title('Avg. Cropped Depths')
+    sp5.set_title('Max Cropped Depths')
+
+    objs = ["foam_brick_1", "foam_brick_2", "foam_brick_3", \
+            "foam_earth_1", "foam_earth_2", "foam_earth_3", \
+            "orange_ball_1", "orange_ball_2", "orange_ball_3", \
+            "small_rigid_sphere_1", "small_rigid_sphere_2", "small_rigid_sphere_3", \
+            "lego_1", "lego_2", "lego_3", \
+        ]
+    for obj_name in objs:
+        
+        # Load data and clip
+        estimator = EstimateModulus()
+        estimator.load_from_file("./example_data/2023-11-11/" + obj_name)
+        assert len(estimator.depth_images) == len(estimator.forces)
+
+        estimator.clip_press()
+        x = range(estimator.depth_images.shape[0])
+        sp1.plot(x, estimator.forces, label=obj_name)
+        sp2.plot(x, estimator.mean_depths(estimator.depth_images), label=obj_name)
+        sp3.plot(x, estimator.max_depths(estimator.depth_images), label=obj_name)
+
+        estimator.filter_depths(concave_mask=False)
+        sp4.plot(x, estimator.mean_depths(estimator.depth_images), label=obj_name)
+        sp5.plot(x, estimator.max_depths(estimator.depth_images), label=obj_name)
+
+    fig1.legend()
+    fig2.legend()
+    fig3.legend()
+    fig4.legend()
+    fig5.legend()
+    plt.show()
+    """
