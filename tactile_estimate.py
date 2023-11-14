@@ -278,19 +278,28 @@ class EstimateModulus():
         # Fit to depth and radius for each frame
         F, d, a = [], [], []
         for i in range(self.depth_images.shape[0]):
-            sphere = [0, 0, 0, 0] # [r, cx, cy, cz]
-            if np.max(self.depth_images[i]) > 0:
-                sphere = self.fit_depth_to_sphere(self.depth_images[i])
+            # sphere = [0, 0, 0, 0] # [r, cx, cy, cz]
+            # if np.max(self.depth_images[i]) > 0:
+            #     sphere = self.fit_depth_to_sphere(self.depth_images[i])
 
-            if 0 < self.estimate_contact_depth(sphere) and \
-                0 < self.estimate_contact_radius(sphere) < self.gel_width/2:
+            # if 0 < self.estimate_contact_depth(sphere) and \
+            #     0 < self.estimate_contact_radius(sphere) < self.gel_width/2:
 
+            #     F.append(-self.forces[i])
+            #     d.append(self.estimate_contact_depth(sphere))
+            #     a.append(self.estimate_contact_radius(sphere))
+            #     # self.plot_sphere_fit(self.depth_images[i], sphere)
+            #     # if self.estimate_contact_radius(sphere) > self.gel_width/2:
+            #     #     raise ValueError("Contact radius larger than sensor gel!")
+
+            # Don't use sphere fitting at all...
+            if np.max(self.depth_images[i]) > 0.0000001:
                 F.append(-self.forces[i])
-                d.append(self.estimate_contact_depth(sphere))
-                a.append(self.estimate_contact_radius(sphere))
-                # self.plot_sphere_fit(self.depth_images[i], sphere)
-                # if self.estimate_contact_radius(sphere) > self.gel_width/2:
-                #     raise ValueError("Contact radius larger than sensor gel!")
+                d.append(0.001 * np.max(self.depth_images[i]))
+                contact_area = (0.001 / PX_TO_MM)**2 * np.sum(self.depth_images[i] > 0.0000001)
+                a.append(np.sqrt(contact_area / np.pi))
+
+        # TODO: Fit d and a to strictly increasing / step function (e.g. sigmoid?)
 
         assert len(d) > 0, "Could not find any reasonable contact!"
         self.F = np.squeeze(np.array(F))
@@ -388,7 +397,7 @@ class EstimateModulus():
 
         # Use all data to fit function
         target_data = np.array(target_data)
-        x_data = (0.001 * PX_TO_MM)**2 / self.gel_depth * np.ones_like(target_data)
+        x_data = (0.001 * 1 / PX_TO_MM)**2 / self.gel_depth * np.ones_like(target_data)
         E_agg = self.linear_coeff_fit(x_data, target_data)
         
         # Calculate modulus of unknown object

@@ -15,6 +15,7 @@ data_recorder   =   DataRecorder(wedge_video=wedge_video, contact_force=contact_
 def open_gripper(_franka_arm): {
     _franka_arm.goto_gripper(
         0.08, # Maximum width in meters [m]
+        speed=0.005, # Desired operation speed in [m/s]
         block=True,
         skill_desc="OpenGripper"
     )
@@ -24,6 +25,7 @@ def close_gripper(_franka_arm): {
     _franka_arm.goto_gripper(
         0.005, # Minimum width in meters [m]
         force=20, # Maximum force in Newtons [N]
+        speed=0.005, # Desired operation speed in [m/s]
         grasp=True,     
         block=True,
         skill_desc="CloseGripper"
