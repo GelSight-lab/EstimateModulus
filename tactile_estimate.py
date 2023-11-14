@@ -169,7 +169,7 @@ class EstimateModulus():
         return np.array(X), np.array(Y), np.array(Z)
 
     # Fit depth points to a sphere in 3D space to get contact depth and radius
-    def fit_depth_to_sphere(self, depth, min_datapoints=10, deeper_than=0):
+    def fit_depth_to_sphere(self, depth, min_datapoints=10):
         '''
         Modified approach from: https://jekel.me/2015/Least-Squares-Sphere-Fit/
         '''
@@ -208,10 +208,10 @@ class EstimateModulus():
             return -x[3] # c_z <= 0
         
         def contact_constraint(x):
-            return x[0] + x[3] - deeper_than  # r + c_z - d[-1] >= 0
+            return x[0] + x[3]  # r + c_z >= 0
         
         def max_depth_constraint(x):
-            return np.max(Z) - x[0] - x[3] # r + c_z <= maxx_depth
+            return np.max(Z) - x[0] - x[3] # r + c_z <= max_depth
         
         eps = 0.005
         def xc1(x):
@@ -235,28 +235,6 @@ class EstimateModulus():
 
         # Extract fitted parameters
         r, cx, cy, cz = result.x
-
-        # cx, cy = np.mean(X), np.mean(Y)
-        # init_guess = [0.005, np.mean(Z) - 0.005] # cz, r
-
-        # def sphere_res(params, x, y, z):
-        #     r, cz = params
-        #     distances = np.sqrt((x - cx)**2 + (y - cy)**2 + (z - cz)**2)
-        #     return np.sum((distances - r)**2)
-        
-        # def center_constraint(x):
-        #     return -x[1] # c_z <= 0
-        
-        # def contact_constraint(x):
-        #     return x[0] + x[1] - deeper_than  # r + c_z >= 0
-
-        # # Use optimization to minimize residuals
-        # c = (   {"type": "ineq", "fun": center_constraint},
-        #         {"type": "ineq", "fun": contact_constraint} )
-        # result = minimize(sphere_res, init_guess, args=(X, Y, Z), constraints=c)
-
-        # # Extract fitted parameters
-        # r, cz = result.x
 
         return [r, cx, cy, cz]
     
@@ -302,20 +280,18 @@ class EstimateModulus():
         for i in range(self.depth_images.shape[0]):
             sphere = [0, 0, 0, 0] # [r, cx, cy, cz]
             if np.max(self.depth_images[i]) > 0:
-                if len(d) == 0:
-                    last_d = 0
-                else:
-                    last_d = d[-1]
-                sphere = self.fit_depth_to_sphere(self.depth_images[i], deeper_than=last_d)
-            if self.estimate_contact_depth(sphere) > 0 and \
-                self.estimate_contact_radius(sphere) > 0 and \
-                self.estimate_contact_radius(sphere) < self.gel_width/2:
+                sphere = self.fit_depth_to_sphere(self.depth_images[i])
+
+            if 0 < self.estimate_contact_depth(sphere) and \
+                0 < self.estimate_contact_radius(sphere) < self.gel_width/2:
+
                 F.append(-self.forces[i])
                 d.append(self.estimate_contact_depth(sphere))
                 a.append(self.estimate_contact_radius(sphere))
                 # self.plot_sphere_fit(self.depth_images[i], sphere)
                 # if self.estimate_contact_radius(sphere) > self.gel_width/2:
                 #     raise ValueError("Contact radius larger than sensor gel!")
+
         assert len(d) > 0, "Could not find any reasonable contact!"
         self.F = np.squeeze(np.array(F))
         self.d = np.squeeze(np.array(d))

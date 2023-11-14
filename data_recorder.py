@@ -93,6 +93,10 @@ class DataRecorder():
         self.contact_force.end_stream(verbose=False)
         time.sleep(1)
         if verbose: print('Done streaming.')
+
+        # Adjust by 2 frames for HDMI latency
+        self.wedge_video.clip(2, len(self.wedge_video._raw_rgb_frames))
+        self.contact_force.clip(0, len(self.contact_force.forces())-2)
         return
     
     # Plot video for your viewing pleasure
