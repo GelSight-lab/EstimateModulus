@@ -428,23 +428,23 @@ if __name__ == "__main__":
         ]
     for obj_name in objs:
 
-        # wedge_video         =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv") # Force-sensing finger
-        # contact_force       =   ContactForce(IP="10.10.10.50", port=8888)
-        # data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force)
+        wedge_video         =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv") # Force-sensing finger
+        contact_force       =   ContactForce(IP="10.10.10.50", port=8888)
+        data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force)
 
-        # data_recorder.load("./example_data/2023-11-11/" + obj_name)
-        # data_recorder.watch(plot_diff=True)
+        data_recorder.load("./example_data/2023-11-11/" + obj_name)
+        data_recorder.watch(plot_diff=True, plot_depth=True)
         
-        # Load data and clip
-        estimator = EstimateModulus()
-        estimator.load_from_file("./example_data/2023-11-11/" + obj_name)
-        assert len(estimator.depth_images) == len(estimator.forces)
+        # # Load data and clip
+        # estimator = EstimateModulus()
+        # estimator.load_from_file("./example_data/2023-11-11/" + obj_name)
+        # assert len(estimator.depth_images) == len(estimator.forces)
 
-        # Fit using our Hertzian estimator
-        estimator.clip_press()
-        E_finger, v_finger = estimator.fit_compliance()
-        # E_finger = estimator.fit_compliance_stochastic()
-        print(f'\nEstimated modulus of {obj_name}:', E_finger, '\n')
+        # # Fit using our Hertzian estimator
+        # estimator.clip_press()
+        # E_finger, v_finger = estimator.fit_compliance()
+        # # E_finger = estimator.fit_compliance_stochastic()
+        # print(f'\nEstimated modulus of {obj_name}:', E_finger, '\n')
 
         # # Plot
         # estimator.plot_F_vs_d(plot_title=obj_name)
