@@ -3,6 +3,8 @@ import numpy as np
 import warnings
 import matplotlib.pyplot as plt
 
+from wedge_video import GelsightWedgeVideo
+from contact_force import ContactForce
 from data_recorder import DataRecorder
 data_recorder = DataRecorder()
 
@@ -127,18 +129,24 @@ class EstimateModulus():
         return np.dot(x, y) / np.dot(x, x)
     
     # Cip a press sequence to only the loading sequence (positive force)
-    def clip_press(self):
+    def clip_press(self, pct_of_max=0.975):
         # Find maximum depth over press
         max_depths = self.max_depths(self.depth_images)
         i_start = np.argmin(max_depths >= self.depth_threshold)
+
         i_peak = np.argmax(max_depths)
+        peak_depth = np.max(max_depths)
+        for i in range(max_depths.shape[0]):
+            if max_depths[i] > pct_of_max*peak_depth:
+                i_peak = i
+                break
 
         if i_start >= i_peak:
             warnings.warn("No press detected! Cannot clip.", Warning)
         else:
             # Clip from start to peak depth
-            self.depth_images = self.depth_images[i_start:i_peak, :, :]
-            self.forces = self.forces[i_start:i_peak]
+            self.depth_images = self.depth_images[i_start:i_peak+1, :, :]
+            self.forces = self.forces[i_start:i_peak+1]
         return
     
     # Convert depth image to 3D data
@@ -419,6 +427,13 @@ if __name__ == "__main__":
             "lego_1", "lego_2", "lego_3", \
         ]
     for obj_name in objs:
+
+        # wedge_video         =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv") # Force-sensing finger
+        # contact_force       =   ContactForce(IP="10.10.10.50", port=8888)
+        # data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force)
+
+        # data_recorder.load("./example_data/2023-11-11/" + obj_name)
+        # data_recorder.watch(plot_diff=True)
         
         # Load data and clip
         estimator = EstimateModulus()
