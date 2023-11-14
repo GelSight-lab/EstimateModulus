@@ -87,7 +87,7 @@ class EstimateModulus():
         return (laplacian <= 0).astype(int)
 
     # Return mask to disgard outside pixels
-    def crop_edges(self, depth, margin=50):
+    def crop_edges(self, depth, margin=55):
         assert depth.shape[0] > 2*margin and depth.shape[1] > 2*margin
         filtered_depth = depth.copy()
         filtered_depth[0:margin, :] = 0
@@ -129,12 +129,9 @@ class EstimateModulus():
     # Cip a press sequence to only the loading sequence (positive force)
     def clip_press(self):
         # Find maximum depth over press
-        max_depth = np.zeros((self.depth_images.shape[0], 1))
-        for i in range(self.depth_images.shape[0]):
-            max_depth[i] = self.depth_images[i].max()
-
-        i_start = np.argmin(max_depth >= self.depth_threshold)
-        i_peak = np.argmax(max_depth)
+        max_depths = self.max_depths(self.depth_images)
+        i_start = np.argmin(max_depths >= self.depth_threshold)
+        i_peak = np.argmax(max_depths)
 
         if i_start >= i_peak:
             warnings.warn("No press detected! Cannot clip.", Warning)
@@ -213,19 +210,27 @@ class EstimateModulus():
         def contact_constraint(x):
             return x[0] + x[3] - deeper_than  # r + c_z - d[-1] >= 0
         
+        def max_depth_constraint(x):
+            return np.max(Z) - x[0] - x[3] # r + c_z <= maxx_depth
+        
         eps = 0.005
-        def contact_constraint(x):
+        def xc1(x):
             return x[1] - np.mean(X) + eps
-        def contact_constraint(x):
+        def xc2(x):
             return np.mean(X) - x[1] + eps
-        def contact_constraint(x):
+        def yc1(x):
             return x[2] - np.mean(Y) + eps
-        def contact_constraint(x):
+        def yc2(x):
             return np.mean(Y) - x[2] + eps
 
         # Use optimization to minimize residuals
         c = (   {"type": "ineq", "fun": center_constraint},
-                {"type": "ineq", "fun": contact_constraint} )
+                {"type": "ineq", "fun": contact_constraint},
+                {"type": "ineq", "fun": max_depth_constraint},
+                {"type": "ineq", "fun": xc1},
+                {"type": "ineq", "fun": xc2},
+                {"type": "ineq", "fun": yc1},
+                {"type": "ineq", "fun": yc2} )
         result = minimize(sphere_res, init_guess, args=(X, Y, Z), constraints=c)
 
         # Extract fitted parameters
@@ -302,13 +307,15 @@ class EstimateModulus():
                 else:
                     last_d = d[-1]
                 sphere = self.fit_depth_to_sphere(self.depth_images[i], deeper_than=last_d)
-            if self.estimate_contact_depth(sphere) > 0 and self.estimate_contact_radius(sphere) > 0:
+            if self.estimate_contact_depth(sphere) > 0 and \
+                self.estimate_contact_radius(sphere) > 0 and \
+                self.estimate_contact_radius(sphere) < self.gel_width/2:
                 F.append(-self.forces[i])
                 d.append(self.estimate_contact_depth(sphere))
                 a.append(self.estimate_contact_radius(sphere))
                 # self.plot_sphere_fit(self.depth_images[i], sphere)
-                if self.estimate_contact_radius(sphere) > self.gel_width/2:
-                    raise ValueError("Contact radius larger than sensor gel!")
+                # if self.estimate_contact_radius(sphere) > self.gel_width/2:
+                #     raise ValueError("Contact radius larger than sensor gel!")
         assert len(d) > 0, "Could not find any reasonable contact!"
         self.F = np.squeeze(np.array(F))
         self.d = np.squeeze(np.array(d))
@@ -336,13 +343,15 @@ class EstimateModulus():
         plt.plot(self.d, self.F, 'r.', label="Raw measurements", markersize=10)
         
         if plot_fit:
-            self._compute_dFdd()
-            E_star = self.linear_coeff_fit(2*self.a[:-1], self.dFdd)
+            # self._compute_dFdd()
+            # E_star = self.linear_coeff_fit(2*self.a[:-1], self.dFdd)
+            E_star = self.linear_coeff_fit((4/3)*self.a*self.d, self.F)
 
             F_fit = np.zeros_like(self.F)
             F_fit[0] = self.F[0]
             for i in range(1, F_fit.shape[0]):
-                F_fit[i] = 2*self.a[i-1]*E_star*(self.d[i] - self.d[i-1]) + F_fit[i-1]
+                # F_fit[i] = 2*self.a[i-1]*E_star*(self.d[i] - self.d[i-1]) + F_fit[i-1]
+                F_fit[i] = (4/3)*self.a[i]*E_star*(self.d[i])
             plt.plot(self.d, F_fit, 'b-', label="Fit", markersize=10)
 
         plt.legend(); plt.show(block=False)
@@ -360,9 +369,13 @@ class EstimateModulus():
         # Fit to depth and radius for each frame
         self._compute_contact_data()
 
-        # Least squares regression for E_star
-        self._compute_dFdd()
-        E_star = self.linear_coeff_fit(2*self.a[:-1], self.dFdd)
+        # # Compute derivatives for fitting
+        # self._compute_dFdd()
+
+        # # Least squares regression for E_star
+        # E_star = self.linear_coeff_fit(2*self.a[:-1], self.dFdd)
+
+        E_star = self.linear_coeff_fit((4/3)*self.a*self.d, self.F)
 
         # Compute compliance from E_star by assuming Poisson's ratio
         poisson_ratio = self.assumed_poisson_ratio
@@ -387,15 +400,21 @@ class EstimateModulus():
                 for r in range(depth.shape[0]):
                     for c in range(depth.shape[1]):
                         if depth[r][c] > 0:
-                            dF = self.forces[i] - self.forces[i-1]
-                            du = self.depth_images[i][r][c] - self.depth_images[i-1][r][c]
-                            if dF/du > 0: target_data.append(dF / du)
+                            # # Fit using derivatives
+                            # dF = -(self.forces[i] - self.forces[i-1])
+                            # du = self.depth_images[i][r][c] - self.depth_images[i-1][r][c]
+                            # if dF/du > 0: target_data.append(dF / du)
+
+                            # Fit using direct values
+                            F = -self.forces[i]
+                            u = depth[r][c]
+                            if F/u > 0: target_data.append(F / u)
 
         # Use all data to fit function
         target_data = np.array(target_data)
         x_data = (0.001 * PX_TO_MM)**2 / self.gel_depth * np.ones_like(target_data)
         E_agg = self.linear_coeff_fit(x_data, target_data)
-
+        
         # Calculate modulus of unknown object
         E = (1/E_agg - 1/self.gel_compliance)**(-1)
 
@@ -424,6 +443,7 @@ if __name__ == "__main__":
         # Fit using our Hertzian estimator
         estimator.clip_press()
         E_finger, v_finger = estimator.fit_compliance()
+        # E_finger = estimator.fit_compliance_stochastic()
         print(f'\nEstimated modulus of {obj_name}:', E_finger, '\n')
 
         # # Plot
