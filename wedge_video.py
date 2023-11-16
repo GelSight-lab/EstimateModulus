@@ -31,7 +31,7 @@ RAW_PX_TO_MM = (12.5, 11)
 PX_TO_MM = np.sqrt(WARPED_PX_TO_MM[0]**2 + WARPED_PX_TO_MM[1]**2)
 
 # Derived from linear fit from max depth measured to known calibration ball diameter
-DEPTH_TO_MM = 27.5
+DEPTH_TO_MM = 21.5
 
 class GelsightWedgeVideo():
     '''
@@ -333,11 +333,11 @@ class GelsightWedgeVideo():
 
 if __name__ == "__main__":
     # Typical video recording workflow might be...
-    wedge_video = GelsightWedgeVideo(IP="10.10.10.200", config_csv="./config.csv")
+    wedge_video = GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv")
     wedge_video.start_stream(plot=True, plot_diff=True, plot_depth=True)
-    time.sleep(100)
+    time.sleep(10)
     wedge_video.end_stream()
-    # print(wedge_video.max_depth())
+    print(wedge_video.max_depth())
 
     # wedge_video.upload('./example.avi')
     # wedge_video.auto_clip()
