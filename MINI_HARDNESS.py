@@ -26,8 +26,7 @@ IMG_X, IMG_Y    = 180, 240
 
 batch_size      = 32
 feature_size    = 512
-epochs          = 1000
-gamma           = 0.9
+epochs          = 250
 learning_rate   = 1e-5
 step_size       = 10
 validation_pct  = 0.2
@@ -74,7 +73,6 @@ if USE_WANDB:
             "feature_size": feature_size,
             "learning_rate": learning_rate,
             "step_size": step_size,
-            "gamma": gamma,
             "validation_pct": validation_pct,
             "random_state": random_state,
             "architecture": "ENCODE_DECODE",
@@ -324,21 +322,25 @@ decoder = decoder.to(device)
 X_train, X_val, y_train, y_val = train_test_split(video_files, hardness, test_size=validation_pct, random_state=random_state)
 
 kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
-train_dataset = CustomDataset(X_train, y_train, frame_tensor=torch.zeros((N_FRAMES, 3, 180, 240), device=device), label_tensor=torch.zeros((1), device=device))
+train_dataset = CustomDataset(X_train, y_train, frame_tensor=torch.zeros((N_FRAMES, 3, IMG_X, IMG_Y), device=device), label_tensor=torch.zeros((1), device=device))
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, **kwargs)
+val_dataset = CustomDataset(X_val, y_val, frame_tensor=torch.zeros((N_FRAMES, 3, IMG_X, IMG_Y), device=device), label_tensor=torch.zeros((1), device=device))
+val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, **kwargs)
 
 def train(_encoder, _decoder):
     criterion = nn.MSELoss() # nn.HuberLoss()
     params = list(_encoder.parameters()) + list(_decoder.parameters())
     optimizer = torch.optim.Adam(params, lr=learning_rate)
-    # scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=gamma)
 
     if USE_WANDB: wandb.init()
-    _encoder.train(); _decoder.train()
     
     features = []
     outputs = torch.zeros((batch_size), device=device)
+
     loss = None
+    min_val_loss = 1e10
+    train_loss_over_epoch, train_batch_count = 0, 0
+    val_loss_over_epoch, val_batch_count = 0, 0
     
     memory_allocated = torch.cuda.memory_allocated()
     memory_cached = torch.cuda.memory_reserved()
@@ -346,7 +348,10 @@ def train(_encoder, _decoder):
 
     for epoch in range(epochs):
 
-        epoch_loss, log_count = 0, 0
+        # TRAIN EPOCH
+
+        train_loss_over_epoch, train_batch_count = 0, 0
+        _encoder.train(); _decoder.train()
 
         for x, labels in train_loader:
             optimizer.zero_grad()
@@ -360,25 +365,53 @@ def train(_encoder, _decoder):
             loss.backward()
             optimizer.step()
 
-            epoch_loss += loss.item()
-            log_count += 1
+            train_loss_over_epoch += loss.item()
+            train_batch_count += 1
 
-            # TODO: Validate during training, save best loss
+        # TODO: Validate during training
 
-        print(f'Epoch: {epoch}, Loss: {epoch_loss / log_count:.4f}')
+        # VALIDATE
+
+        val_loss_over_epoch, val_num_correct, val_batch_count = 0, 0, 0
+        _encoder.eval(); _decoder.eval()
+
+        for x, labels in val_loader:
+
+            features = []
+            for i in range(N_FRAMES):
+                features.append(_encoder(x[:, i, :, :, :].clone()))
+            outputs = _decoder(features)
+            loss = criterion(outputs.squeeze(1), labels.squeeze(1))
+            
+            val_loss_over_epoch += loss.item()
+            val_num_correct += (torch.round(outputs) == torch.round(labels)).sum().item()
+            val_batch_count += 1
+
+        print(f'Epoch: {epoch}, Training Loss: {train_loss_over_epoch / train_batch_count:.4f},',
+              f'Validation Loss: {val_loss_over_epoch / val_batch_count:.4f},', 
+              f'Validation Accuracy: {val_num_correct / val_batch_count:.4f}',
+            )
+
+        # Save model with the best validation loss over training
+        if val_loss_over_epoch / val_batch_count < min_val_loss:
+            min_val_loss = val_loss_over_epoch / val_batch_count
+            torch.save(_encoder.state_dict(), './encoder.pth')
+            torch.save(_decoder.state_dict(), './decoder.pth')
 
         memory_allocated = torch.cuda.memory_allocated()
         memory_cached = torch.cuda.memory_reserved()
 
         # Log memory usage to WandB
-        if USE_WANDB: wandb.log({"memory_allocated": memory_allocated, "memory_reserved": memory_cached, "loss": (epoch_loss / log_count), "epoch": epoch})
-        
-        # scheduler.step()
+        if USE_WANDB: wandb.log({
+            "memory_allocated": memory_allocated,
+            "memory_reserved": memory_cached,
+            "train_loss": (train_loss_over_epoch / train_batch_count),
+            "val_loss": (val_loss_over_epoch / val_batch_count),
+            "val_accuracy": (val_num_correct / (batch_size*val_batch_count)),
+            "epoch": epoch,
+        })
     
     if USE_WANDB: wandb.finish()
-
-    torch.save(_encoder.state_dict(), './encoder.pth')
-    torch.save(_decoder.state_dict(), './decoder.pth')
 
     return _encoder, _decoder
 
@@ -387,30 +420,3 @@ if TRAIN == True:
     print('Training... \t\t\t\t', datetime.now().strftime("%H:%M:%S %m/%d/%Y"))
     encoder, decoder = train(encoder, decoder)
     print('Done. \t\t\t\t', datetime.now().strftime("%H:%M:%S %m/%d/%Y"))
-else:
-    encoder.load_state_dict(torch.load('./encoder.pth'))
-    decoder.load_state_dict(torch.load('./decoder.pth'))
-
-encoder.eval()
-decoder.eval()
-
-del X_train, y_train, train_dataset, train_loader
-val_dataset = CustomDataset(X_val, y_val, frame_tensor=torch.zeros((N_FRAMES, 3, IMG_X, IMG_Y), device=device), label_tensor=torch.zeros((1), device=device))
-val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, **kwargs)
-
-correct = 0
-error = 0
-total = 0
-with torch.no_grad():
-    for x, y in val_loader:
-        x = decoder(encoder(x))
-        total += y.size(0)
-        error += torch.abs(x.squeeze(1) - y.squeeze(1)).sum().item()
-        correct += (torch.round(x.squeeze(1)) == torch.round(y.squeeze(1))).sum().item()
-
-print(f"Validation Accuracy: ~{int(100 * correct / total)}%")
-print(f"Avg. Validation Error: {error / total}")
-with open('validation_accuracy.txt', 'w') as f:
-    f.write(str(correct / total))
-with open('avg_validation_error.txt', 'w') as f:
-    f.write(str(error / total))
