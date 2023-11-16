@@ -144,5 +144,5 @@ if __name__ == "__main__":
 
     print(f'Read {len(contact_force.forces())} values in 3 seconds.')
 
-    # contact_force.load('./example.pkl')
+    # contact_force.load('./example_data/example.pkl')
     # print(contact_force.forces())

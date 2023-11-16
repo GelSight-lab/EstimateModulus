@@ -339,11 +339,11 @@ if __name__ == "__main__":
     wedge_video.end_stream()
     print(wedge_video.max_depth())
 
-    # wedge_video.upload('./example.avi')
+    # wedge_video.upload('./example_data/example.avi')
     # wedge_video.auto_clip()
-    # wedge_video.download('./example_clipped.avi')
+    # wedge_video.download('./example_data/example_clipped.avi')
 
     # wedge_video = GelsightWedgeVideo(config_csv="./config.csv")
-    # wedge_video.upload('./example_clipped.avi')
+    # wedge_video.upload('./example_data/example_clipped.avi')
     # wedge_video.watch()
 

@@ -146,7 +146,7 @@ if __name__ == "__main__":
     # data_recorder.start_stream(verbose=True, plot=True, plot_diff=True, plot_depth=True)
     # time.sleep(10)
     # data_recorder.end_stream(verbose=True)
-    # data_recorder.save('./example')
+    # data_recorder.save('./example_data/example')
 
     data_recorder.load('./example_data/foam_brick_2')
     fb2 = data_recorder.forces()
