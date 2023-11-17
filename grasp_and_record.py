@@ -1,5 +1,4 @@
 import time
-
 from frankapy import FrankaArm
 from wedge_video import GelsightWedgeVideo
 from contact_force import ContactForce
