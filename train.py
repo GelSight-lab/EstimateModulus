@@ -17,7 +17,6 @@ def conv2D_output_size(img_size, padding, kernel_size, stride):
 				  np.floor((img_size[1] + 2 * padding[1] - (kernel_size[1] - 1) - 1) / stride[1] + 1).astype(int))
 	return output_shape
 
-
 def conv3D_output_size(img_size, padding, kernel_size, stride):
 	output_shape=(np.floor((img_size[0] + 2 * padding[0] - (kernel_size[0] - 1) - 1) / stride[0] + 1).astype(int),
 				  np.floor((img_size[1] + 2 * padding[1] - (kernel_size[1] - 1) - 1) / stride[1] + 1).astype(int),
@@ -180,12 +179,13 @@ class CustomDataset(Dataset):
         return len(self.labels)
     
     def __getitem__(self, idx):
-        return
+        raise NotImplementedError
     
      
 class TrainModulus():
     def __init__(self, data_folder, data_loader, use_cuda=True):
 
+        self.model = None
         self.data_folder = data_folder
 
 
@@ -211,7 +211,8 @@ class TrainModulus():
         self.learning_rate  = 1e-5
         self.random_state   = 40
         self.loss           = nn.MSELoss()
-        self.optimizer      = 
+        self.params         = list(self.model.parameters())
+        self.optimizer      = torch.optim.Adam(self.params, lr=self.learning_rate)
 
         self.use_wandb = True
         if self.use_wandb:
@@ -230,6 +231,7 @@ class TrainModulus():
                     "validation_pct": self.val_pct,
                     "random_state": self.random_state,
                     "architecture": "ENCODE_DECODE",
+                    "num_params": len(self.params),
                     "optimizer": "Adam",
                     "loss": "MSE",
                     "scheduler": "None",
@@ -238,13 +240,59 @@ class TrainModulus():
 
         # TODO: Create data loader for training / val
 
-        pass
+        
+        # Log memory usage
+        self.memory_allocated = torch.cuda.memory_allocated()
+        self.memory_cached = torch.cuda.memory_reserved()
+        if self.use_wandb:
+            wandb.log({
+                "epoch": 0,
+                "memory_allocated": self.memory_allocated,
+                "memory_reserved": self.memory_cached,
+            })
+
+        return
 
     def _train_epoch(self):
-        pass
+        self.model.train()
+        raise NotImplementedError
 
     def _val_epoch(self):
-        pass
+        self.model.eval()
+        raise NotImplementedError
+
+    def _save_model(self):
+        raise NotImplementedError
 
     def train(self):
-        pass
+
+        min_val_loss = 1e10
+
+        for epoch in range(self.epochs):
+            
+            train_loss = self._train_epoch()
+            val_loss, val_accuracy = self._val_epoch()
+
+            if val_loss <= min_val_loss:
+                self._save_model()
+
+            # Log information to W&B
+            if self.use_wandb:
+                self.memory_allocated = torch.cuda.memory_allocated()
+                self.memory_cached = torch.cuda.memory_reserved()
+                wandb.log({
+                    "epoch": epoch,
+                    "memory_allocated": self.memory_allocated,
+                    "memory_reserved": self.memory_cached,
+                    "train_loss": train_loss,
+                    "val_loss": val_loss,
+                    "val_accuracy": val_accuracy,
+                })
+
+        return
+    
+
+if __name__ == "__main__":
+    # Train the model over some data
+    train_modulus = TrainModulus("./data")
+    train_modulus.train()
