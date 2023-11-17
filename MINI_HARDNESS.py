@@ -28,7 +28,6 @@ batch_size      = 32
 feature_size    = 512
 epochs          = 250
 learning_rate   = 1e-5
-step_size       = 10
 validation_pct  = 0.2
 random_state    = 42
 
@@ -72,7 +71,6 @@ if USE_WANDB:
             "img_size": (IMG_X, IMG_Y),
             "feature_size": feature_size,
             "learning_rate": learning_rate,
-            "step_size": step_size,
             "validation_pct": validation_pct,
             "random_state": random_state,
             "architecture": "ENCODE_DECODE",

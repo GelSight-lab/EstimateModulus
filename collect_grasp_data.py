@@ -50,6 +50,9 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
         data_recorder.auto_clip()
         data_recorder.save(f'./data/{folder_name}/{object_name}')
 
+        # User confirmation to continue
+        input('Press Enter to continue collecting data...')
+
     # End SSH session
     client.close()
 
