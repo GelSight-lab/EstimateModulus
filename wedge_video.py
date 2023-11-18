@@ -276,7 +276,7 @@ class GelsightWedgeVideo():
     # Clip frames to indices
     def clip(self, i_start, i_end):
         i_start = max(0, i_start)
-        i_end = min(i_end, len(self._raw_rgb_frames)-1)
+        i_end = min(i_end, len(self._raw_rgb_frames))
 
         # Clip all other frame data, if applicable
         if len(self._warped_rgb_frames) == len(self._raw_rgb_frames):
