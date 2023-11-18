@@ -22,9 +22,9 @@ def open_gripper(_franka_arm): {
 
 def close_gripper(_franka_arm): {
     _franka_arm.goto_gripper(
-        0.0, # Minimum width in meters [m]
-        force=40, # Maximum force in Newtons [N]
-        speed=0.02, # Desired operation speed in [m/s]
+        0.001, # Minimum width in meters [m]
+        force=60, # Maximum force in Newtons [N]
+        speed=0.04, # Desired operation speed in [m/s]
         grasp=True,     
         block=True,
         skill_desc="CloseGripper"
@@ -49,7 +49,7 @@ time.sleep(0.5)
 open_gripper(franka_arm)
 print("Ungrasped.")
 
-OBJECT_NAME = 'example'
+OBJECT_NAME = 'lego_1'
 
 # Stop recording and save
 data_recorder.end_stream()
