@@ -69,6 +69,9 @@ class EstimateModulus():
         data_recorder.auto_clip()
 
         # Extract the data we need
+        if len(data_recorder.forces()) > len(data_recorder.depth_images()):
+            data_recorder.contact_force.clip(0, len(data_recorder.depth_images()))
+        # TODO: FIx this. We shouldn't need to clip
         assert len(data_recorder.depth_images()) == len(data_recorder.forces())
         self.depth_images = data_recorder.depth_images()
         self.forces = data_recorder.forces()
@@ -416,15 +419,16 @@ class EstimateModulus():
 
 if __name__ == "__main__":
 
+    """
     ##################################################
     # GET ESTIMATED MODULUS (E) FOR SET OF TEST DATA #
     ##################################################
 
-    objs = ["foam_brick_1", "foam_brick_2", "foam_brick_3", \
-            "foam_earth_1", "foam_earth_2", "foam_earth_3", \
-            "orange_ball_1", "orange_ball_2", "orange_ball_3", \
-            "small_rigid_sphere_1", "small_rigid_sphere_2", "small_rigid_sphere_3", \
-            "lego_1", "lego_2", "lego_3", \
+    objs = [
+            "orange_ball_softest_1", "orange_ball_softest_2", "orange_ball_softest_3", \
+            "green_ball_softer_1", "green_ball_softer_2", "green_ball_softer_1", \
+            "blue_ball_harder_1", "blue_ball_harder_2", "blue_ball_harder_3", \
+            "purple_ball_hardest_1", "purple_ball_hardest_2", "purple_ball_hardest_3", \
         ]
     for obj_name in objs:
 
@@ -432,24 +436,27 @@ if __name__ == "__main__":
         contact_force       =   ContactForce(IP="10.10.10.50", port=8888)
         data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force)
 
-        data_recorder.load("./example_data/2023-11-11/" + obj_name)
-        data_recorder.watch(plot_diff=True, plot_depth=True)
+        # data_recorder.load("./example_data/2023-11-17/" + obj_name)
+        # data_recorder.watch(plot_diff=True, plot_depth=True)
         
-        # # Load data and clip
-        # estimator = EstimateModulus()
-        # estimator.load_from_file("./example_data/2023-11-11/" + obj_name)
-        # assert len(estimator.depth_images) == len(estimator.forces)
+        # Load data and clip
+        estimator = EstimateModulus()
+        estimator.load_from_file("./example_data/2023-11-17/" + obj_name)
+        assert len(estimator.depth_images) == len(estimator.forces)
 
-        # # Fit using our Hertzian estimator
-        # estimator.clip_press()
-        # E_finger, v_finger = estimator.fit_compliance()
-        # # E_finger = estimator.fit_compliance_stochastic()
-        # print(f'\nEstimated modulus of {obj_name}:', E_finger, '\n')
+        # Fit using our Hertzian estimator
+        estimator.clip_press()
+        E_finger, v_finger = estimator.fit_compliance()
+        # E_finger = estimator.fit_compliance_stochastic()
+
+        print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths(estimator.depth_images)))
+        print(f'Maximum force of {obj_name}:', np.max(estimator.F))
+        print(f'Estimated modulus of {obj_name}:', E_finger, '\n')
 
         # # Plot
         # estimator.plot_F_vs_d(plot_title=obj_name)
-
     """
+
     #####################################################
     # PLOT RAW DATA TO INVESTIGATE NOISE / CORRELATIONS #
     #####################################################
@@ -499,4 +506,3 @@ if __name__ == "__main__":
     fig4.legend()
     fig5.legend()
     plt.show()
-    """
