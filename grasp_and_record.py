@@ -49,7 +49,7 @@ time.sleep(0.5)
 open_gripper(franka_arm)
 print("Ungrasped.")
 
-OBJECT_NAME = 'example'
+OBJECT_NAME = 'lego_1'
 
 # Stop recording and save
 data_recorder.end_stream()
