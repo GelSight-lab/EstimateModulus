@@ -15,6 +15,16 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
+'''
+Gelsight Mini Hardness Model
+- Implement and train a machine learning model to replicate the results of W. Yuan et al. hardness paper.
+- Uses data from Gelsight Mini recorded over human controlled press on various shapes and materials.
+- Architecture has been updated to encoder-decoder from original paper's CNN-LSTM.
+
+Dataset is publicly available at http://people.csail.mit.edu/yuan_wz/hardnessdataset/
+Paper is available at https://arxiv.org/abs/1704.03955
+'''
+
 # TODO: Make this whole thing object oriented
 
 TRAIN = True

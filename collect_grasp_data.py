@@ -24,7 +24,7 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
     hostname = '10.10.10.100'
     port = 22
     username = 'pi'
-    password = ' '
+    password = ' ' # DO NOT MODIFY
 
     # Open SSH client to start force sending
     client = paramiko.SSHClient()
