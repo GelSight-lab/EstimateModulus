@@ -1,4 +1,5 @@
 import time
+import threading
 from frankapy import FrankaArm
 from wedge_video import GelsightWedgeVideo
 from contact_force import ContactForce
@@ -36,8 +37,17 @@ open_gripper(franka_arm)
 
 print('Starting stream...')
 
+# Function to log gripper position
+gripper_widths = []
+def record_measurement():
+    while True:
+        gripper_widths.append(franka_arm.get_gripper_width())
+record_position_thread = threading.Thread(target=record_measurement)
+
 # Start recording
 data_recorder.start_stream(plot=True, plot_diff=True, plot_depth=True, verbose=False)
+
+record_position_thread.start()
 
 # Close gripper
 print("Grasping...")
@@ -45,9 +55,12 @@ close_gripper(franka_arm)
 print("Grasped.")
 time.sleep(0.5)
 
+record_position_thread.join()
+
 # Open gripper
 open_gripper(franka_arm)
 print("Ungrasped.")
+
 
 OBJECT_NAME = 'lego_1'
 
