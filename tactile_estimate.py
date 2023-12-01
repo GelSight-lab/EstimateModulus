@@ -38,9 +38,9 @@ class EstimateModulus():
         #     "https://static1.squarespace.com/static/5b1ecdd4372b96e84200cf1d/t/5b608e1a758d46a989c0bf93/1533054492488/XP-565+%281%29.pdf"
         # Estimated from Shore A hardness:
         #     "https://www.dow.com/content/dam/dcc/documents/en-us/tech-art/11/11-37/11-3716-01-durometer-hardness-for-silicones.pdf"
-        self.shore_A_00_hardness = 58 # From durometer measurement
-        self.gel_compliance = 5.28e+6 # N/m^2
-        self.gel_poisson_ratio = 0.485 # [\]
+        self.shore_00_hardness = 60 # From durometer measurement
+        self.E_gel = 238000 # 5.28e+6 # N/m^2
+        self.nu_gel = 0.485 # [\]
         self.gel_width = 0.035 # [m]
         self.gel_depth = 0.0055 # [m] (slightly adjusted because of depth inaccuracies)
 
@@ -351,82 +351,111 @@ class EstimateModulus():
         plt.legend(); plt.show(block=False)
         return
 
-    # Use measured force and depth to estimate aggregate compliance E_star
-    def fit_compliance(self):
-        # Using Hertzian contact mechanics...
-        #   dF/dd = (4/3)*E_star*a
-        #   (for an elastic spherical indenter)
-        # Solutions tabulated in "Handbook of Contact Mechanics" by V.L. Popov
-        # Can also follow math from this paper...
-        #   https://www.scientificbulletin.upb.ro/rev_docs_arhiva/full16f_487404.pdf
+    # # Use measured force and depth to estimate aggregate compliance E_star
+    # def fit_compliance(self):
+    #     # Using Hertzian contact mechanics...
+    #     #   dF/dd = (4/3)*E_star*a
+    #     #   (for an elastic spherical indenter)
+    #     # Solutions tabulated in "Handbook of Contact Mechanics" by V.L. Popov
+    #     # Can also follow math from this paper...
+    #     #   https://www.scientificbulletin.upb.ro/rev_docs_arhiva/full16f_487404.pdf
 
-        # Filter depth images to mask and crop
-        self.filter_depths(concave_mask=False)
+    #     # Filter depth images to mask and crop
+    #     self.filter_depths(concave_mask=False)
 
-        # Fit to depth and radius for each frame
-        self._compute_contact_data()
+    #     # Fit to depth and radius for each frame
+    #     self._compute_contact_data()
 
-        # Linear fit for aggregate elastic compliance
-        E_star = self.linear_coeff_fit((4/3)*self.a*self.d, self.F)
+    #     # Linear fit for aggregate elastic compliance
+    #     E_star = self.linear_coeff_fit((4/3)*self.a*self.d, self.F)
 
-        return E_star
+    #     return E_star
     
     def Estar_to_E(self, E_star):
         # Compute compliance from E_star by assuming Poisson's ratio
-        poisson_ratio = self.assumed_poisson_ratio
-        E = (1 - poisson_ratio**2) / (1/E_star - (1 - self.gel_poisson_ratio**2)/(self.gel_compliance))
-        return E, poisson_ratio
+        nu = self.assumed_poisson_ratio
+        E = (1 - nu**2) / (1/E_star - (1 - self.nu_gel**2)/(self.E_gel))
+        return E, nu
     
-    # Alternative method that tries to compute modulus pixel by pixel
-    def fit_compliance_stochastic(self):
-        target_data = []
-        for i in range(1, self.depth_images.shape[0]):
-            depth = self.depth_images[i]
+    # # Alternative method that tries to compute modulus pixel by pixel
+    # def fit_compliance_stochastic(self):
+    #     target_data = []
+    #     for i in range(1, self.depth_images.shape[0]):
+    #         depth = self.depth_images[i]
 
-            # Apply threshold mask
-            contact_mask = self.contact_mask(depth)
-            filtered_depth = 0.001 * depth * contact_mask
+    #         # Apply threshold mask
+    #         contact_mask = self.contact_mask(depth)
+    #         filtered_depth = 0.001 * depth * contact_mask
 
-            # Remove edge regions which could be noisy
-            filtered_depth = self.crop_edges(filtered_depth)
+    #         # Remove edge regions which could be noisy
+    #         filtered_depth = self.crop_edges(filtered_depth)
 
-            # Collect data
-            if np.max(filtered_depth) > 0:
-                for r in range(depth.shape[0]):
-                    for c in range(depth.shape[1]):
-                        if depth[r][c] > 0:
-                            # # Fit using derivatives
-                            # dF = -(self.forces[i] - self.forces[i-1])
-                            # du = self.depth_images[i][r][c] - self.depth_images[i-1][r][c]
-                            # if dF/du > 0: target_data.append(dF / du)
+    #         # Collect data
+    #         if np.max(filtered_depth) > 0:
+    #             for r in range(depth.shape[0]):
+    #                 for c in range(depth.shape[1]):
+    #                     if depth[r][c] > 0:
+    #                         # # Fit using derivatives
+    #                         # dF = -(self.forces[i] - self.forces[i-1])
+    #                         # du = self.depth_images[i][r][c] - self.depth_images[i-1][r][c]
+    #                         # if dF/du > 0: target_data.append(dF / du)
 
-                            # Fit using direct values
-                            F = -self.forces[i]
-                            u = depth[r][c]
-                            if F/u > 0: target_data.append(F / u)
+    #                         # Fit using direct values
+    #                         F = -self.forces[i]
+    #                         u = depth[r][c]
+    #                         if F/u > 0: target_data.append(F / u)
 
-        # Use all data to fit function
-        target_data = np.array(target_data)
-        x_data = (0.001 * 1 / PX_TO_MM)**2 / self.gel_depth * np.ones_like(target_data)
-        E_agg = self.linear_coeff_fit(x_data, target_data)
+    #     # Use all data to fit function
+    #     target_data = np.array(target_data)
+    #     x_data = (0.001 * 1 / PX_TO_MM)**2 / self.gel_depth * np.ones_like(target_data)
+    #     E_agg = self.linear_coeff_fit(x_data, target_data)
         
-        # Calculate modulus of unknown object
-        E = (1/E_agg - 1/self.gel_compliance)**(-1)
-        # E = E_agg - self.gel_compliance
+    #     # Calculate modulus of unknown object
+    #     E = (1/E_agg - 1/self.E_gel)**(-1)
+    #     # E = E_agg - self.E_gel
 
-        return E
+    #     return E
     
-    def fit_compliance_MDR(self):
-        # Following model from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
+    def fit_compliance(self):
+        # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
+
+        # p_0     = f(E*, F, a)
+        # p(r)    = p_0 sqrt(1 - r^2/a^2)
+        # q_1d(x) = 2 integral(r p(r) / sqrt(r^2 - x^2) dr)
+        # w_1d(x) = (1-v^2)/E_sensor * q_1d(x)
+        # w_1d(0) = max_depth
 
         # Filter depth images to mask and crop
         self.filter_depths(concave_mask=False)
 
-        g = None # Fit to parabola?
-        d = None
-        a = None
+        x_data, y_data = [], []
+        max_depths = self.max_depths(self.depth_images)
+        d, a, F = [], [], []
 
-        E_star = None
+        R = 0.025 # [m], measured for elastic balls
+        for i in range(self.depth_images.shape[0]):
+            F_i = -self.forces[i]
+            contact_area = (0.001 / PX_TO_MM)**2 * np.sum(self.depth_images[i] > 0.0000001)
+            a_i = np.sqrt(contact_area / np.pi)
+                
+            if F_i > 0 and a_i >= 0.003 and max_depths[i] > self.depth_threshold:
+                p_0 = (1/np.pi) * (6*F_i/(R**2))**(1/3) # times E_star^2/3
+                q_1D_0 = p_0 * np.pi * a_i / 2
+                w_1D_0 = (1 - self.nu_gel**2) * q_1D_0 / self.E_gel
+                F.append(F_i)
+                d.append(max_depths[i] * 0.001)
+                a.append(a_i)
+                x_data.append(w_1D_0)
+                y_data.append(max_depths[i] * 0.001)
+
+        self.d = np.array(d)
+        self.a = np.array(a)
+        self.F = np.array(F)
+        self.x_data = np.array(x_data)
+        self.y_data = np.array(y_data)
+
+        # Fit for E_star
+        E_star = self.linear_coeff_fit(x_data, y_data)**(3/2)
 
         return E_star
 
@@ -438,8 +467,18 @@ if __name__ == "__main__":
 
     fig1 = plt.figure(1)
     sp1 = fig1.add_subplot(211)
-    sp1.set_xlabel('Depth [m]')
+    sp1.set_xlabel('Measured Sensor Deformation (d) [m]')
     sp1.set_ylabel('Force [N]')
+    
+    # fig2 = plt.figure(2)
+    # sp2 = fig2.add_subplot(211)
+    # sp2.set_xlabel('Measured Sensor Deformation (d) [m]')
+    # sp2.set_ylabel('Measured Contact Radius (a) [m]')
+    
+    # fig3 = plt.figure(3)
+    # sp3 = fig3.add_subplot(211)
+    # sp3.set_xlabel('d*a [m^2]')
+    # sp3.set_ylabel('Force [N]')
 
     objs = [
             "orange_ball_softest_1", "orange_ball_softest_2", "orange_ball_softest_3", \
@@ -460,9 +499,6 @@ if __name__ == "__main__":
         contact_force       =   ContactForce(IP="10.10.10.50", port=8888)
         data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force)
 
-        # data_recorder.load("./example_data/2023-11-17/" + obj_name)
-        # data_recorder.watch(plot_diff=True, plot_depth=True)
-        
         # Load data and clip
         estimator = EstimateModulus()
         estimator.load_from_file("./example_data/2023-11-17/" + obj_name)
@@ -472,23 +508,36 @@ if __name__ == "__main__":
         estimator.clip_press()
         E_star = estimator.fit_compliance()
         E_object, v_object = estimator.Estar_to_E(E_star)
-        # E_object = estimator.fit_compliance_stochastic()
 
         print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths(estimator.depth_images)))
         print(f'Maximum force of {obj_name}:', np.max(estimator.F))
         print(f'Estimated modulus of {obj_name}:', E_object, '\n')
 
         # Plot
-        plt.plot(estimator.d, estimator.F, ".", label=obj_name, markersize=8, color=plotting_colors[i])
+        sp1.plot(estimator.d, estimator.F, ".", label=obj_name, markersize=8, color=plotting_colors[i])
+        # sp2.plot(estimator.d, estimator.a, ".", label=obj_name, markersize=8, color=plotting_colors[i])
+        # sp3.plot(estimator.d*estimator.a, estimator.F, ".", label=obj_name, markersize=8, color=plotting_colors[i])
 
-        F_fit = (4/3)*estimator.a*E_star*estimator.d
-        # plt.plot(estimator.d, F_fit, "-", label=(obj_name + " fit"), markersize=10, color=plotting_colors[i])
-        F_gel = (4/3)*estimator.a*estimator.gel_compliance*estimator.d
-        # plt.plot(estimator.d, F_gel, "--", label=(obj_name + " gel"), markersize=10, color=plotting_colors[i])
+        F_fit = []
+        R = 0.025
+        for j in range(len(estimator.d)):
+            d_i = estimator.d[j]
+            a_i = estimator.a[j]
+            q_1D_0 = d_i * estimator.E_gel / (1 - estimator.nu_gel**2)
+            p_0 = 2 * q_1D_0 / (np.pi * a_i)
+            F_fit_i = (p_0 * np.pi)**3 * (R**2 / E_star**2) / 6
+            F_fit.append(F_fit_i)
+        sp1.plot(estimator.d, F_fit, "-", label=(obj_name + " fit"), markersize=10, color=plotting_colors[i])
 
     fig1.legend()
     fig1.set_figwidth(10)
     fig1.set_figheight(10)
+    # fig2.legend()
+    # fig2.set_figwidth(10)
+    # fig2.set_figheight(10)
+    # fig3.legend()
+    # fig3.set_figwidth(10)
+    # fig3.set_figheight(10)
     plt.show()
 
     """
