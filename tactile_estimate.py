@@ -36,10 +36,10 @@ class EstimateModulus():
         # Gel material: Silicone XP-565
         # Datasheet:
         #     "https://static1.squarespace.com/static/5b1ecdd4372b96e84200cf1d/t/5b608e1a758d46a989c0bf93/1533054492488/XP-565+%281%29.pdf"
-        # Estimated from Shore A hardness:
+        # Estimated from Shore 00 hardness:
         #     "https://www.dow.com/content/dam/dcc/documents/en-us/tech-art/11/11-37/11-3716-01-durometer-hardness-for-silicones.pdf"
         self.shore_00_hardness = 60 # From durometer measurement
-        self.E_gel = 238000 # 5.28e+6 # N/m^2
+        self.E_gel = 275000 # N/m^2
         self.nu_gel = 0.485 # [\]
         self.gel_width = 0.035 # [m]
         self.gel_depth = 0.0055 # [m] (slightly adjusted because of depth inaccuracies)
