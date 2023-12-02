@@ -32,16 +32,21 @@ def close_gripper(_franka_arm): {
     )
 }
 
-# Startr with gripper in open position
+# Start with gripper in open position
 open_gripper(franka_arm)
 
 print('Starting stream...')
 
 # Function to log gripper position
+time_recorded = []
 gripper_widths = []
+record = True
 def record_measurement():
-    while True:
-        gripper_widths.append(franka_arm.get_gripper_width())
+    while record:
+        raw_width = franka_arm.get_gripper_width()
+        adj_width = 1.0 * raw_width - 0.0005
+        gripper_widths.append(adj_width)
+        time_recorded.append(time.time())
 record_position_thread = threading.Thread(target=record_measurement)
 
 # Start recording
@@ -55,14 +60,18 @@ close_gripper(franka_arm)
 print("Grasped.")
 time.sleep(0.5)
 
-record_position_thread.join()
-
 # Open gripper
 open_gripper(franka_arm)
 print("Ungrasped.")
 
+record = False
+record_position_thread.join()
 
-OBJECT_NAME = 'lego_1'
+import matplotlib.pyplot as plt
+plt.plot(time_recorded, gripper_widths, 'b-')
+plt.show()
+
+OBJECT_NAME = 'TEST'
 
 # Stop recording and save
 data_recorder.end_stream()

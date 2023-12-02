@@ -335,7 +335,7 @@ if __name__ == "__main__":
     # Typical video recording workflow might be...
     wedge_video = GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv")
     wedge_video.start_stream(plot=True, plot_diff=True, plot_depth=True)
-    time.sleep(10)
+    time.sleep(20)
     wedge_video.end_stream()
     print(wedge_video.max_depth())
 
