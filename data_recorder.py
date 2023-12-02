@@ -90,6 +90,7 @@ class DataRecorder():
     def end_stream(self, verbose=False):
         self._stream_active = False
         self._stream_thread.join()
+        
         if self.wedge_video._plotting:
             self.wedge_video._stop_plotting()
         if self._wedge_video_count > 1 and self.other_wedge_video._plotting:
@@ -105,8 +106,10 @@ class DataRecorder():
         if verbose: print('Done streaming.')
 
         # Adjust by 2 frames for HDMI latency
+        assert len(self.contact_force.forces()) == len(self.gripper_width.widths()) == len(self.wedge_video._raw_rgb_frames)
         self.wedge_video.clip(2, len(self.wedge_video._raw_rgb_frames))
         self.contact_force.clip(0, len(self.contact_force.forces())-2)
+        self.gripper_width.clip(0, len(self.gripper_width.widths())-2)
         return
     
     # Plot video for your viewing pleasure
@@ -126,12 +129,13 @@ class DataRecorder():
         self.contact_force.clip(i_start, i_end)
         return
 
-    # Read frames from a video file
+    # Read frames from a video file and associated pickle files
     def load(self, path_to_file):
         self.wedge_video.upload(path_to_file + '.avi')
         if self._wedge_video_count > 1:
             self.wedge_video.upload(path_to_file + '_other_finger.avi')
-        self.contact_force.load(path_to_file + '.pkl')
+        self.contact_force.load(path_to_file + '_forces.pkl')
+        self.gripper_width.load(path_to_file + '_widths.pkl')
         return
 
     # Save collected data to video and pickle files
@@ -139,7 +143,8 @@ class DataRecorder():
         self.wedge_video.download(path_to_file + '.avi')
         if self._wedge_video_count > 1:
             self.other_wedge_video.download(path_to_file + '_other_finger.avi')
-        self.contact_force.save(path_to_file + '.pkl')
+        self.contact_force.save(path_to_file + '_forces.pkl')
+        self.gripper_width.save(path_to_file + '_widths.pkl')
         return
     
 
