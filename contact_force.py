@@ -17,6 +17,7 @@ class ContactForce():
         self._client_socket = None          # Socket that we read from
         self._stream_thread = None          # Thread to receive measurements from sensor and update value
         self._stream_active = False         # Boolean of whether or not we're currently streaming
+
         self._forces = []                   # Force value in Newtons at times requested
         self._times_requested = []          # Times of measurement requested
         self._measured_forces = []          # All measurements from gauge at recorded times
@@ -32,7 +33,7 @@ class ContactForce():
     def forces(self):
         return np.array(self._forces)
 
-    # Return array of force measurements
+    # Clip measurements between provided indices
     def clip(self, i_start, i_end):
         i_start = max(0, i_start)
         i_end = min(i_end, len(self._forces))
@@ -135,7 +136,7 @@ class ContactForce():
     
 
 if __name__ == "__main__":
-    # # Read data from source
+    # Read data from source
     contact_force = ContactForce(IP="10.10.10.50")
     contact_force.start_stream(verbose=True)
     print('If measurements not being received, ssh directly into the pi.')

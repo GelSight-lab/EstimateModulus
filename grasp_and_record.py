@@ -1,16 +1,20 @@
 import time
 import threading
+
 from frankapy import FrankaArm
+
 from wedge_video import GelsightWedgeVideo
 from contact_force import ContactForce
+from gripper_width import GripperWidth
 from data_recorder import DataRecorder
 
 franka_arm = FrankaArm()
 
 # Define streaming addresses
-wedge_video     =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv")
-contact_force   =   ContactForce(IP="10.10.10.50", port=8888)
-data_recorder   =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force)
+wedge_video     = GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv")
+contact_force   = ContactForce(IP="10.10.10.50", port=8888)
+gripper_width   = GripperWidth(franka_arm=franka_arm)
+data_recorder   = DataRecorder(wedge_video=wedge_video, contact_force=contact_force, gripper_width=gripper_width)
 
 def open_gripper(_franka_arm): {
     _franka_arm.goto_gripper(
@@ -37,22 +41,8 @@ open_gripper(franka_arm)
 
 print('Starting stream...')
 
-# Function to log gripper position
-time_recorded = []
-gripper_widths = []
-record = True
-def record_measurement():
-    while record:
-        raw_width = franka_arm.get_gripper_width()
-        adj_width = 1.0 * raw_width - 0.0005
-        gripper_widths.append(adj_width)
-        time_recorded.append(time.time())
-record_position_thread = threading.Thread(target=record_measurement)
-
 # Start recording
 data_recorder.start_stream(plot=True, plot_diff=True, plot_depth=True, verbose=False)
-
-record_position_thread.start()
 
 # Close gripper
 print("Grasping...")
@@ -63,13 +53,6 @@ time.sleep(0.5)
 # Open gripper
 open_gripper(franka_arm)
 print("Ungrasped.")
-
-record = False
-record_position_thread.join()
-
-import matplotlib.pyplot as plt
-plt.plot(time_recorded, gripper_widths, 'b-')
-plt.show()
 
 OBJECT_NAME = 'TEST'
 

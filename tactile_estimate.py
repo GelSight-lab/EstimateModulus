@@ -5,7 +5,9 @@ import matplotlib.pyplot as plt
 
 from wedge_video import GelsightWedgeVideo
 from contact_force import ContactForce
+from gripper_width import GripperWidth
 from data_recorder import DataRecorder
+
 data_recorder = DataRecorder()
 
 from scipy.ndimage import convolve

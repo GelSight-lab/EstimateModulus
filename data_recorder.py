@@ -4,6 +4,7 @@ import numpy as np
 
 from wedge_video import GelsightWedgeVideo
 from contact_force import ContactForce
+from gripper_width import GripperWidth
 
 from threading import Thread
 
@@ -11,10 +12,11 @@ class DataRecorder():
     '''
     Class to streamline recording of data from Gelsight Wedge's / force gauge and package into training
     '''
-    def __init__(self, wedge_video=GelsightWedgeVideo(), other_wedge_video=None, contact_force=ContactForce()):
+    def __init__(self, wedge_video=GelsightWedgeVideo(), other_wedge_video=None, contact_force=ContactForce(), gripper_width=GripperWidth()):
         self.wedge_video = wedge_video              # Object containing all video data for wedge on force-sensing finger
         self.other_wedge_video = other_wedge_video  # Object containing all video data for wedge on other finger
-        self.contact_force = contact_force          # Object containing all force measurments
+        self.contact_force = contact_force          # Object containing all force measurements
+        self.gripper_width = gripper_width          # Object containing gripper width measurements
 
         # How many wedge's are we streaming from?
         self._wedge_video_count = 1
@@ -32,6 +34,7 @@ class DataRecorder():
         if self._wedge_video_count > 1:
             self.other_wedge_video._reset_frames()
         self.contact_force._reset_values()
+        self.gripper_width._reset_values()
 
     # Return forces
     def forces(self):
@@ -43,6 +46,10 @@ class DataRecorder():
             assert self._wedge_video_count > 1
             return self.other_wedge_video.depth_images()
         return self.wedge_video.depth_images()
+    
+    # Return gripper widths
+    def widths(self):
+        return self.gripper_width.widths()
     
     # Initiate streaming thread
     def start_stream(self, verbose=True, plot=False, plot_other=False, plot_diff=False, plot_depth=False):
@@ -76,6 +83,7 @@ class DataRecorder():
                 _ = self.other_wedge_video._decode_image_from_stream()
             if img_found:
                 self.contact_force._request_value()
+                self.gripper_width._record_value()
         return
 
     # Terminate streaming thread
@@ -91,6 +99,8 @@ class DataRecorder():
         if self._wedge_video_count > 1:
             self.other_wedge_video._wipe_stream_info()
         self.contact_force.end_stream(verbose=False)
+        self.gripper_width._post_process_measurements()
+
         time.sleep(1)
         if verbose: print('Done streaming.')
 
