@@ -399,12 +399,68 @@ class EstimateModulus():
         E_star = self.linear_coeff_fit(x_data, y_data)**(3/2)
         return E_star
     
-    # 
+    # Naively estimate modulus based on gripper width change and aggregate modulus
     def fit_modulus_naive(self):
-        pass
+
+        # Contact patch for area
+        contact_areas = []
+        for i in range(len(self.depth_images)):
+            contact_areas.append((0.001 / PX_TO_MM)**2 * np.sum(self.depth_images[i] >= self.depth_threshold))
+
+        # Find initial length of first contact
+        L0 = 0
+        for i in range(len(self.depth_images)):
+            if max(self.depth_images[i]) > self.depth_threshold:
+                L0 = self.gripper_widths[i]/2
+                break
+        
+        x_data, y_data = [], []
+        for i in range(len(self.depth_images)):
+            dL = abs(self.gripper_widths[i]/2 - L0)
+            x_data.append(dL/L0)
+            y_data.append(self.forces[i] / contact_areas[i])
+
+        # Fit to aggregate modulus and extract object component
+        E_agg = self.linear_coeff_fit(x_data, y_data)
+        E = (1/E_agg - 1/self.E_gel)**(-1)
+
+        return E
+
+    # An alternative naively elastic method that is slighly more sophisticated
+    def fit_modulus_compare_strain(self):
+
+        # Sensor depth => estimate contact stress
+        # Contact stress, gripper width => compute elastic modulus
+
+        avg_stress = []
+        for i in range(len(self.depth_images)):
+            avg_depth = np.mean(self.depth_images[i][self.depth_images[i] >= self.depth_threshold])
+            avg_strain = avg_depth / self.gel_depth
+            avg_stress.append(avg_strain * self.E_gel)
+
+        # Find initial length of first contact
+        L0 = 0
+        for i in range(len(self.depth_images)):
+            if max(self.depth_images[i]) > self.depth_threshold:
+                L0 = self.gripper_widths[i]/2
+                break
+
+        object_strain = []
+        for i in range(len(self.depth_images)):
+            dL = abs(self.gripper_widths[i]/2 - L0)
+            object_strain.append(dL/L0)
+
+        # Fit to aggregate modulus and extract object component
+        E_agg = self.linear_coeff_fit(object_strain, avg_stress)
+        E = (1/E_agg - 1/self.E_gel)**(-1)
+        
+        return E
     
-    # 
+    # Fit to Hertizan model with apparent deformation
     def fit_modulus_hertz(self):
+
+        # Calculate apparent deformation using gripper width
+
         pass
 
 if __name__ == "__main__":
