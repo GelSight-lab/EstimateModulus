@@ -30,9 +30,10 @@ class EstimateModulus():
 
         self.depth_images = []      # Depth images [in mm]
         self.forces = []            # Measured contact forces
+        self.gripper_widths = []    # Measured width of gripper
+
         self.F = []                 # Contact forces for fitting
         self.d = []                 # Contact depth for fitting
-        self.dFdd = []              # Discrete derivative of force with respect to contact depth
         self.a = []                 # Contact radius for fitting
 
         # Gel material: Silicone XP-565
@@ -50,17 +51,18 @@ class EstimateModulus():
     def _reset_data(self):
         self.depth_images = []
         self.forces = []
+        self.gripper_widths = []
         self.F = []
         self.d = []
-        self.dFdd = []
         self.a = []
 
     # Directly load measurement data
-    def load(self, depth_images, forces):
+    def load(self, depth_images, forces, gripper_widths):
         self._reset_data()
         assert len(depth_images) == len(forces)
         self.depth_images = depth_images
         self.forces = forces
+        self.gripper_widths = gripper_widths
         return
 
     # Load data from a file
@@ -77,6 +79,7 @@ class EstimateModulus():
         assert len(data_recorder.depth_images()) == len(data_recorder.forces())
         self.depth_images = data_recorder.depth_images()
         self.forces = data_recorder.forces()
+        self.gripper_widths = data_recorder.gripper_widths()
         return
 
     # Return mask of which pixels are in contact with object
@@ -325,16 +328,6 @@ class EstimateModulus():
         self.a = np.squeeze(np.array(a))
         return
     
-    # Return force, contact depth, and contact radius
-    def _compute_dFdd(self):
-        # Fit to depth and radius for each frame
-        if len(self.dFdd) > 0:
-            assert len(self.F) == len(self.d) == len(self.a) == len(self.dFdd) + 1
-            return self.dFdd
-        dd = np.squeeze(np.diff(np.array(self.d), axis=0))
-        self.dFdd = np.diff(np.array(self.F), axis=0) / np.clip(dd, 0.00001, 1)
-        return
-    
     # Plot force versus contact depth
     def plot_F_vs_d(self, plot_fit=True, plot_title=None):
         plt.figure()
@@ -352,26 +345,6 @@ class EstimateModulus():
 
         plt.legend(); plt.show(block=False)
         return
-
-    # # Use measured force and depth to estimate aggregate compliance E_star
-    # def fit_compliance(self):
-    #     # Using Hertzian contact mechanics...
-    #     #   dF/dd = (4/3)*E_star*a
-    #     #   (for an elastic spherical indenter)
-    #     # Solutions tabulated in "Handbook of Contact Mechanics" by V.L. Popov
-    #     # Can also follow math from this paper...
-    #     #   https://www.scientificbulletin.upb.ro/rev_docs_arhiva/full16f_487404.pdf
-
-    #     # Filter depth images to mask and crop
-    #     self.filter_depths(concave_mask=False)
-
-    #     # Fit to depth and radius for each frame
-    #     self._compute_contact_data()
-
-    #     # Linear fit for aggregate elastic compliance
-    #     E_star = self.linear_coeff_fit((4/3)*self.a*self.d, self.F)
-
-    #     return E_star
     
     def Estar_to_E(self, E_star):
         # Compute compliance from E_star by assuming Poisson's ratio
@@ -379,46 +352,7 @@ class EstimateModulus():
         E = (1 - nu**2) / (1/E_star - (1 - self.nu_gel**2)/(self.E_gel))
         return E, nu
     
-    # # Alternative method that tries to compute modulus pixel by pixel
-    # def fit_compliance_stochastic(self):
-    #     target_data = []
-    #     for i in range(1, self.depth_images.shape[0]):
-    #         depth = self.depth_images[i]
-
-    #         # Apply threshold mask
-    #         contact_mask = self.contact_mask(depth)
-    #         filtered_depth = 0.001 * depth * contact_mask
-
-    #         # Remove edge regions which could be noisy
-    #         filtered_depth = self.crop_edges(filtered_depth)
-
-    #         # Collect data
-    #         if np.max(filtered_depth) > 0:
-    #             for r in range(depth.shape[0]):
-    #                 for c in range(depth.shape[1]):
-    #                     if depth[r][c] > 0:
-    #                         # # Fit using derivatives
-    #                         # dF = -(self.forces[i] - self.forces[i-1])
-    #                         # du = self.depth_images[i][r][c] - self.depth_images[i-1][r][c]
-    #                         # if dF/du > 0: target_data.append(dF / du)
-
-    #                         # Fit using direct values
-    #                         F = -self.forces[i]
-    #                         u = depth[r][c]
-    #                         if F/u > 0: target_data.append(F / u)
-
-    #     # Use all data to fit function
-    #     target_data = np.array(target_data)
-    #     x_data = (0.001 * 1 / PX_TO_MM)**2 / self.gel_depth * np.ones_like(target_data)
-    #     E_agg = self.linear_coeff_fit(x_data, target_data)
-        
-    #     # Calculate modulus of unknown object
-    #     E = (1/E_agg - 1/self.E_gel)**(-1)
-    #     # E = E_agg - self.E_gel
-
-    #     return E
-    
-    def fit_compliance(self):
+    def fit_modulus(self):
         # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
 
         # p_0     = f(E*, F, a)
@@ -431,24 +365,29 @@ class EstimateModulus():
         self.filter_depths(concave_mask=False)
 
         x_data, y_data = [], []
-        max_depths = self.max_depths(self.depth_images)
         d, a, F = [], [], []
 
+        # TODO: Generalize this radius
         R = 0.025 # [m], measured for elastic balls
+
         for i in range(self.depth_images.shape[0]):
             F_i = -self.forces[i]
             contact_area = (0.001 / PX_TO_MM)**2 * np.sum(self.depth_images[i] > 0.0000001)
             a_i = np.sqrt(contact_area / np.pi)
-                
-            if F_i > 0 and a_i >= 0.003 and max_depths[i] > self.depth_threshold:
+
+            # Take mean of 5x5 neighborhood around maximum depth
+            max_index = np.unravel_index(np.argmax(self.depth_images[i]), self.depth_images[i].shape)
+            d_i = np.mean(self.depth_images[i][max_index[0]-2:max_index[0]+3, max_index[1]-2:max_index[1]+3])
+
+            if F_i > 0 and a_i >= 0.003 and d_i > self.depth_threshold:
                 p_0 = (1/np.pi) * (6*F_i/(R**2))**(1/3) # times E_star^2/3
                 q_1D_0 = p_0 * np.pi * a_i / 2
                 w_1D_0 = (1 - self.nu_gel**2) * q_1D_0 / self.E_gel
                 F.append(F_i)
-                d.append(max_depths[i] * 0.001)
+                d.append(d_i * 0.001)
                 a.append(a_i)
                 x_data.append(w_1D_0)
-                y_data.append(max_depths[i] * 0.001)
+                y_data.append(d_i * 0.001)
 
         self.d = np.array(d)
         self.a = np.array(a)
@@ -458,8 +397,15 @@ class EstimateModulus():
 
         # Fit for E_star
         E_star = self.linear_coeff_fit(x_data, y_data)**(3/2)
-
         return E_star
+    
+    # 
+    def fit_modulus_naive(self):
+        pass
+    
+    # 
+    def fit_modulus_hertz(self):
+        pass
 
 if __name__ == "__main__":
 
@@ -508,7 +454,7 @@ if __name__ == "__main__":
 
         # Fit using our Hertzian estimator
         estimator.clip_press()
-        E_star = estimator.fit_compliance()
+        E_star = estimator.fit_modulus()
         E_object, v_object = estimator.Estar_to_E(E_star)
 
         print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths(estimator.depth_images)))
