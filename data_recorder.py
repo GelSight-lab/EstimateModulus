@@ -100,7 +100,7 @@ class DataRecorder():
         if self._wedge_video_count > 1:
             self.other_wedge_video._wipe_stream_info()
         self.contact_force.end_stream(verbose=False)
-        self.gripper_width._post_process_measurements()
+        # self.gripper_width._post_process_measurements()
 
         time.sleep(1)
         if verbose: print('Done streaming.')

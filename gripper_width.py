@@ -3,6 +3,8 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 
+from scipy.optimize import curve_fit
+
 from frankapy import FrankaArm
 
 from threading import Thread
@@ -12,7 +14,7 @@ class GripperWidth():
     Class to read and record contact gripper width over grasping
     '''
     def __init__(self, franka_arm=FrankaArm()):
-        self._franka_arm = None             # Object to interface with the Panda arm
+        self._franka_arm = franka_arm       # Object to interface with the Panda arm
         self._stream_thread = None          # Thread to receive positions and update value
         self._stream_active = False         # Boolean of whether or not we're currently streaming
 
@@ -61,21 +63,37 @@ class GripperWidth():
     
     # Smooth measurements based on time requested / recorded
     # Necessary because width measurement bandwidth is slower than video
-    def _post_process_measurements(self, plot_smoothing=True):
+    def _post_process_measurements(self, plot_smoothing=False):
+        '''
         self._widths = []
-        p = np.polyfit(self._times_recorded, self._widths_recorded, 4)
+        t_data = []
         for i in range(len(self._times_recorded)):
-            t = self._times_recorded[i]
-            w = 0
-            for k in range(len(p)):
-                w += k * t**(4-k)
-            self._widths.append(w)
+            t_data.append(self._times_recorded[i] - self._times_recorded[0])
+
+        def sigmoid(x, L ,x0, k, b):
+            y = L / (1 + np.exp(-k*(x-x0))) + b
+            return (y)
+
+        p0 = [max(self._widths_recorded), np.median(t_data), 1, min(self._widths_recorded)] # this is an mandatory initial guess
+
+        popt, pcov = curve_fit(sigmoid, t_data, self._widths_recorded, p0, method='dogbox')
+
+        # p = np.polyfit(t_data, self._widths_recorded, 4)
+        # for t in t_data:
+        #     w = 0
+        #     for k in range(len(p)):
+        #         w += p[k] * t**(4-k)
+        #     self._widths.append(w)
+
+        for t in t_data:
+            self._widths.append(sigmoid(t, popt[0], popt[1], popt[2], popt[3]))
 
         if plot_smoothing:
             # Plot to check how the smoothing of data looks
             plt.plot(self._times_recorded, self._widths_recorded, '.')
             plt.plot(self._times_recorded, self._widths, '-')
             plt.show()
+        '''
 
         return
     
