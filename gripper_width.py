@@ -95,6 +95,8 @@ class GripperWidth():
             plt.show()
         '''
 
+        self._widths = self._widths_recorded
+
         return
     
     # Close socket when done measuring

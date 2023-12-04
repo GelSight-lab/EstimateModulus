@@ -51,6 +51,14 @@ class DataRecorder():
     def widths(self):
         return self.gripper_width.widths()
     
+    # TODO: Re-Implement this method once delay between width and depth is addressed
+    # Return the gripper width where first contact occurs above threshold
+    # def width_of_first_contact(self, depth_threshold=0.5):
+    #     for i in range(len(self.depth_images())):
+    #         if (self.depth_images()[i] >= depth_threshold).any():
+    #             return self.widths()[i]
+    #     return None
+    
     # Initiate streaming thread
     def start_stream(self, verbose=True, plot=False, plot_other=False, plot_diff=False, plot_depth=False):
         self._reset_data()
@@ -100,7 +108,7 @@ class DataRecorder():
         if self._wedge_video_count > 1:
             self.other_wedge_video._wipe_stream_info()
         self.contact_force.end_stream(verbose=False)
-        # self.gripper_width._post_process_measurements()
+        self.gripper_width._post_process_measurements()
 
         time.sleep(1)
         if verbose: print('Done streaming.')

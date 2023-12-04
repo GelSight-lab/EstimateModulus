@@ -48,13 +48,15 @@ data_recorder.start_stream(plot=True, plot_diff=True, plot_depth=True, verbose=F
 print("Grasping...")
 close_gripper(franka_arm)
 print("Grasped.")
-time.sleep(0.5)
+time.sleep(0.25)
 
 # Open gripper
 open_gripper(franka_arm)
 print("Ungrasped.")
 
-OBJECT_NAME = 'TEST'
+OBJECT_NAME = 'golf_ball_3'
+
+time.sleep(1.5)
 
 # Stop recording and save
 data_recorder.end_stream()
