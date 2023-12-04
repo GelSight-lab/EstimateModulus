@@ -83,7 +83,7 @@ class ContactForce():
         float_str = received_data.decode()
         if float_str.count('.') > 1:
             float_str = float_str[float_str.rfind('.', 0, float_str.rfind('.'))+3:]
-        self._measured_forces.append(float(float_str) * 0.00002)
+        self._measured_forces.append(-float(float_str) * 0.00002)
         if verbose: print(self._measured_forces[-1])
         return
     

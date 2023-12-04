@@ -5,15 +5,13 @@ import matplotlib.pyplot as plt
 
 from scipy.optimize import curve_fit
 
-from frankapy import FrankaArm
-
 from threading import Thread
 
 class GripperWidth():
     '''
     Class to read and record contact gripper width over grasping
     '''
-    def __init__(self, franka_arm=FrankaArm()):
+    def __init__(self, franka_arm=None):
         self._franka_arm = franka_arm       # Object to interface with the Panda arm
         self._stream_thread = None          # Thread to receive positions and update value
         self._stream_active = False         # Boolean of whether or not we're currently streaming

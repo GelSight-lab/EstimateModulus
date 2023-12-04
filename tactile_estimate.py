@@ -79,7 +79,7 @@ class EstimateModulus():
         assert len(data_recorder.depth_images()) == len(data_recorder.forces())
         self.depth_images = data_recorder.depth_images()
         self.forces = data_recorder.forces()
-        self.gripper_widths = data_recorder.gripper_widths()
+        self.gripper_widths = data_recorder.widths()
         return
 
     # Return mask of which pixels are in contact with object
@@ -469,10 +469,10 @@ if __name__ == "__main__":
     # GET ESTIMATED MODULUS (E) FOR SET OF TEST DATA #
     ##################################################
 
-    fig1 = plt.figure(1)
-    sp1 = fig1.add_subplot(211)
-    sp1.set_xlabel('Measured Sensor Deformation (d) [m]')
-    sp1.set_ylabel('Force [N]')
+    # fig1 = plt.figure(1)
+    # sp1 = fig1.add_subplot(211)
+    # sp1.set_xlabel('Measured Sensor Deformation (d) [m]')
+    # sp1.set_ylabel('Force [N]')
     
     # fig2 = plt.figure(2)
     # sp2 = fig2.add_subplot(211)
@@ -487,14 +487,18 @@ if __name__ == "__main__":
     objs = [
             "orange_ball_softest_1", "orange_ball_softest_2", "orange_ball_softest_3", \
             "green_ball_softer_1", "green_ball_softer_2", "green_ball_softer_1", \
-            "blue_ball_harder_1", "blue_ball_harder_2", "blue_ball_harder_3", \
+            # "blue_ball_harder_1", "blue_ball_harder_2", "blue_ball_harder_3", \
             "purple_ball_hardest_1", "purple_ball_hardest_2", "purple_ball_hardest_3", \
+            "foam_brick_1", "foam_brick_2", "foam_brick_3", \
+            "golf_ball_1", "golf_ball_2", "golf_ball_3", \
         ]
     plotting_colors = [
-        "#FFBF00", "#FF7F50", "#8B4000", \
+        "#FFAC1C", "#FF7F50", "#FFD700", \
         "#50C878", "#4CBB17", "#355E3B", \
-        "#89CFF0", "#0096FF", "#0000FF", \
+        # "#89CFF0", "#0096FF", "#0000FF", \
         "#BF40BF", "#CF9FFF", "#5D3FD3", \
+        "#FF3131", "#C41E3A", "#800020", \
+        "#89CFF0", "#0096FF", "#0000FF", \
     ]
     for i in range(len(objs)):
         obj_name = objs[i]
@@ -505,44 +509,51 @@ if __name__ == "__main__":
 
         # Load data and clip
         estimator = EstimateModulus()
-        estimator.load_from_file("./example_data/2023-11-17/" + obj_name)
+        estimator.load_from_file("./example_data/2023-12-04/" + obj_name)
         assert len(estimator.depth_images) == len(estimator.forces)
 
-        # Fit using our Hertzian estimator
-        estimator.clip_press()
-        E_star = estimator.fit_modulus()
-        E_object, v_object = estimator.Estar_to_E(E_star)
+        plt.plot(abs(estimator.forces) / abs(estimator.forces).max(), label="Forces")
+        plt.plot(estimator.gripper_widths / estimator.gripper_widths.max(), label="Gripper Width")
+        plt.legend()
+        plt.show()
 
-        print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths(estimator.depth_images)))
-        print(f'Maximum force of {obj_name}:', np.max(estimator.F))
-        print(f'Estimated modulus of {obj_name}:', E_object, '\n')
+        print('here')
 
-        # Plot
-        sp1.plot(estimator.d, estimator.F, ".", label=obj_name, markersize=8, color=plotting_colors[i])
-        # sp2.plot(estimator.d, estimator.a, ".", label=obj_name, markersize=8, color=plotting_colors[i])
-        # sp3.plot(estimator.d*estimator.a, estimator.F, ".", label=obj_name, markersize=8, color=plotting_colors[i])
+        # # Fit using our Hertzian estimator
+        # estimator.clip_press()
+        # E_star = estimator.fit_modulus()
+        # E_object, v_object = estimator.Estar_to_E(E_star)
 
-        F_fit = []
-        R = 0.025
-        for j in range(len(estimator.d)):
-            d_i = estimator.d[j]
-            a_i = estimator.a[j]
-            q_1D_0 = d_i * estimator.E_gel / (1 - estimator.nu_gel**2)
-            p_0 = 2 * q_1D_0 / (np.pi * a_i)
-            F_fit_i = (p_0 * np.pi)**3 * (R**2 / E_star**2) / 6
-            F_fit.append(F_fit_i)
-        sp1.plot(estimator.d, F_fit, "-", label=(obj_name + " fit"), markersize=10, color=plotting_colors[i])
+        # print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths(estimator.depth_images)))
+        # print(f'Maximum force of {obj_name}:', np.max(estimator.F))
+        # print(f'Estimated modulus of {obj_name}:', E_object, '\n')
 
-    fig1.legend()
-    fig1.set_figwidth(10)
-    fig1.set_figheight(10)
+        # # Plot
+        # sp1.plot(estimator.d, estimator.F, ".", label=obj_name, markersize=8, color=plotting_colors[i])
+        # # sp2.plot(estimator.d, estimator.a, ".", label=obj_name, markersize=8, color=plotting_colors[i])
+        # # sp3.plot(estimator.d*estimator.a, estimator.F, ".", label=obj_name, markersize=8, color=plotting_colors[i])
+
+        # F_fit = []
+        # R = 0.025
+        # for j in range(len(estimator.d)):
+        #     d_i = estimator.d[j]
+        #     a_i = estimator.a[j]
+        #     q_1D_0 = d_i * estimator.E_gel / (1 - estimator.nu_gel**2)
+        #     p_0 = 2 * q_1D_0 / (np.pi * a_i)
+        #     F_fit_i = (p_0 * np.pi)**3 * (R**2 / E_star**2) / 6
+        #     F_fit.append(F_fit_i)
+        # sp1.plot(estimator.d, F_fit, "-", label=(obj_name + " fit"), markersize=10, color=plotting_colors[i])
+
+    # fig1.legend()
+    # fig1.set_figwidth(10)
+    # fig1.set_figheight(10)
     # fig2.legend()
     # fig2.set_figwidth(10)
     # fig2.set_figheight(10)
     # fig3.legend()
     # fig3.set_figwidth(10)
     # fig3.set_figheight(10)
-    plt.show()
+    # plt.show()
 
     """
     #####################################################
