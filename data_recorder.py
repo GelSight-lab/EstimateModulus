@@ -135,6 +135,7 @@ class DataRecorder():
         if self._wedge_video_count > 1:
             self.other_wedge_video.clip(i_start, i_end)
         self.contact_force.clip(i_start, i_end)
+        self.gripper_width.clip(i_start, i_end)
         return
 
     # Read frames from a video file and associated pickle files

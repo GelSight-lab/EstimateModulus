@@ -155,6 +155,7 @@ class EstimateModulus():
             # Clip from start to peak depth
             self.depth_images = self.depth_images[i_start:i_peak+1, :, :]
             self.forces = self.forces[i_start:i_peak+1]
+            self.gripper_widths = self.gripper_widths[i_start:i_peak+1]
         return
     
     # Convert depth image to 3D data
@@ -484,6 +485,8 @@ if __name__ == "__main__":
     # sp3.set_xlabel('d*a [m^2]')
     # sp3.set_ylabel('Force [N]')
 
+    delta_frames = []
+
     objs = [
             "orange_ball_softest_1", "orange_ball_softest_2", "orange_ball_softest_3", \
             "green_ball_softer_1", "green_ball_softer_2", "green_ball_softer_1", \
@@ -510,14 +513,19 @@ if __name__ == "__main__":
         # Load data and clip
         estimator = EstimateModulus()
         estimator.load_from_file("./example_data/2023-12-04/" + obj_name)
-        assert len(estimator.depth_images) == len(estimator.forces)
+        
+        assert len(estimator.depth_images) == len(estimator.forces) == len(estimator.gripper_widths)
 
         plt.plot(abs(estimator.forces) / abs(estimator.forces).max(), label="Forces")
         plt.plot(estimator.gripper_widths / estimator.gripper_widths.max(), label="Gripper Width")
         plt.legend()
         plt.show()
 
-        print('here')
+        gripper_median_max_index = np.median(np.where(estimator.gripper_widths == np.min(estimator.gripper_widths))[0])
+        force_median_max_index = np.median(np.where(abs(estimator.forces) == np.max(abs(estimator.forces)))[0])
+
+        delta_frames.append(gripper_median_max_index - force_median_max_index)
+        print(obj_name, delta_frames[-1])
 
         # # Fit using our Hertzian estimator
         # estimator.clip_press()
@@ -543,6 +551,8 @@ if __name__ == "__main__":
         #     F_fit_i = (p_0 * np.pi)**3 * (R**2 / E_star**2) / 6
         #     F_fit.append(F_fit_i)
         # sp1.plot(estimator.d, F_fit, "-", label=(obj_name + " fit"), markersize=10, color=plotting_colors[i])
+
+    print('Average Difference between Peaks:', sum(delta_frames) / len(delta_frames))
 
     # fig1.legend()
     # fig1.set_figwidth(10)
