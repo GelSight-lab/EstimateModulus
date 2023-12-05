@@ -515,17 +515,23 @@ if __name__ == "__main__":
         estimator.load_from_file("./example_data/2023-12-04/" + obj_name)
         
         assert len(estimator.depth_images) == len(estimator.forces) == len(estimator.gripper_widths)
+        
+        max_depths = estimator.max_depths(estimator.depth_images)
+        gripper_median_max_index = np.median(np.where(estimator.gripper_widths == np.min(estimator.gripper_widths))[0])
+        depth_median_max_index = np.median(np.where(max_depths == np.max(max_depths))[0])
+
+        # TODO: Adjust them all automatically?
+
+        delta_frames.append(depth_median_max_index - gripper_median_max_index)
+        print(obj_name, delta_frames[-1])
 
         plt.plot(abs(estimator.forces) / abs(estimator.forces).max(), label="Forces")
         plt.plot(estimator.gripper_widths / estimator.gripper_widths.max(), label="Gripper Width")
+        plt.plot(estimator.max_depths(estimator.depth_images) / estimator.max_depths(estimator.depth_images).max(), label="Depth")
         plt.legend()
         plt.show()
 
-        gripper_median_max_index = np.median(np.where(estimator.gripper_widths == np.min(estimator.gripper_widths))[0])
-        force_median_max_index = np.median(np.where(abs(estimator.forces) == np.max(abs(estimator.forces)))[0])
-
-        delta_frames.append(gripper_median_max_index - force_median_max_index)
-        print(obj_name, delta_frames[-1])
+        print('here')
 
         # # Fit using our Hertzian estimator
         # estimator.clip_press()
