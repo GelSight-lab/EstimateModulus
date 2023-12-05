@@ -12,11 +12,12 @@ class DataRecorder():
     '''
     Class to streamline recording of data from Gelsight Wedge's / force gauge and package into training
     '''
-    def __init__(self, wedge_video=GelsightWedgeVideo(), other_wedge_video=None, contact_force=ContactForce(), gripper_width=GripperWidth()):
+    def __init__(self, wedge_video=GelsightWedgeVideo(), other_wedge_video=None, contact_force=ContactForce(), gripper_width=GripperWidth(), use_gripper_width=True):
         self.wedge_video = wedge_video              # Object containing all video data for wedge on force-sensing finger
         self.other_wedge_video = other_wedge_video  # Object containing all video data for wedge on other finger
         self.contact_force = contact_force          # Object containing all force measurements
         self.gripper_width = gripper_width          # Object containing gripper width measurements
+        self.use_gripper_width = use_gripper_width  # Boolean of whether or not to use gripper width measurements
 
         # How many wedge's are we streaming from?
         self._wedge_video_count = 1
@@ -34,7 +35,8 @@ class DataRecorder():
         if self._wedge_video_count > 1:
             self.other_wedge_video._reset_frames()
         self.contact_force._reset_values()
-        self.gripper_width._reset_values()
+        if self.use_gripper_width:
+            self.gripper_width._reset_values()
 
     # Return forces
     def forces(self):
@@ -49,6 +51,7 @@ class DataRecorder():
     
     # Return gripper widths
     def widths(self):
+        assert self.use_gripper_width
         return self.gripper_width.widths()
     
     # TODO: Re-Implement this method once delay between width and depth is addressed
@@ -91,7 +94,8 @@ class DataRecorder():
                 _ = self.other_wedge_video._decode_image_from_stream()
             if img_found:
                 self.contact_force._request_value()
-                self.gripper_width._record_value()
+                if self.use_gripper_width:
+                    self.gripper_width._record_value()
         return
 
     # Terminate streaming thread
@@ -108,13 +112,19 @@ class DataRecorder():
         if self._wedge_video_count > 1:
             self.other_wedge_video._wipe_stream_info()
         self.contact_force.end_stream(verbose=False)
-        self.gripper_width._post_process_measurements()
+        
+        if self.use_gripper_width:
+            self.gripper_width._post_process_measurements()
 
         time.sleep(1)
         if verbose: print('Done streaming.')
 
+        if self.use_gripper_width:
+            assert len(self.contact_force.forces()) == len(self.gripper_width.widths()) == len(self.wedge_video._raw_rgb_frames)
+        else:
+            assert len(self.contact_force.forces()) == len(self.wedge_video._raw_rgb_frames)
+
         # Adjust by 2 frames for HDMI latency
-        assert len(self.contact_force.forces()) == len(self.gripper_width.widths()) == len(self.wedge_video._raw_rgb_frames)
         self.wedge_video.clip(2, len(self.wedge_video._raw_rgb_frames))
         self.contact_force.clip(0, len(self.contact_force.forces())-2)
         self.gripper_width.clip(0, len(self.gripper_width.widths())-2)
@@ -135,7 +145,8 @@ class DataRecorder():
         if self._wedge_video_count > 1:
             self.other_wedge_video.clip(i_start, i_end)
         self.contact_force.clip(i_start, i_end)
-        self.gripper_width.clip(i_start, i_end)
+        if self.use_gripper_width:
+            self.gripper_width.clip(i_start, i_end)
         return
 
     # Read frames from a video file and associated pickle files
@@ -144,7 +155,8 @@ class DataRecorder():
         if self._wedge_video_count > 1:
             self.wedge_video.upload(path_to_file + '_other_finger.avi')
         self.contact_force.load(path_to_file + '_forces.pkl')
-        self.gripper_width.load(path_to_file + '_widths.pkl')
+        if self.use_gripper_width:
+            self.gripper_width.load(path_to_file + '_widths.pkl')
         return
 
     # Save collected data to video and pickle files
@@ -153,7 +165,8 @@ class DataRecorder():
         if self._wedge_video_count > 1:
             self.other_wedge_video.download(path_to_file + '_other_finger.avi')
         self.contact_force.save(path_to_file + '_forces.pkl')
-        self.gripper_width.save(path_to_file + '_widths.pkl')
+        if self.use_gripper_width:
+            self.gripper_width.save(path_to_file + '_widths.pkl')
         return
     
 

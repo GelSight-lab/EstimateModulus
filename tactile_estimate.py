@@ -24,9 +24,10 @@ PX_TO_MM = np.sqrt((IMG_R / SENSOR_PAD_DIM_MM[0])**2 + (IMG_C / SENSOR_PAD_DIM_M
 MM_TO_PX = 1/PX_TO_MM
 
 class EstimateModulus():
-    def __init__(self, depth_threshold=0.15, assumed_poissons_ratio=0.45):
+    def __init__(self, depth_threshold=0.15, assumed_poissons_ratio=0.45, use_gripper_width=True):
         self.assumed_poisson_ratio = assumed_poissons_ratio # [\]
         self.depth_threshold = depth_threshold # [mm]
+        self.use_gripper_width = use_gripper_width # Boolean of whether or not to include gripper width
 
         self.depth_images = []      # Depth images [in mm]
         self.forces = []            # Measured contact forces
@@ -68,7 +69,7 @@ class EstimateModulus():
     # Load data from a file
     def load_from_file(self, path_to_file):
         self._reset_data()
-        data_recorder = DataRecorder()
+        data_recorder = DataRecorder(use_gripper_width=self.use_gripper_width)
         data_recorder.load(path_to_file)
         data_recorder.auto_clip()
 
@@ -79,7 +80,7 @@ class EstimateModulus():
         assert len(data_recorder.depth_images()) == len(data_recorder.forces())
         self.depth_images = data_recorder.depth_images()
         self.forces = data_recorder.forces()
-        self.gripper_widths = data_recorder.widths()
+        if self.use_gripper_width: self.gripper_widths = data_recorder.widths()
         return
 
     # Return mask of which pixels are in contact with object
@@ -155,7 +156,8 @@ class EstimateModulus():
             # Clip from start to peak depth
             self.depth_images = self.depth_images[i_start:i_peak+1, :, :]
             self.forces = self.forces[i_start:i_peak+1]
-            self.gripper_widths = self.gripper_widths[i_start:i_peak+1]
+            if self.use_gripper_width: 
+                self.gripper_widths = self.gripper_widths[i_start:i_peak+1]
         return
     
     # Convert depth image to 3D data
@@ -402,6 +404,7 @@ class EstimateModulus():
     
     # Naively estimate modulus based on gripper width change and aggregate modulus
     def fit_modulus_naive(self):
+        assert self.use_gripper_width
 
         # Contact patch for area
         contact_areas = []
@@ -429,6 +432,7 @@ class EstimateModulus():
 
     # An alternative naively elastic method that is slighly more sophisticated
     def fit_modulus_compare_strain(self):
+        assert self.use_gripper_width
 
         # Sensor depth => estimate contact stress
         # Contact stress, gripper width => compute elastic modulus
@@ -492,8 +496,8 @@ if __name__ == "__main__":
             "green_ball_softer_1", "green_ball_softer_2", "green_ball_softer_1", \
             # "blue_ball_harder_1", "blue_ball_harder_2", "blue_ball_harder_3", \
             "purple_ball_hardest_1", "purple_ball_hardest_2", "purple_ball_hardest_3", \
-            "foam_brick_1", "foam_brick_2", "foam_brick_3", \
-            "golf_ball_1", "golf_ball_2", "golf_ball_3", \
+            # "foam_brick_1", "foam_brick_2", "foam_brick_3", \
+            # "golf_ball_1", "golf_ball_2", "golf_ball_3", \
         ]
     plotting_colors = [
         "#FFAC1C", "#FF7F50", "#FFD700", \
@@ -508,25 +512,24 @@ if __name__ == "__main__":
 
         wedge_video         =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv") # Force-sensing finger
         contact_force       =   ContactForce(IP="10.10.10.50", port=8888)
-        data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force)
+        data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force, use_gripper_width=False)
 
         # Load data and clip
-        estimator = EstimateModulus()
-        estimator.load_from_file("./example_data/2023-12-04/" + obj_name)
+        estimator = EstimateModulus(use_gripper_width=False)
+        estimator.load_from_file("./example_data/2023-11-17/" + obj_name)
         
-        assert len(estimator.depth_images) == len(estimator.forces) == len(estimator.gripper_widths)
+        # assert len(estimator.depth_images) == len(estimator.forces) == len(estimator.gripper_widths)
         
         max_depths = estimator.max_depths(estimator.depth_images)
-        gripper_median_max_index = np.median(np.where(estimator.gripper_widths == np.min(estimator.gripper_widths))[0])
+        # gripper_median_max_index = np.median(np.where(estimator.gripper_widths == np.min(estimator.gripper_widths))[0])
+        force_median_max_index = np.median(np.where(abs(estimator.forces) == np.max(abs(estimator.forces)))[0])
         depth_median_max_index = np.median(np.where(max_depths == np.max(max_depths))[0])
 
-        # TODO: Adjust them all automatically?
-
-        delta_frames.append(depth_median_max_index - gripper_median_max_index)
+        delta_frames.append(depth_median_max_index - force_median_max_index)
         print(obj_name, delta_frames[-1])
 
         plt.plot(abs(estimator.forces) / abs(estimator.forces).max(), label="Forces")
-        plt.plot(estimator.gripper_widths / estimator.gripper_widths.max(), label="Gripper Width")
+        # plt.plot(estimator.gripper_widths / estimator.gripper_widths.max(), label="Gripper Width")
         plt.plot(estimator.max_depths(estimator.depth_images) / estimator.max_depths(estimator.depth_images).max(), label="Depth")
         plt.legend()
         plt.show()
