@@ -56,12 +56,17 @@ print("Ungrasped.")
 
 OBJECT_NAME = 'golf_ball_3'
 
-time.sleep(1.5)
+time.sleep(0.5)
 
-# Stop recording and save
+# Stop recording
 data_recorder.end_stream()
 print('Ended stream.')
+
+# Clip to grasp
 data_recorder.auto_clip()
+
+# Save data
+assert len(data_recorder.contact_force.forces()) == len(data_recorder.gripper_width.widths()) == len(data_recorder.wedge_video._raw_rgb_frames)
 data_recorder.save(f'./example_data/{OBJECT_NAME}')
 
 print('Done.')
