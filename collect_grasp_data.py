@@ -52,7 +52,7 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
     client.connect(hostname, port, username, password)
 
     # Execute number of data collection trials
-    for _ in range(NUM_TRIALS):
+    for _ in range(num_trials):
 
         # Start with gripper in open position
         open_gripper(franka_arm)
@@ -74,7 +74,7 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
 
         # Save
         data_recorder.auto_clip()
-        data_recorder.save(f'./data/{folder_name}/{object_name}')
+        data_recorder.save(f'./data/{folder_name}/{object_name}_E={str(object_modulus)}')
 
         # Reset data
         data_recorder._reset_data()
