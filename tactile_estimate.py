@@ -161,7 +161,7 @@ class EstimateModulus():
         return
     
     # Convert depth image to 3D data
-    def depth_to_XYZ(self, depth):
+    def depth_to_XYZ(self, depth, remove_outliers=True):
         # Extract data
         X, Y, Z = [], [], []
         for i in range(depth.shape[0]):
@@ -170,18 +170,19 @@ class EstimateModulus():
                     X.append(0.001 * i / PX_TO_MM) # Convert to meters
                     Y.append(0.001 * j / PX_TO_MM)
                     Z.append(0.001 * depth[i][j])
-        data = np.vstack((np.array(X), np.array(Y), np.array(Z)))
-
+        data = np.vstack((np.array(X), np.array(Y), np.array(Z)))   
+        
         # Remove outliers via ~3-sigma rule
-        X, Y, Z = [], [], []
-        centroid = np.mean(data, axis=1)
-        sigma = np.std(data, axis=1)
-        for i in range(data.shape[1]):
-            point = data[:, i]
-            if (np.abs(centroid - point) <= 2.5*sigma).all():
-                X.append(point[0])
-                Y.append(point[1])
-                Z.append(point[2])
+        if remove_outliers == True:
+            X, Y, Z = [], [], []
+            centroid = np.mean(data, axis=1)
+            sigma = np.std(data, axis=1)
+            for i in range(data.shape[1]):
+                point = data[:, i]
+                if (np.abs(centroid - point) <= 3*sigma).all():
+                    X.append(point[0])
+                    Y.append(point[1])
+                    Z.append(point[2])
 
         # TODO: Add (k-means) clustering to pick out point? (if necessary)
 
@@ -197,65 +198,65 @@ class EstimateModulus():
         if X.shape[0] < min_datapoints:
             return [0, 0, 0, 0]
 
-        # # Construct data matrix
-        # A = np.zeros((len(X),4))
-        # A[:,0] = X*2
-        # A[:,1] = Y*2
-        # A[:,2] = Z*2
-        # A[:,3] = 1
+        # Construct data matrix
+        A = np.zeros((len(X),4))
+        A[:,0] = X*2
+        A[:,1] = Y*2
+        A[:,2] = Z*2
+        A[:,3] = 1
 
-        # # Assemble the f matrix
-        # f = np.zeros((len(X),1))
-        # f[:,0] = (X*X) + (Y*Y) + (Z*Z)
+        # Assemble the f matrix
+        f = np.zeros((len(X),1))
+        f[:,0] = (X*X) + (Y*Y) + (Z*Z)
 
-        # # Solve least squares for sphere
-        # C, res, rank, s = np.linalg.lstsq(A, f, rcond=None)
+        # Solve least squares for sphere
+        C, res, rank, s = np.linalg.lstsq(A, f, rcond=None)
 
-        # # Solve for the radius
-        # radius = np.sqrt((C[0]*C[0]) + (C[1]*C[1]) + (C[2]*C[2]) + C[3])
+        # Solve for the radius
+        radius = np.sqrt((C[0]*C[0]) + (C[1]*C[1]) + (C[2]*C[2]) + C[3])
 
-        # return [radius, C[0], C[1], C[2]] # [ radius, center_x, center_y, center_z ]
+        return [radius, C[0], C[1], C[2]] # [ radius, center_x, center_y, center_z ]
 
-        init_guess = [0.01, np.mean(X), np.mean(Y), np.mean(Z) - 0.01]
+        # init_guess = [0.01, np.mean(X), np.mean(Y), np.mean(Z) - 0.01]
 
-        def sphere_res(params, x, y, z):
-            r, cx, cy, cz = params
-            distances = np.sqrt((x - cx)**2 + (y - cy)**2 + (z - cz)**2)
-            return np.sum((distances - r)**2)
+        # def sphere_res(params, x, y, z):
+        #     r, cx, cy, cz = params
+        #     distances = np.sqrt((x - cx)**2 + (y - cy)**2 + (z - cz)**2)
+        #     return np.sum((distances - r)**2)
         
-        def center_constraint(x):
-            return -x[3] # c_z <= 0
+        # def center_constraint(x):
+        #     return -x[3] # c_z <= 0
         
-        def contact_constraint(x):
-            return x[0] + x[3]  # r + c_z >= 0
+        # def contact_constraint(x):
+        #     return x[0] + x[3]  # r + c_z >= 0
         
-        def max_depth_constraint(x):
-            return np.max(Z) - x[0] - x[3] # r + c_z <= max_depth
+        # def max_depth_constraint(x):
+        #     return np.max(Z) - x[0] - x[3] # r + c_z <= max_depth
         
-        eps = 0.005
-        def xc1(x):
-            return x[1] - np.mean(X) + eps
-        def xc2(x):
-            return np.mean(X) - x[1] + eps
-        def yc1(x):
-            return x[2] - np.mean(Y) + eps
-        def yc2(x):
-            return np.mean(Y) - x[2] + eps
+        # eps = 0.005
+        # def xc1(x):
+        #     return x[1] - np.mean(X) + eps
+        # def xc2(x):
+        #     return np.mean(X) - x[1] + eps
+        # def yc1(x):
+        #     return x[2] - np.mean(Y) + eps
+        # def yc2(x):
+        #     return np.mean(Y) - x[2] + eps
 
-        # Use optimization to minimize residuals
-        c = (   {"type": "ineq", "fun": center_constraint},
-                {"type": "ineq", "fun": contact_constraint},
-                {"type": "ineq", "fun": max_depth_constraint},
-                {"type": "ineq", "fun": xc1},
-                {"type": "ineq", "fun": xc2},
-                {"type": "ineq", "fun": yc1},
-                {"type": "ineq", "fun": yc2} )
-        result = minimize(sphere_res, init_guess, args=(X, Y, Z), constraints=c)
+        # # Use optimization to minimize residuals
+        # c = (   {"type": "ineq", "fun": center_constraint},
+        #         {"type": "ineq", "fun": contact_constraint},
+        #         {"type": "ineq", "fun": max_depth_constraint},
+        #         {"type": "ineq", "fun": xc1},
+        #         {"type": "ineq", "fun": xc2},
+        #         {"type": "ineq", "fun": yc1},
+        #         {"type": "ineq", "fun": yc2} )
+        # result = minimize(sphere_res, init_guess, args=(X, Y, Z), constraints=c)
 
-        # Extract fitted parameters
-        r, cx, cy, cz = result.x
+        # # Extract fitted parameters
+        # r, cx, cy, cz = result.x
 
-        return [r, cx, cy, cz]
+        # return [r, cx, cy, cz]
     
     # Check sphere fit by plotting data and fit shape
     def plot_sphere_fit(self, depth, sphere):
@@ -264,7 +265,8 @@ class EstimateModulus():
 
         # Create discrete graph of sphere mesh
         r, x0, y0, z0 = sphere
-        u, v = np.mgrid[0:2*np.pi:20j, 0:np.cos(-z0/r):10j] # Plot top half of sphere
+        # u, v = np.mgrid[0:2*np.pi:20j, 0:np.cos(-z0/r):10j] # Plot top half of sphere
+        u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi/10:10j] # Plot top half of sphere
         # u, v = np.mgrid[0:2*np.pi:20j, 0:2*np.pi:20j] # Plot full sphere
         sphere_x = x0 + np.cos(u)*np.sin(v)*r
         sphere_y = y0 + np.sin(u)*np.sin(v)*r
@@ -273,12 +275,15 @@ class EstimateModulus():
         # Plot sphere in 3D
         fig = plt.figure()
         axes = fig.add_subplot(111, projection='3d')
-        axes.scatter(X, Y, Z, zdir='z', s=20, c='b', rasterized=True)
+        axes.scatter(X, Y, Z, s=8, c=Z, cmap='winter', rasterized=True)
         axes.plot_wireframe(sphere_x, sphere_y, sphere_z, color="r")
         axes.set_xlabel('$X$ [m]',fontsize=16)
         axes.set_ylabel('\n$Y$ [m]',fontsize=16)
         axes.set_zlabel('\n$Z$ [m]',fontsize=16)
+        axes.set_title('Sphere Fitting',fontsize=16)
         plt.show()
+
+        return
 
     # Compute radius of contact from sphere fit
     def estimate_contact_radius(self, sphere):
