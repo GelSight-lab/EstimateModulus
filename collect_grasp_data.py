@@ -9,6 +9,26 @@ from data_recorder import DataRecorder
 
 franka_arm = FrankaArm()
 
+def open_gripper(_franka_arm): {
+    _franka_arm.goto_gripper(
+        0.08, # Maximum width in meters [m]
+        speed=0.04, # Desired operation speed in [m/s]
+        block=True,
+        skill_desc="OpenGripper"
+    )
+}
+
+def close_gripper(_franka_arm): {
+    _franka_arm.goto_gripper(
+        0.0, # Minimum width in meters [m]
+        force=40, # Maximum force in Newtons [N]
+        speed=0.02, # Desired operation speed in [m/s]
+        grasp=True,     
+        block=True,
+        skill_desc="CloseGripper"
+    )
+}
+
 def collect_data_for_object(object_name, object_modulus, num_trials, folder_name=None):
     # Define streaming addresses
     wedge_video         =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv")
@@ -32,23 +52,32 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
     client.connect(hostname, port, username, password)
 
     # Execute number of data collection trials
-    for i in range(NUM_TRIALS):
+    for _ in range(NUM_TRIALS):
+
+        # Start with gripper in open position
+        open_gripper(franka_arm)
 
         # Start recording
+        data_recorder.start_stream(plot=True, plot_diff=True, plot_depth=True, verbose=False)
 
-        # Grasp
+        # Close gripper
+        close_gripper(franka_arm)
+        time.sleep(0.5)
 
-        # Wait briefly?
+        # Open gripper
+        open_gripper(franka_arm)
+
+        time.sleep(1)
 
         # Stop recording
-
-        # Open grasp
-
-        # Crop
+        data_recorder.end_stream()
 
         # Save
         data_recorder.auto_clip()
         data_recorder.save(f'./data/{folder_name}/{object_name}')
+
+        # Reset data
+        data_recorder._reset_data()
 
         # User confirmation to continue
         input('Press Enter to continue collecting data...')
