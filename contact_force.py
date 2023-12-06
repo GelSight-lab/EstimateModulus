@@ -20,13 +20,13 @@ class ContactForce():
 
         self._forces = []                   # Force value in Newtons at times requested
         self._times_requested = []          # Times of measurement requested
-        self._measured_forces = []          # All measurements from gauge at recorded times
-        self._times_measured = []           # Times of measurements recorded
+        self._forces_recorded = []          # All measurements from gauge at recorded times
+        self._times_recorded = []           # Times of measurements recorded
 
     # Clear all force measurements from the object
     def _reset_values(self):
         self._times_requested = []
-        self._times_measured = []
+        self._times_recorded = []
         self._forces = []
 
     # Return array of force measurements
@@ -79,12 +79,12 @@ class ContactForce():
             raise ValueError()
         
         # Interpret data
-        self._times_measured.append(time.time())
+        self._times_recorded.append(time.time())
         float_str = received_data.decode()
         if float_str.count('.') > 1:
             float_str = float_str[float_str.rfind('.', 0, float_str.rfind('.'))+3:]
-        self._measured_forces.append(-float(float_str) * 0.00002)
-        if verbose: print(self._measured_forces[-1])
+        self._forces_recorded.append(-float(float_str) * 0.00002)
+        if verbose: print(self._forces_recorded[-1])
         return
     
     # Save the latest measurement from stream to local data
@@ -97,16 +97,16 @@ class ContactForce():
     def _post_process_measurements(self):
         self._forces = []
         for t_req in self._times_requested:
-            for i in range(len(self._measured_forces) - 1):
-                if t_req > self._times_measured[i] and t_req <= self._times_measured[i+1]:
+            for i in range(len(self._forces_recorded) - 1):
+                if t_req > self._times_recorded[i] and t_req <= self._times_recorded[i+1]:
                     # Interpolate between measured values
-                    F_t = self._measured_forces[i] + (self._measured_forces[i+1] - self._measured_forces[i]) * \
-                            (t_req - self._times_measured[i])/(self._times_measured[i+1] - self._times_measured[i])
+                    F_t = self._forces_recorded[i] + (self._forces_recorded[i+1] - self._forces_recorded[i]) * \
+                            (t_req - self._times_recorded[i])/(self._times_recorded[i+1] - self._times_recorded[i])
                     self._forces.append(F_t)
                     break
-                elif i == len(self._measured_forces) - 2:
+                elif i == len(self._forces_recorded) - 2:
                     # Take last measured
-                    self._forces.append(self._measured_forces[i+1])
+                    self._forces.append(self._forces_recorded[i+1])
         return
     
     # Close socket when done measuring

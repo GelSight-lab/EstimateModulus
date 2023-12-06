@@ -17,6 +17,7 @@ class GripperWidth():
         self._stream_active = False         # Boolean of whether or not we're currently streaming
 
         self._widths = []                   # Gripper width in meters at times (after smoothing)
+        self._times_requested = []          # Times we would like measurements for. Will interpolate measurements to get these values
         self._widths_recorded = []          # Widths recorded at each respective time
         self._times_recorded = []           # Times when measurement recorded
 
@@ -38,25 +39,32 @@ class GripperWidth():
         return
 
     # Open socket to begin streaming values
-    def start_stream(self, verbose=False):
+    def start_stream(self, read_only=False, verbose=False):
         self._reset_values()
         self._stream_active = True
-        self._stream_thread = Thread(target=self._stream, kwargs={'verbose': verbose})
+        self._stream_thread = Thread(target=self._stream, kwargs={'read_only': read_only, 'verbose': verbose})
         self._stream_thread.daemon = True
         self._stream_thread.start()
         return
     
     # Function to facilitate continuous reading of values from stream
-    def _stream(self, verbose=False):
+    def _stream(self, read_only=False, verbose=False):
         while self._stream_active:
             if verbose: print('Streaming force measurements...')
-            self._record_value()
+            self._read_value()
+            if not read_only:
+                self._request_value()
         return
     
     # Save the latest measurement from stream to local data
-    def _record_value(self):
+    def _read_value(self):
         self._times_recorded.append(time.time())
         self._widths_recorded.append(self._franka_arm.get_gripper_width() - 0.0005)
+        return
+    
+    # Request interpolation to this time point
+    def _request_value(self):
+        self._times_requested.append(time.time())
         return
     
     # Smooth measurements based on time requested / recorded
@@ -93,7 +101,7 @@ class GripperWidth():
             plt.show()
         '''
 
-        self._widths = self._widths_recorded
+        self._widths = np.interp(self._times_requested, self._times_recorded, self._widths_recorded).tolist()
 
         return
     

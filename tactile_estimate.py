@@ -521,7 +521,7 @@ if __name__ == "__main__":
 
         # Load data and clip
         estimator = EstimateModulus(use_gripper_width=True)
-        estimator.load_from_file("./example_data/2023-12-04/" + obj_name)
+        estimator.load_from_file("./example_data/" + obj_name)
 
         assert len(estimator.depth_images) == len(estimator.forces) == len(estimator.gripper_widths)
         
