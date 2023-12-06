@@ -496,8 +496,8 @@ if __name__ == "__main__":
             "green_ball_softer_1", "green_ball_softer_2", "green_ball_softer_1", \
             # "blue_ball_harder_1", "blue_ball_harder_2", "blue_ball_harder_3", \
             "purple_ball_hardest_1", "purple_ball_hardest_2", "purple_ball_hardest_3", \
-            # "foam_brick_1", "foam_brick_2", "foam_brick_3", \
-            # "golf_ball_1", "golf_ball_2", "golf_ball_3", \
+            "foam_brick_1", "foam_brick_2", "foam_brick_3", \
+            "golf_ball_1", "golf_ball_2", "golf_ball_3", \
         ]
     plotting_colors = [
         "#FFAC1C", "#FF7F50", "#FFD700", \
@@ -512,16 +512,16 @@ if __name__ == "__main__":
 
         wedge_video         =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv") # Force-sensing finger
         contact_force       =   ContactForce(IP="10.10.10.50", port=8888)
-        data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force, use_gripper_width=False)
+        data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force, use_gripper_width=True)
 
         # Load data and clip
-        estimator = EstimateModulus(use_gripper_width=False)
-        estimator.load_from_file("./example_data/2023-11-17/" + obj_name)
-        
-        # assert len(estimator.depth_images) == len(estimator.forces) == len(estimator.gripper_widths)
+        estimator = EstimateModulus(use_gripper_width=True)
+        estimator.load_from_file("./example_data/2023-12-04/" + obj_name)
+
+        assert len(estimator.depth_images) == len(estimator.forces) == len(estimator.gripper_widths)
         
         max_depths = estimator.max_depths(estimator.depth_images)
-        # gripper_median_max_index = np.median(np.where(estimator.gripper_widths == np.min(estimator.gripper_widths))[0])
+        gripper_median_max_index = np.median(np.where(estimator.gripper_widths == np.min(estimator.gripper_widths))[0])
         force_median_max_index = np.median(np.where(abs(estimator.forces) == np.max(abs(estimator.forces)))[0])
         depth_median_max_index = np.median(np.where(max_depths == np.max(max_depths))[0])
 
@@ -529,7 +529,7 @@ if __name__ == "__main__":
         print(obj_name, delta_frames[-1])
 
         plt.plot(abs(estimator.forces) / abs(estimator.forces).max(), label="Forces")
-        # plt.plot(estimator.gripper_widths / estimator.gripper_widths.max(), label="Gripper Width")
+        plt.plot(estimator.gripper_widths / estimator.gripper_widths.max(), label="Gripper Width")
         plt.plot(estimator.max_depths(estimator.depth_images) / estimator.max_depths(estimator.depth_images).max(), label="Depth")
         plt.legend()
         plt.show()

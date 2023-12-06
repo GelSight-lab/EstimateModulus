@@ -305,9 +305,11 @@ class GelsightWedgeVideo():
         if i_start >= i_end:
             warnings.warn("No press detected! Cannot clip.", Warning)            
         else:
-            self.clip(i_start - diff_offset, i_end + diff_offset)
+            i_start_offset = max(0, i_start - diff_offset)
+            i_end_offset = min(i_end + diff_offset, len(self._raw_rgb_frames)-1)
+            self.clip(i_start_offset, i_end_offset)
             if return_indices:
-                return i_start - diff_offset, i_end + diff_offset
+                return i_start_offset, i_end_offset
 
     # Read frames from a video file
     def upload(self, path_to_file):
