@@ -24,9 +24,10 @@ PX_TO_MM = np.sqrt((IMG_R / SENSOR_PAD_DIM_MM[0])**2 + (IMG_C / SENSOR_PAD_DIM_M
 MM_TO_PX = 1/PX_TO_MM
 
 class EstimateModulus():
-    def __init__(self, depth_threshold=0.00015, assumed_poissons_ratio=0.45, use_gripper_width=True):
+    def __init__(self, depth_threshold=0.00005, assumed_poissons_ratio=0.45, edge_crop_margin=55, use_gripper_width=True):
         self.assumed_poisson_ratio = assumed_poissons_ratio # [\]
         self.depth_threshold = depth_threshold # [m]
+        self.edge_crop_margin = edge_crop_margin # [pixels]
         self.use_gripper_width = use_gripper_width # Boolean of whether or not to include gripper width
 
         self.depth_images = []      # Depth images [in m]
@@ -98,13 +99,14 @@ class EstimateModulus():
         return (laplacian <= 0).astype(int)
 
     # Return mask to disgard outside pixels
-    def crop_edges(self, depth, margin=55):
-        assert depth.shape[0] > 2*margin and depth.shape[1] > 2*margin
+    # Vertically shift crop away from bottom (where depth is most noisy)
+    def crop_edges(self, depth, vertical_shift=20):
+        assert depth.shape[0] > 2*self.edge_crop_margin and depth.shape[1] > 2*self.edge_crop_margin
         filtered_depth = depth.copy()
-        filtered_depth[0:margin, :] = 0
-        filtered_depth[:, 0:margin] = 0
-        filtered_depth[depth.shape[0]-margin:depth.shape[0], :] = 0
-        filtered_depth[:, depth.shape[1]-margin:depth.shape[1]] = 0
+        filtered_depth[0:self.edge_crop_margin, :] = 0
+        filtered_depth[:, 0:self.edge_crop_margin+vertical_shift] = 0
+        filtered_depth[depth.shape[0]-self.edge_crop_margin:depth.shape[0], :] = 0
+        filtered_depth[:, depth.shape[1]-self.edge_crop_margin+vertical_shift:depth.shape[1]] = 0
         return filtered_depth
     
     # Filter all depth images using masks and cropping
@@ -161,7 +163,7 @@ class EstimateModulus():
         return
     
     # Fit to continuous function and down sample to smooth measurements
-    def smooth_gripper_widths(self, plot_smoothing=True, poly_order=4):
+    def smooth_gripper_widths(self, plot_smoothing=False, poly_order=5):
         smooth_widths = []
         indices = np.arange(len(self.gripper_widths))
         p = np.polyfit(indices, self.gripper_widths, poly_order)
@@ -181,15 +183,15 @@ class EstimateModulus():
         return
     
     # Convert depth image to 3D data
-    def depth_to_XYZ(self, depth, remove_outliers=True):
+    def depth_to_XYZ(self, depth, remove_zeros=True, remove_outliers=True):
         # Extract data
         X, Y, Z = [], [], []
         for i in range(depth.shape[0]):
             for j in range(depth.shape[1]):
-                if abs(depth[i][j]) >= 0.0001:
+                if (not remove_zeros) or (remove_zeros and depth[i][j] >= 1e-9):
                     X.append(0.001 * i / PX_TO_MM) # Convert to meters
                     Y.append(0.001 * j / PX_TO_MM)
-                    Z.append(0.001 * depth[i][j])
+                    Z.append(depth[i][j])
         data = np.vstack((np.array(X), np.array(Y), np.array(Z)))   
         
         # Remove outliers via ~3-sigma rule
@@ -277,6 +279,22 @@ class EstimateModulus():
         # r, cx, cy, cz = result.x
 
         # return [r, cx, cy, cz]
+    
+    # Check sphere fit by plotting data and fit shape
+    def plot_depth(self, depth):
+        # Extract 3D data
+        X, Y, Z = self.depth_to_XYZ(depth, remove_zeros=False, remove_outliers=False)
+
+        # Plot sphere in 3D
+        fig = plt.figure()
+        axes = fig.add_subplot(111, projection='3d')
+        axes.scatter(X, Y, Z, s=8, c=Z, cmap='winter', rasterized=True)
+        axes.set_xlabel('$X$ [m]',fontsize=16)
+        axes.set_ylabel('\n$Y$ [m]',fontsize=16)
+        axes.set_zlabel('\n$Z$ [m]',fontsize=16)
+        axes.set_title('Sphere Fitting',fontsize=16)
+        plt.show()
+        return
     
     # Check sphere fit by plotting data and fit shape
     def plot_sphere_fit(self, depth, sphere):
@@ -436,28 +454,43 @@ class EstimateModulus():
         return E_star
     
     # Naively estimate modulus based on gripper width change and aggregate modulus
-    def fit_modulus_naive(self):
+    def fit_modulus_naive(self, use_mean=True):
         assert self.use_gripper_width
 
-        # Contact patch for area
-        contact_areas = []
-        for i in range(len(self.depth_images)):
-            contact_areas.append((0.001 / PX_TO_MM)**2 * np.sum(self.depth_images[i] >= self.depth_threshold))
-
         # Find initial length of first contact
-        L0 = self.gripper_widths[0]/2
-        d0 = self.depth_images[i].mean()
+        L0 = self.gripper_widths[0]
+        d0 = 0
         
-        x_data, y_data = [], []
+        contact_areas, a = [], []
+        x_data, y_data, d = [], [], []
         for i in range(len(self.depth_images)):
-            dL = abs(self.gripper_widths[i]/2 - L0) - (self.depth_images[i].mean() - d0)
-            assert dL > 0
-            if contact_areas[i] >= 1e-5:
-                x_data.append(dL/L0)
-                y_data.append(abs(self.forces[i]) / contact_areas[i])
+            depth_i = self.depth_images[i]
 
+            if use_mean:
+                # d_i = depth_i.mean()
+                d_i = depth_i[self.edge_crop_margin:depth_i.shape[0]-self.edge_crop_margin, \
+                              self.edge_crop_margin+20:depth_i.shape[1]-self.edge_crop_margin+20].mean()
+                contact_area_i = (0.001 / PX_TO_MM)**2 * (depth_i.shape[0] - 2*self.edge_crop_margin) * (depth_i.shape[1] - 2*self.edge_crop_margin)
+            else:
+                d_i = depth_i.max()
+                contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(depth_i >= self.depth_threshold)
+
+            a_i = np.sqrt(contact_area_i / np.pi)
+
+            dL = -(self.gripper_widths[i] - L0 + 2*(d_i - d0))
+            if contact_area_i >= 1e-5 and dL >= 0:
+                x_data.append(dL/L0) # Strain
+                y_data.append(abs(self.forces[i]) / contact_area_i) # Stress
+                contact_areas.append(contact_area_i)
+                a.append(a_i)
+                d.append(d_i)
+
+        # Save stuff
         self.x_data = x_data
         self.y_data = y_data
+        self.contact_areas = contact_areas
+        self.a = a
+        self.d = d
 
         # Fit to modulus
         E = self.linear_coeff_fit(x_data, y_data)
@@ -524,11 +557,11 @@ if __name__ == "__main__":
         # Load data and clip
         estimator = EstimateModulus(use_gripper_width=True)
         estimator.load_from_file("./example_data/2023-12-06/" + obj_name)
-        estimator.clip_to_press()
         estimator.filter_depths(concave_mask=False)
+        estimator.clip_to_press()
         assert len(estimator.depth_images) == len(estimator.forces) == len(estimator.gripper_widths)
 
-        # estimator.smooth_gripper_widths()
+        estimator.smooth_gripper_widths()
 
         # # Fit using our MDR estimator
         # E_star = estimator.fit_modulus()
@@ -538,9 +571,11 @@ if __name__ == "__main__":
 
         print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths(estimator.depth_images)))
         print(f'Maximum force of {obj_name}:', np.max(estimator.forces))
-        print(f'Estimated modulus of {obj_name}:', E_object)
         print(f'Strain range of {obj_name}:', min(estimator.x_data), 'to', max(estimator.x_data))
-        print(f'Strain range of {obj_name}:', min(estimator.y_data), 'to', max(estimator.y_data))
+        print(f'Stress range of {obj_name}:', min(estimator.y_data), 'to', max(estimator.y_data))
+        print(f'Contact radius range of {obj_name}:', min(estimator.a), 'to', max(estimator.a))
+        print(f'Depth range of {obj_name}:', min(estimator.d), 'to', max(estimator.d))
+        print(f'Estimated modulus of {obj_name}:', E_object)
         print('\n')
 
         # Plot
@@ -571,4 +606,3 @@ if __name__ == "__main__":
     # fig3.set_figwidth(10)
     # fig3.set_figheight(10)
     plt.show()
-    pass
