@@ -452,8 +452,9 @@ class EstimateModulus():
         for i in range(len(self.depth_images)):
             dL = abs(self.gripper_widths[i]/2 - L0) - (self.depth_images[i].mean() - d0)
             assert dL > 0
-            x_data.append(dL/L0)
-            y_data.append(abs(self.forces[i]) / contact_areas[i])
+            if contact_areas[i] >= 1e-5:
+                x_data.append(dL/L0)
+                y_data.append(abs(self.forces[i]) / contact_areas[i])
 
         self.x_data = x_data
         self.y_data = y_data
@@ -538,6 +539,8 @@ if __name__ == "__main__":
         print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths(estimator.depth_images)))
         print(f'Maximum force of {obj_name}:', np.max(estimator.forces))
         print(f'Estimated modulus of {obj_name}:', E_object)
+        print(f'Strain range of {obj_name}:', min(estimator.x_data), 'to', max(estimator.x_data))
+        print(f'Strain range of {obj_name}:', min(estimator.y_data), 'to', max(estimator.y_data))
         print('\n')
 
         # Plot
