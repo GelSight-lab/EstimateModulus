@@ -24,12 +24,12 @@ PX_TO_MM = np.sqrt((IMG_R / SENSOR_PAD_DIM_MM[0])**2 + (IMG_C / SENSOR_PAD_DIM_M
 MM_TO_PX = 1/PX_TO_MM
 
 class EstimateModulus():
-    def __init__(self, depth_threshold=0.15, assumed_poissons_ratio=0.45, use_gripper_width=True):
+    def __init__(self, depth_threshold=0.00015, assumed_poissons_ratio=0.45, use_gripper_width=True):
         self.assumed_poisson_ratio = assumed_poissons_ratio # [\]
-        self.depth_threshold = depth_threshold # [mm]
+        self.depth_threshold = depth_threshold # [m]
         self.use_gripper_width = use_gripper_width # Boolean of whether or not to include gripper width
 
-        self.depth_images = []      # Depth images [in mm]
+        self.depth_images = []      # Depth images [in m]
         self.forces = []            # Measured contact forces
         self.gripper_widths = []    # Measured width of gripper
 
@@ -61,7 +61,7 @@ class EstimateModulus():
     def load(self, depth_images, forces, gripper_widths):
         self._reset_data()
         assert len(depth_images) == len(forces)
-        self.depth_images = depth_images
+        self.depth_images = 0.001 * depth_images # Convert to [m]
         self.forces = forces
         self.gripper_widths = gripper_widths
         return
@@ -76,9 +76,9 @@ class EstimateModulus():
         # Extract the data we need
         if len(data_recorder.forces()) > len(data_recorder.depth_images()):
             data_recorder.contact_force.clip(0, len(data_recorder.depth_images()))
-        # TODO: FIx this. We shouldn't need to clip
+        # TODO: Fix this. We shouldn't need to clip
         assert len(data_recorder.depth_images()) == len(data_recorder.forces())
-        self.depth_images = data_recorder.depth_images()
+        self.depth_images = 0.001 * data_recorder.depth_images()
         self.forces = data_recorder.forces()
         if self.use_gripper_width: self.gripper_widths = data_recorder.widths()
         return
@@ -90,8 +90,8 @@ class EstimateModulus():
     # Return mask of only where depth is concave
     def concave_mask(self, depth):
         laplacian_kernel = np.array([[0, 1, 0],
-                                    [1, -4, 1],
-                                    [0, 1, 0]])
+                                     [1, -4, 1],
+                                     [0, 1, 0]])
         laplacian = convolve(depth, laplacian_kernel, mode='constant', cval=0)
 
         # Create a mask: 1 for convex regions, 0 for concave regions
@@ -138,10 +138,10 @@ class EstimateModulus():
         return np.dot(x, y) / np.dot(x, x)
     
     # Cip a press sequence to only the loading sequence (positive force)
-    def clip_press(self, pct_of_max=0.975):
+    def clip_to_press(self, pct_of_max=0.985):
         # Find maximum depth over press
         max_depths = self.max_depths(self.depth_images)
-        i_start = np.argmin(max_depths >= self.depth_threshold)
+        i_start = np.argmax(max_depths >= self.depth_threshold)
 
         i_peak = np.argmax(max_depths)
         peak_depth = np.max(max_depths)
@@ -158,6 +158,26 @@ class EstimateModulus():
             self.forces = self.forces[i_start:i_peak+1]
             if self.use_gripper_width: 
                 self.gripper_widths = self.gripper_widths[i_start:i_peak+1]
+        return
+    
+    # Fit to continuous function and down sample to smooth measurements
+    def smooth_gripper_widths(self, plot_smoothing=True, poly_order=4):
+        smooth_widths = []
+        indices = np.arange(len(self.gripper_widths))
+        p = np.polyfit(indices, self.gripper_widths, poly_order)
+        for i in indices.tolist():
+            w = 0
+            for k in range(len(p)):
+                w += p[k] * i**(poly_order-k)
+            smooth_widths.append(w)
+
+        if plot_smoothing:
+            # Plot to check how the smoothing of data looks
+            plt.plot(indices, self.gripper_widths, 'r.')
+            plt.plot(indices, smooth_widths, 'b-')
+            plt.show()
+
+        self.gripper_widths = np.array(smooth_widths)
         return
     
     # Convert depth image to 3D data
@@ -282,7 +302,6 @@ class EstimateModulus():
         axes.set_zlabel('\n$Z$ [m]',fontsize=16)
         axes.set_title('Sphere Fitting',fontsize=16)
         plt.show()
-
         return
 
     # Compute radius of contact from sphere fit
@@ -318,12 +337,12 @@ class EstimateModulus():
 
             # Don't use sphere fitting at all...
             if np.max(self.depth_images[i]) >= self.depth_threshold:
-                F.append(-self.forces[i])
-                # d.append(0.001 * np.max(self.depth_images[i]))
+                F.append(abs(self.forces[i]))
+                # d.append(np.max(self.depth_images[i]))
 
                 # Get average of top 10 values
                 flattened_depth = self.depth_images[i].flatten()
-                d.append( 0.001 * np.mean(np.sort(flattened_depth)[-10:]) )
+                d.append(np.mean(np.sort(flattened_depth)[-10:]) )
 
                 contact_area = (0.001 / PX_TO_MM)**2 * np.sum(self.depth_images[i] > 0.0000001)
                 a.append(np.sqrt(contact_area / np.pi))
@@ -334,6 +353,15 @@ class EstimateModulus():
         self.F = np.squeeze(np.array(F))
         self.d = np.squeeze(np.array(d))
         self.a = np.squeeze(np.array(a))
+        return
+    
+    # Plot all data over indices
+    def plot_grasp_data(self):
+        plt.plot(abs(self.forces) / abs(self.forces).max(), label="Normalized Forces")
+        plt.plot(self.gripper_widths / self.gripper_widths.max(), label="Normalized Gripper Width")
+        plt.plot(self.max_depths(self.depth_images) / self.max_depths(self.depth_images).max(), label="Normalized Depth")
+        plt.legend()
+        plt.show()
         return
     
     # Plot force versus contact depth
@@ -379,7 +407,7 @@ class EstimateModulus():
         R = 0.025 # [m], measured for elastic balls
 
         for i in range(self.depth_images.shape[0]):
-            F_i = -self.forces[i]
+            F_i = abs(self.forces[i])
             contact_area = (0.001 / PX_TO_MM)**2 * np.sum(self.depth_images[i] > 0.0000001)
             a_i = np.sqrt(contact_area / np.pi)
 
@@ -392,10 +420,10 @@ class EstimateModulus():
                 q_1D_0 = p_0 * np.pi * a_i / 2
                 w_1D_0 = (1 - self.nu_gel**2) * q_1D_0 / self.E_gel
                 F.append(F_i)
-                d.append(d_i * 0.001)
+                d.append(d_i)
                 a.append(a_i)
                 x_data.append(w_1D_0)
-                y_data.append(d_i * 0.001)
+                y_data.append(d_i)
 
         self.d = np.array(d)
         self.a = np.array(a)
@@ -417,53 +445,23 @@ class EstimateModulus():
             contact_areas.append((0.001 / PX_TO_MM)**2 * np.sum(self.depth_images[i] >= self.depth_threshold))
 
         # Find initial length of first contact
-        L0 = 0
-        for i in range(len(self.depth_images)):
-            if max(self.depth_images[i]) > self.depth_threshold:
-                L0 = self.gripper_widths[i]/2
-                break
+        L0 = self.gripper_widths[0]/2
+        d0 = self.depth_images[i].mean()
         
         x_data, y_data = [], []
         for i in range(len(self.depth_images)):
-            dL = abs(self.gripper_widths[i]/2 - L0)
+            dL = abs(self.gripper_widths[i]/2 - L0) - (self.depth_images[i].mean() - d0)
+            assert dL > 0
             x_data.append(dL/L0)
-            y_data.append(self.forces[i] / contact_areas[i])
+            y_data.append(abs(self.forces[i]) / contact_areas[i])
 
-        # Fit to aggregate modulus and extract object component
-        E_agg = self.linear_coeff_fit(x_data, y_data)
-        E = (1/E_agg - 1/self.E_gel)**(-1)
+        self.x_data = x_data
+        self.y_data = y_data
 
-        return E
+        # Fit to modulus
+        E = self.linear_coeff_fit(x_data, y_data)
+        # E = (1/E_agg - 1/self.E_gel)**(-1)
 
-    # An alternative naively elastic method that is slighly more sophisticated
-    def fit_modulus_compare_strain(self):
-        assert self.use_gripper_width
-
-        # Sensor depth => estimate contact stress
-        # Contact stress, gripper width => compute elastic modulus
-
-        avg_stress = []
-        for i in range(len(self.depth_images)):
-            avg_depth = np.mean(self.depth_images[i][self.depth_images[i] >= self.depth_threshold])
-            avg_strain = avg_depth / self.gel_depth
-            avg_stress.append(avg_strain * self.E_gel)
-
-        # Find initial length of first contact
-        L0 = 0
-        for i in range(len(self.depth_images)):
-            if max(self.depth_images[i]) > self.depth_threshold:
-                L0 = self.gripper_widths[i]/2
-                break
-
-        object_strain = []
-        for i in range(len(self.depth_images)):
-            dL = abs(self.gripper_widths[i]/2 - L0)
-            object_strain.append(dL/L0)
-
-        # Fit to aggregate modulus and extract object component
-        E_agg = self.linear_coeff_fit(object_strain, avg_stress)
-        E = (1/E_agg - 1/self.E_gel)**(-1)
-        
         return E
     
     # Fit to Hertizan model with apparent deformation
@@ -479,11 +477,16 @@ if __name__ == "__main__":
     # GET ESTIMATED MODULUS (E) FOR SET OF TEST DATA #
     ##################################################
 
-    # fig1 = plt.figure(1)
-    # sp1 = fig1.add_subplot(211)
-    # sp1.set_xlabel('Measured Sensor Deformation (d) [m]')
-    # sp1.set_ylabel('Force [N]')
+    fig1 = plt.figure(1)
+    sp1 = fig1.add_subplot(211)
+    sp1.set_xlabel('Measured Sensor Deformation (d) [m]')
+    sp1.set_ylabel('Force [N]')
     
+    fig2 = plt.figure(2)
+    sp2 = fig2.add_subplot(211)
+    sp2.set_xlabel('dL / L')
+    sp2.set_ylabel('F / A')
+
     # fig2 = plt.figure(2)
     # sp2 = fig2.add_subplot(211)
     # sp2.set_xlabel('Measured Sensor Deformation (d) [m]')
@@ -494,66 +497,55 @@ if __name__ == "__main__":
     # sp3.set_xlabel('d*a [m^2]')
     # sp3.set_ylabel('Force [N]')
 
-    delta_frames = []
+    wedge_video         = GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv") # Force-sensing finger
+    contact_force       = ContactForce(IP="10.10.10.50", port=8888)
+    data_recorder       = DataRecorder(wedge_video=wedge_video, contact_force=contact_force, use_gripper_width=True)
 
     objs = [
+            "foam_brick_1", "foam_brick_2", "foam_brick_3", \
             "orange_ball_softest_1", "orange_ball_softest_2", "orange_ball_softest_3", \
-            "green_ball_softer_1", "green_ball_softer_2", "green_ball_softer_1", \
+            "green_ball_softer_1", "green_ball_softer_2", "green_ball_softer_3", \
             # "blue_ball_harder_1", "blue_ball_harder_2", "blue_ball_harder_3", \
             "purple_ball_hardest_1", "purple_ball_hardest_2", "purple_ball_hardest_3", \
-            "foam_brick_1", "foam_brick_2", "foam_brick_3", \
             "golf_ball_1", "golf_ball_2", "golf_ball_3", \
         ]
     plotting_colors = [
+        "#FF3131", "#C41E3A", "#800020", \
         "#FFAC1C", "#FF7F50", "#FFD700", \
         "#50C878", "#4CBB17", "#355E3B", \
         # "#89CFF0", "#0096FF", "#0000FF", \
         "#BF40BF", "#CF9FFF", "#5D3FD3", \
-        "#FF3131", "#C41E3A", "#800020", \
         "#89CFF0", "#0096FF", "#0000FF", \
     ]
     for i in range(len(objs)):
         obj_name = objs[i]
 
-        wedge_video         =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv") # Force-sensing finger
-        contact_force       =   ContactForce(IP="10.10.10.50", port=8888)
-        data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force, use_gripper_width=True)
-
         # Load data and clip
         estimator = EstimateModulus(use_gripper_width=True)
         estimator.load_from_file("./example_data/2023-12-06/" + obj_name)
-
+        estimator.clip_to_press()
+        estimator.filter_depths(concave_mask=False)
         assert len(estimator.depth_images) == len(estimator.forces) == len(estimator.gripper_widths)
-        
-        max_depths = estimator.max_depths(estimator.depth_images)
-        gripper_median_max_index = np.median(np.where(estimator.gripper_widths == np.min(estimator.gripper_widths))[0])
-        force_median_max_index = np.median(np.where(abs(estimator.forces) == np.max(abs(estimator.forces)))[0])
-        depth_median_max_index = np.median(np.where(max_depths == np.max(max_depths))[0])
 
-        delta_frames.append(depth_median_max_index - force_median_max_index)
-        print(obj_name, delta_frames[-1])
+        # estimator.smooth_gripper_widths()
 
-        plt.plot(abs(estimator.forces) / abs(estimator.forces).max(), label="Forces")
-        plt.plot(estimator.gripper_widths / estimator.gripper_widths.max(), label="Gripper Width")
-        plt.plot(estimator.max_depths(estimator.depth_images) / estimator.max_depths(estimator.depth_images).max(), label="Depth")
-        plt.legend()
-        plt.show()
-
-        print('here')
-
-        # # Fit using our Hertzian estimator
-        # estimator.clip_press()
+        # # Fit using our MDR estimator
         # E_star = estimator.fit_modulus()
         # E_object, v_object = estimator.Estar_to_E(E_star)
 
-        # print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths(estimator.depth_images)))
-        # print(f'Maximum force of {obj_name}:', np.max(estimator.F))
-        # print(f'Estimated modulus of {obj_name}:', E_object, '\n')
+        E_object = estimator.fit_modulus_naive()
 
-        # # Plot
+        print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths(estimator.depth_images)))
+        print(f'Maximum force of {obj_name}:', np.max(estimator.forces))
+        print(f'Estimated modulus of {obj_name}:', E_object)
+        print('\n')
+
+        # Plot
+        sp1.plot(estimator.max_depths(estimator.depth_images), estimator.forces, ".", label=obj_name, markersize=8, color=plotting_colors[i])
+        sp2.plot(estimator.x_data, estimator.y_data, ".", label=obj_name, markersize=8, color=plotting_colors[i])
         # sp1.plot(estimator.d, estimator.F, ".", label=obj_name, markersize=8, color=plotting_colors[i])
-        # # sp2.plot(estimator.d, estimator.a, ".", label=obj_name, markersize=8, color=plotting_colors[i])
-        # # sp3.plot(estimator.d*estimator.a, estimator.F, ".", label=obj_name, markersize=8, color=plotting_colors[i])
+        # sp2.plot(estimator.d, estimator.a, ".", label=obj_name, markersize=8, color=plotting_colors[i])
+        # sp3.plot(estimator.d*estimator.a, estimator.F, ".", label=obj_name, markersize=8, color=plotting_colors[i])
 
         # F_fit = []
         # R = 0.025
@@ -566,67 +558,14 @@ if __name__ == "__main__":
         #     F_fit.append(F_fit_i)
         # sp1.plot(estimator.d, F_fit, "-", label=(obj_name + " fit"), markersize=10, color=plotting_colors[i])
 
-    print('Average Difference between Peaks:', sum(delta_frames) / len(delta_frames))
-
-    # fig1.legend()
-    # fig1.set_figwidth(10)
-    # fig1.set_figheight(10)
-    # fig2.legend()
-    # fig2.set_figwidth(10)
-    # fig2.set_figheight(10)
+    fig1.legend()
+    fig1.set_figwidth(10)
+    fig1.set_figheight(10)
+    fig2.legend()
+    fig2.set_figwidth(10)
+    fig2.set_figheight(10)
     # fig3.legend()
     # fig3.set_figwidth(10)
     # fig3.set_figheight(10)
-    # plt.show()
-
-    """
-    #####################################################
-    # PLOT RAW DATA TO INVESTIGATE NOISE / CORRELATIONS #
-    #####################################################
-
-    fig1 = plt.figure(1)
-    fig2 = plt.figure(2)
-    fig3 = plt.figure(3)
-    fig4 = plt.figure(4)
-    fig5 = plt.figure(5)
-    sp1 = fig1.add_subplot(211)
-    sp2 = fig2.add_subplot(211)
-    sp3 = fig3.add_subplot(211)
-    sp4 = fig4.add_subplot(211)
-    sp5 = fig5.add_subplot(211)
-    sp1.set_title('Forces')
-    sp2.set_title('Avg. Depths')
-    sp3.set_title('Max Depths')
-    sp4.set_title('Avg. Cropped Depths')
-    sp5.set_title('Max Cropped Depths')
-
-    objs = [
-            "orange_ball_softest_1", "orange_ball_softest_2", "orange_ball_softest_3", \
-            "green_ball_softer_1", "green_ball_softer_2", "green_ball_softer_1", \
-            "blue_ball_harder_1", "blue_ball_harder_2", "blue_ball_harder_3", \
-            "purple_ball_hardest_1", "purple_ball_hardest_2", "purple_ball_hardest_3", \
-        ]
-    for obj_name in objs:
-        
-        # Load data and clip
-        estimator = EstimateModulus()
-        estimator.load_from_file("./example_data/2023-11-17/" + obj_name)
-        assert len(estimator.depth_images) == len(estimator.forces)
-
-        estimator.clip_press()
-        x = range(estimator.depth_images.shape[0])
-        sp1.plot(x, estimator.forces, label=obj_name)
-        sp2.plot(x, estimator.mean_depths(estimator.depth_images), label=obj_name)
-        sp3.plot(x, estimator.max_depths(estimator.depth_images), label=obj_name)
-
-        estimator.filter_depths(concave_mask=False)
-        sp4.plot(x, estimator.mean_depths(estimator.depth_images), label=obj_name)
-        sp5.plot(x, estimator.max_depths(estimator.depth_images), label=obj_name)
-
-    fig1.legend()
-    fig2.legend()
-    fig3.legend()
-    fig4.legend()
-    fig5.legend()
     plt.show()
-    """
+    pass

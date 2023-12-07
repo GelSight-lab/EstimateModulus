@@ -59,7 +59,7 @@ class GripperWidth():
     # Save the latest measurement from stream to local data
     def _read_value(self):
         self._times_recorded.append(time.time())
-        self._widths_recorded.append(self._franka_arm.get_gripper_width() - 0.0005)
+        self._widths_recorded.append(self._franka_arm.get_gripper_width() - 0.0005) # [m]
         return
     
     # Request interpolation to this time point
@@ -69,40 +69,8 @@ class GripperWidth():
     
     # Smooth measurements based on time requested / recorded
     # Necessary because width measurement bandwidth is slower than video
-    def _post_process_measurements(self, plot_smoothing=False):
-        '''
-        self._widths = []
-        t_data = []
-        for i in range(len(self._times_recorded)):
-            t_data.append(self._times_recorded[i] - self._times_recorded[0])
-
-        def sigmoid(x, L ,x0, k, b):
-            y = L / (1 + np.exp(-k*(x-x0))) + b
-            return (y)
-
-        p0 = [max(self._widths_recorded), np.median(t_data), 1, min(self._widths_recorded)] # this is an mandatory initial guess
-
-        popt, pcov = curve_fit(sigmoid, t_data, self._widths_recorded, p0, method='dogbox')
-
-        # p = np.polyfit(t_data, self._widths_recorded, 4)
-        # for t in t_data:
-        #     w = 0
-        #     for k in range(len(p)):
-        #         w += p[k] * t**(4-k)
-        #     self._widths.append(w)
-
-        for t in t_data:
-            self._widths.append(sigmoid(t, popt[0], popt[1], popt[2], popt[3]))
-
-        if plot_smoothing:
-            # Plot to check how the smoothing of data looks
-            plt.plot(self._times_recorded, self._widths_recorded, '.')
-            plt.plot(self._times_recorded, self._widths, '-')
-            plt.show()
-        '''
-
+    def _post_process_measurements(self):
         self._widths = np.interp(self._times_requested, self._times_recorded, self._widths_recorded).tolist()
-
         return
     
     # Close socket when done measuring
