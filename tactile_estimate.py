@@ -500,10 +500,44 @@ class EstimateModulus():
     
     # Fit to Hertizan model with apparent deformation
     def fit_modulus_hertz(self):
-
         # Calculate apparent deformation using gripper width
+        # Pretend that the contact geometry is cylindrical
+        # This gives the relation...
+        #       F_N  =  2 E* d a
+        #       [From (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov]
 
-        pass
+        # Find initial length of first contact
+        L0 = self.gripper_widths[0]
+        d0 = 0
+
+        x_data, y_data = [], []
+        d, contact_areas, a = [], [], []
+        for i in range(len(self.depth_images)):
+            depth_i = self.depth_images[i]
+            d_i = L0 - self.gripper_widths[i]
+            
+            # contact_area_i = (0.001 / PX_TO_MM)**2 * (depth_i.shape[0] - 2*self.edge_crop_margin) * (depth_i.shape[1] - 2*self.edge_crop_margin)
+            contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(depth_i >= self.depth_threshold)
+
+            a_i = np.sqrt(contact_area_i / np.pi)
+
+            if contact_area_i >= 1e-5 and d_i > 0:
+                x_data.append(2*d_i*a_i)
+                y_data.append(self.forces[i])
+                contact_areas.append(contact_area_i)
+                d.append(d_i)
+                a.append(a_i)
+
+        self.x_data = x_data
+        self.y_data = y_data
+        self.contact_areas = contact_areas
+        self.a = a
+        self.d = d
+
+        E_agg = self.linear_coeff_fit(x_data, y_data)
+        E = (1/E_agg - 1/self.E_gel)**(-1)  
+
+        return E
 
 if __name__ == "__main__":
 
@@ -531,9 +565,9 @@ if __name__ == "__main__":
     # sp3.set_xlabel('d*a [m^2]')
     # sp3.set_ylabel('Force [N]')
 
-    wedge_video         = GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv") # Force-sensing finger
-    contact_force       = ContactForce(IP="10.10.10.50", port=8888)
-    data_recorder       = DataRecorder(wedge_video=wedge_video, contact_force=contact_force, use_gripper_width=True)
+    wedge_video    = GelsightWedgeVideo(config_csv="./config.csv") # Force-sensing finger
+    contact_force  = ContactForce()
+    data_recorder  = DataRecorder(wedge_video=wedge_video, contact_force=contact_force, use_gripper_width=True)
 
     objs = [
             "foam_brick_1", "foam_brick_2", "foam_brick_3", \
@@ -567,7 +601,7 @@ if __name__ == "__main__":
         # E_star = estimator.fit_modulus()
         # E_object, v_object = estimator.Estar_to_E(E_star)
 
-        E_object = estimator.fit_modulus_naive()
+        E_object = estimator.fit_modulus_hertz()
 
         print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths(estimator.depth_images)))
         print(f'Maximum force of {obj_name}:', np.max(estimator.forces))
@@ -581,6 +615,7 @@ if __name__ == "__main__":
         # Plot
         sp1.plot(estimator.max_depths(estimator.depth_images), estimator.forces, ".", label=obj_name, markersize=8, color=plotting_colors[i])
         sp2.plot(estimator.x_data, estimator.y_data, ".", label=obj_name, markersize=8, color=plotting_colors[i])
+
         # sp1.plot(estimator.d, estimator.F, ".", label=obj_name, markersize=8, color=plotting_colors[i])
         # sp2.plot(estimator.d, estimator.a, ".", label=obj_name, markersize=8, color=plotting_colors[i])
         # sp3.plot(estimator.d*estimator.a, estimator.F, ".", label=obj_name, markersize=8, color=plotting_colors[i])

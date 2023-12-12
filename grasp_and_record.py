@@ -33,7 +33,7 @@ def close_gripper(_franka_arm): {
     _franka_arm.goto_gripper(
         0.0, # Minimum width in meters [m]
         force=40, # Maximum force in Newtons [N]
-        speed=0.02, # Desired operation speed in [m/s]
+        speed=0.0175, # Desired operation speed in [m/s]
         grasp=True,     
         block=True,
         skill_desc="CloseGripper"
