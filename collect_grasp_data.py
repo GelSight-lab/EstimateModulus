@@ -1,7 +1,6 @@
 import time
 import matplotlib.pyplot as plt
 from datetime import datetime
-import cv2
 
 from frankapy import FrankaArm
 from wedge_video import GelsightWedgeVideo
@@ -31,13 +30,13 @@ def close_gripper(_franka_arm): {
     )
 }
 
-def collect_data_for_object(object_name, object_modulus, num_trials, folder_name=None, plot=False):
+def collect_data_for_object(object_name, object_modulus, num_trials, folder_name=None, plot_collected_data=True):
     # Define streaming addresses
     wedge_video         =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv")
     # other_wedge_video   =   GelsightWedgeVideo(IP="10.10.10.200", config_csv="./config.csv")
     contact_force       =   ContactForce(IP="10.10.10.50", port=8888)
-    # data_recorder       =   DataRecorder(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force)
     gripper_width       =   GripperWidth(franka_arm=franka_arm)
+    # data_recorder       =   DataRecorder(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width)
     data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force, gripper_width=gripper_width)
 
     if folder_name == None:
@@ -74,7 +73,7 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
         # data_recorder.save(f'./data/{folder_name}/{object_name}_t{str(i)}_E{str(object_modulus)}')
         data_recorder.save('./TEST')
 
-        if plot:
+        if plot_collected_data:
             plt.plot(abs(data_recorder.forces()) / abs(data_recorder.forces()).max(), label="Forces")
             plt.plot(data_recorder.widths() / data_recorder.widths().max(), label="Gripper Width")
             plt.plot(data_recorder.max_depths() / data_recorder.max_depths().max(), label="Max Depth")
@@ -84,9 +83,9 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
         # Reset data
         data_recorder._reset_data()
 
-        # # User confirmation to continue
-        # if i != num_trials-1:
-        #     input('Press Enter to continue collecting data...')
+        # User confirmation to continue
+        if i != num_trials-1:
+            input('Press Enter to continue collecting data...')
 
     return True
 
