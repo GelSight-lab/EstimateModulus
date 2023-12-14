@@ -67,7 +67,7 @@ class DataRecorder():
     #     return None
     
     # Initiate streaming thread
-    def start_stream(self, verbose=True, plot=False, plot_other=False, plot_diff=False, plot_depth=False):
+    def start_stream(self, verbose=True, plot=False, plot_other=False, plot_diff=False, plot_depth=False, _open_socket=True):
         self._reset_data()
         self._stream_active = True
 
@@ -77,7 +77,7 @@ class DataRecorder():
             self.other_wedge_video._prepare_stream()
 
         # Start recording contact force and gripper width
-        self.contact_force.start_stream(read_only=True)
+        self.contact_force.start_stream(read_only=True, _open_socket=_open_socket)
         if self.use_gripper_width:
             self.gripper_width.start_stream(read_only=True)
 
@@ -108,7 +108,7 @@ class DataRecorder():
         return
 
     # Terminate streaming thread
-    def end_stream(self, verbose=False):
+    def end_stream(self, verbose=False, _close_socket=True):
         self._stream_active = False
         self._stream_thread.join()
         
@@ -121,7 +121,7 @@ class DataRecorder():
         if self._wedge_video_count > 1:
             self.other_wedge_video._wipe_stream_info()
 
-        self.contact_force.end_stream(verbose=False)
+        self.contact_force.end_stream(verbose=False, _close_socket=_close_socket)
         self.gripper_width.end_stream(verbose=False)
 
         time.sleep(1)

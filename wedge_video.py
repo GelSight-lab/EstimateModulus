@@ -64,6 +64,7 @@ class GelsightWedgeVideo():
     
     # Clear all video data from the object
     def _reset_frames(self):
+        self._curr_rgb_image = None
         self._raw_rgb_frames = []
         self._warped_rgb_frames = []
         self._diff_images = []
@@ -250,8 +251,8 @@ class GelsightWedgeVideo():
     
     # Terminate plotting thread
     def _stop_plotting(self):
-        self._plotting = False
         if self._plotting: self._plot_thread.join()
+        self._plotting = False
         return
     
     # Plot video for your viewing pleasure
@@ -335,9 +336,9 @@ class GelsightWedgeVideo():
 
 if __name__ == "__main__":
     # Typical video recording workflow might be...
-    wedge_video = GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv")
+    wedge_video = GelsightWedgeVideo(IP="10.10.10.200", config_csv="./config.csv")
     wedge_video.start_stream(plot=True, plot_diff=True, plot_depth=True)
-    time.sleep(20)
+    time.sleep(200)
     wedge_video.end_stream()
     print(wedge_video.max_depth())
 

@@ -25,6 +25,7 @@ class GripperWidth():
     def _reset_values(self):
         self._widths_recorded = []
         self._times_recorded = []
+        self._times_requested = []
         self._widths = []
 
     # Return array of width measurements

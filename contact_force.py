@@ -27,6 +27,7 @@ class ContactForce():
     def _reset_values(self):
         self._times_requested = []
         self._times_recorded = []
+        self._forces_recorded = []
         self._forces = []
 
     # Return array of force measurements
@@ -41,7 +42,7 @@ class ContactForce():
         return
 
     # Open socket to begin streaming values
-    def start_stream(self, IP=None, port=None, read_only=False, verbose=False):
+    def start_stream(self, IP=None, port=None, read_only=False, verbose=False, _open_socket=True):
         if IP != None:      self._IP = IP
         if port != None:    self._port = port
         assert self._IP != None and self._port != None
@@ -50,11 +51,11 @@ class ContactForce():
         self._stream_active = True
 
         # Create a socket object and bind it to the specified address and port
-        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket.bind((self._IP, self._port))
-        self._socket.listen(1)
-        
-        self._client_socket, _ = self._socket.accept()
+        if _open_socket:
+            self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self._socket.bind((self._IP, self._port))
+            self._socket.listen(1)
+            self._client_socket, _ = self._socket.accept()
 
         self._stream_thread = Thread(target=self._stream, kwargs={'read_only': read_only, 'verbose': verbose})
         self._stream_thread.daemon = True
@@ -110,11 +111,12 @@ class ContactForce():
         return
     
     # Close socket when done measuring
-    def end_stream(self, verbose=False):
+    def end_stream(self, verbose=False, _close_socket=True):
         self._stream_active = False
-        self._IP = None
         self._stream_thread.join()
-        self._socket.close()
+        if _close_socket:
+            self._socket.close()
+            self._client_socket.close()
         self._post_process_measurements()
         if verbose: print('Done streaming.')
         return
@@ -140,7 +142,7 @@ if __name__ == "__main__":
     contact_force = ContactForce(IP="10.10.10.50")
     contact_force.start_stream(verbose=True)
     print('If measurements not being received, ssh directly into the pi.')
-    time.sleep(100)
+    time.sleep(10)
     contact_force.end_stream()
 
     print(f'Read {len(contact_force.forces())} values in 3 seconds.')
