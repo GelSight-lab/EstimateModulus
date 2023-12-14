@@ -116,7 +116,6 @@ class ContactForce():
         self._stream_thread.join()
         if _close_socket:
             self._socket.close()
-            self._client_socket.close()
         self._post_process_measurements()
         if verbose: print('Done streaming.')
         return

@@ -229,6 +229,7 @@ class GelsightWedgeVideo():
                 break
             if cv2.waitKey(1) == 27: # Exit window by pressing Esc
                 break
+        
         cv2.destroyAllWindows()
         return
     
@@ -251,8 +252,9 @@ class GelsightWedgeVideo():
     
     # Terminate plotting thread
     def _stop_plotting(self):
-        if self._plotting: self._plot_thread.join()
         self._plotting = False
+        self._plot_thread.join()
+        self._plot_thread = None
         return
     
     # Plot video for your viewing pleasure

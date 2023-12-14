@@ -1,6 +1,7 @@
 import time
 import matplotlib.pyplot as plt
 from datetime import datetime
+import cv2
 
 from frankapy import FrankaArm
 from wedge_video import GelsightWedgeVideo
@@ -30,7 +31,7 @@ def close_gripper(_franka_arm): {
     )
 }
 
-def collect_data_for_object(object_name, object_modulus, num_trials, folder_name=None, plot=True):
+def collect_data_for_object(object_name, object_modulus, num_trials, folder_name=None, plot=False):
     # Define streaming addresses
     wedge_video         =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv")
     # other_wedge_video   =   GelsightWedgeVideo(IP="10.10.10.200", config_csv="./config.csv")
@@ -54,11 +55,7 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
 
         # Start recording
         if i > 0: _open_socket = False
-        data_recorder.start_stream(plot=True, plot_diff=True, plot_depth=True, verbose=False, _open_socket=_open_socket)
-
-        ###################################################################
-        # TODO: Do not plot depth while streaming to record training data #
-        ###################################################################
+        data_recorder.start_stream(plot=False, verbose=False, _open_socket=_open_socket)
 
         # Close gripper
         close_gripper(franka_arm)
@@ -66,6 +63,8 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
 
         # Open gripper
         open_gripper(franka_arm)
+        time.sleep(1)
+
         time.sleep(1)
 
         # Stop recording
@@ -87,9 +86,9 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
         # Reset data
         data_recorder._reset_data()
 
-        # User confirmation to continue
-        if i != num_trials-1:
-            input('Press Enter to continue collecting data...')
+        # # User confirmation to continue
+        # if i != num_trials-1:
+        #     input('Press Enter to continue collecting data...')
 
     return True
 
