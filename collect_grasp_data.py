@@ -65,8 +65,6 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
         open_gripper(franka_arm)
         time.sleep(1)
 
-        time.sleep(1)
-
         # Stop recording
         if i == num_trials - 1: _close_socket = True
         data_recorder.end_stream(_close_socket=_close_socket)
