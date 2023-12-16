@@ -33,8 +33,8 @@ def preprocess(path_to_file, data_recorder=DataRecorder()):
 
 if __name__ == "__main__":
 
-    wedge_video         = GelsightWedgeVideo(config_csv="./config.csv") # Force-sensing finger
-    other_wedge_video   = GelsightWedgeVideo(config_csv="./config.csv") # Other finger
+    wedge_video         = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
+    other_wedge_video   = GelsightWedgeVideo(config_csv="./config_200.csv") # Other finger
     data_recorder       = DataRecorder(wedge_video=wedge_video, contact_force=ContactForce())
 
     DATA_DIR = "./data"

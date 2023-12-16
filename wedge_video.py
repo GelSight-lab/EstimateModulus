@@ -341,7 +341,7 @@ class GelsightWedgeVideo():
 
 if __name__ == "__main__":
     # Typical video recording workflow might be...
-    wedge_video = GelsightWedgeVideo(IP="10.10.10.200", config_csv="./config.csv")
+    wedge_video = GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config_100.csv")
     wedge_video.start_stream(plot=True, plot_diff=True, plot_depth=True)
     time.sleep(200)
     wedge_video.end_stream()
@@ -351,7 +351,7 @@ if __name__ == "__main__":
     # wedge_video.auto_clip()
     # wedge_video.download('./example_data/example_clipped.avi')
 
-    # wedge_video = GelsightWedgeVideo(config_csv="./config.csv")
+    # wedge_video = GelsightWedgeVideo(config_csv="./config_100.csv")
     # wedge_video.upload('./example_data/example_clipped.avi')
     # wedge_video.watch()
 

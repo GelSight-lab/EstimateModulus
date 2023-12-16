@@ -565,7 +565,7 @@ if __name__ == "__main__":
     # sp3.set_xlabel('d*a [m^2]')
     # sp3.set_ylabel('Force [N]')
 
-    wedge_video    = GelsightWedgeVideo(config_csv="./config.csv") # Force-sensing finger
+    wedge_video    = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
     contact_force  = ContactForce()
     data_recorder  = DataRecorder(wedge_video=wedge_video, contact_force=contact_force, use_gripper_width=True)
 
