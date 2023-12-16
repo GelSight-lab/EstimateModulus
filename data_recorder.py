@@ -122,7 +122,8 @@ class DataRecorder():
             self.other_wedge_video._wipe_stream_info()
 
         self.contact_force.end_stream(verbose=False, _close_socket=_close_socket)
-        self.gripper_width.end_stream(verbose=False)
+        if self.use_gripper_width:
+            self.gripper_width.end_stream(verbose=False)
 
         time.sleep(1)
         if verbose: print('Done streaming.')

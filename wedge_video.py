@@ -42,6 +42,7 @@ class GelsightWedgeVideo():
         self.warped_size = warped_size          # The size of the image to output from warping process
         self.image_size = (480, 640)            # The size of original image from camera
         self.FPS = 30.0                         # Default FPS from Raspberry Pi camera
+        self.PX_TO_MM = PX_TO_MM                # Conversion from pixels to mm
 
         self._IP = IP                       # IP address of Raspberry Pi stream via mjpg_streamer
         self._url = ''                      # URL address of Raspberry Pi stream via mjpg_streamer
@@ -212,17 +213,19 @@ class GelsightWedgeVideo():
         if plot_depth:  Vis3D = ClassVis3D(n=self.warped_size[0], m=self.warped_size[1])
         while self._plotting:
             if verbose: print('Plotting...')
+
+            # Plot raw RGB image
             cv2.imshow('raw_RGB', self._curr_rgb_image)
+
+            if plot_diff or plot_depth:
+                diff_img = self.calc_diff_image(self.warp_image(self._raw_rgb_frames[0]), self.warp_image(self._curr_rgb_image))
 
             # Plot difference image
             if plot_diff:
-                diff_img = self.calc_diff_image(self.warp_image(self._raw_rgb_frames[0]), self.warp_image(self._curr_rgb_image))
                 cv2.imshow('diff_img', diff_img)
 
             # Plot depth in 3D
-            if plot_depth: 
-                if not plot_diff:
-                    diff_img = self.calc_diff_image(self.warp_image(self._raw_rgb_frames[0]), self.warp_image(self._curr_rgb_image))
+            if plot_depth:
                 Vis3D.update(self.img2depth(diff_img) / PX_TO_MM)
 
             if cv2.waitKey(1) & 0xFF == ord('q'): # Exit windows by pressing "q"

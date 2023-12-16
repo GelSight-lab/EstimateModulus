@@ -1,6 +1,11 @@
 import time
+import cv2
 import matplotlib.pyplot as plt
+
 from datetime import datetime
+from threading import Thread
+
+from gelsight_wedge.src.gelsight.util.Vis3D import ClassVis3D
 
 from frankapy import FrankaArm
 from wedge_video import GelsightWedgeVideo
@@ -30,7 +35,7 @@ def close_gripper(_franka_arm): {
     )
 }
 
-def collect_data_for_object(object_name, object_modulus, num_trials, folder_name=None, plot_collected_data=True):
+def collect_data_for_object(object_name, object_modulus, num_trials, folder_name=None, plot_collected_data=False):
     # Define streaming addresses
     wedge_video         =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config.csv")
     # other_wedge_video   =   GelsightWedgeVideo(IP="10.10.10.200", config_csv="./config.csv")
@@ -43,8 +48,55 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
         # Choose folder name as YYYY-MM-DD by default
         folder_name = datetime.now().strftime('%Y-%m-%d')
 
+    # Use these variables to keep force reading socket open over multiple trials
     _open_socket = True
     _close_socket = False
+
+    # Dedicated plotting function for multi-trial plotting
+    # Note: this became necessary because cv2.imshow() is not great with multiple threads
+    def plot_stream(data_recorder=None, plot_diff=False, plot_depth=False, verbose=False):
+        Vis3D = None
+        while _plot_stream:
+            if type(data_recorder.wedge_video._curr_rgb_image) != type(None):
+                if verbose: print('Plotting...')
+
+                if plot_diff or plot_depth:
+                    diff_img = data_recorder.wedge_video.calc_diff_image(data_recorder.wedge_video.warp_image(data_recorder.wedge_video._raw_rgb_frames[0]), data_recorder.wedge_video.warp_image(data_recorder.wedge_video._curr_rgb_image))
+
+                # Plot depth in 3D
+                if plot_depth:
+                    if no_data and type(Vis3D) == type(None): # Re-initialize 3D plotting
+                        Vis3D = ClassVis3D(n=data_recorder.wedge_video.warped_size[0], m=data_recorder.wedge_video.warped_size[1])
+                    Vis3D.update(data_recorder.wedge_video.img2depth(diff_img) / data_recorder.wedge_video.PX_TO_MM)
+
+                if type(data_recorder.wedge_video._curr_rgb_image) != type(None):
+
+                    # Plot raw RGB image
+                    cv2.imshow('raw_RGB', data_recorder.wedge_video._curr_rgb_image)
+
+                    # Plot difference image
+                    if plot_diff:
+                        cv2.imshow('diff_img', diff_img)
+
+                    if cv2.waitKey(1) & 0xFF == ord('q'): # Exit windows by pressing "q"
+                        break
+                    if cv2.waitKey(1) == 27: # Exit window by pressing Esc
+                        break
+
+                no_data = False
+
+            else:
+                if verbose: print('No data. Not plotting.')
+                no_data = True; Vis3D = None
+                cv2.destroyAllWindows()
+            
+        cv2.destroyAllWindows()
+        return
+
+    _plot_stream = True
+    _stream_thread = Thread(target=plot_stream, kwargs={"data_recorder": data_recorder, "plot_diff": True, "plot_depth": True})
+    _stream_thread.daemon = True
+    _stream_thread.start()
 
     # Execute number of data collection trials
     for i in range(num_trials):
@@ -54,6 +106,7 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
 
         # Start recording
         if i > 0: _open_socket = False
+        print('Starting stream...')
         data_recorder.start_stream(plot=False, verbose=False, _open_socket=_open_socket)
 
         # Close gripper
@@ -62,11 +115,12 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
 
         # Open gripper
         open_gripper(franka_arm)
-        time.sleep(1)
+        time.sleep(5)
 
         # Stop recording
         if i == num_trials - 1: _close_socket = True
         data_recorder.end_stream(_close_socket=_close_socket)
+        print('Done streaming.')
 
         # Save
         data_recorder.auto_clip()
@@ -86,6 +140,9 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
         # User confirmation to continue
         if i != num_trials-1:
             input('Press Enter to continue collecting data...')
+
+    _plot_stream = False
+    _stream_thread.join()
 
     return True
 
