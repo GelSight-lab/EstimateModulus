@@ -24,7 +24,7 @@ PX_TO_MM = np.sqrt((IMG_R / SENSOR_PAD_DIM_MM[0])**2 + (IMG_C / SENSOR_PAD_DIM_M
 MM_TO_PX = 1/PX_TO_MM
 
 class EstimateModulus():
-    def __init__(self, depth_threshold=0.00005, assumed_poissons_ratio=0.45, edge_crop_margin=55, use_gripper_width=True):
+    def __init__(self, depth_threshold=0.00008, assumed_poissons_ratio=0.45, edge_crop_margin=55, use_gripper_width=True):
         self.assumed_poisson_ratio = assumed_poissons_ratio # [\]
         self.depth_threshold = depth_threshold # [m]
         self.edge_crop_margin = edge_crop_margin # [pixels]

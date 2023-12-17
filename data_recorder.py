@@ -149,7 +149,7 @@ class DataRecorder():
         return
     
     # Clip data to first press via thresholding
-    def auto_clip(self, depth_threshold=0.5, diff_offset=15):
+    def auto_clip(self, depth_threshold=0.1, diff_offset=15):
         i_start, i_end = self.wedge_video.auto_clip(depth_threshold=depth_threshold, diff_offset=diff_offset, return_indices=True)
         if self._wedge_video_count > 1:
             self.other_wedge_video.clip(i_start, i_end)

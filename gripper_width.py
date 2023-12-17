@@ -70,8 +70,14 @@ class GripperWidth():
     
     # Smooth measurements based on time requested / recorded
     # Necessary because width measurement bandwidth is slower than video
-    def _post_process_measurements(self):
+    def _post_process_measurements(self, plot_interpolation=False):
         self._widths = np.interp(self._times_requested, self._times_recorded, self._widths_recorded).tolist()
+
+        if plot_interpolation:
+            plt.plot(self._times_requested, self._widths, 'b-')
+            plt.plot(self._times_recorded, self._widths_recorded, 'r.')
+            plt.show()
+
         return
     
     # Close socket when done measuring

@@ -298,7 +298,7 @@ class GelsightWedgeVideo():
         return
     
     # Automatically clip frames to first press via thresholding
-    def auto_clip(self, depth_threshold=0.5, diff_offset=15, return_indices=False):
+    def auto_clip(self, depth_threshold=0.08, diff_offset=15, return_indices=False):
         i_start, i_end = len(self._raw_rgb_frames), len(self._raw_rgb_frames)-1
         for i in range(len(self._raw_rgb_frames)):
             max_depth_i = self.depth_images()[i].max()

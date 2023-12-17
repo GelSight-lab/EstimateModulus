@@ -27,7 +27,7 @@ def open_gripper(_franka_arm): {
 def close_gripper(_franka_arm): {
     _franka_arm.goto_gripper(
         0.0, # Minimum width in meters [m]
-        force=40, # Maximum force in Newtons [N]
+        force=50, # Maximum force in Newtons [N]
         speed=0.0175, # Desired operation speed in [m/s]
         grasp=True,     
         block=True,
@@ -93,10 +93,12 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
         cv2.destroyAllWindows()
         return
 
-    _plot_stream = True
-    _stream_thread = Thread(target=plot_stream, kwargs={"data_recorder": data_recorder, "plot_diff": True, "plot_depth": True})
-    _stream_thread.daemon = True
-    _stream_thread.start()
+    # TODO: Do not stream / plot video while recording training data!
+
+    # _plot_stream = True
+    # _stream_thread = Thread(target=plot_stream, kwargs={"data_recorder": data_recorder, "plot_diff": True, "plot_depth": True})
+    # _stream_thread.daemon = True
+    # _stream_thread.start()
 
     # Execute number of data collection trials
     for i in range(num_trials):
@@ -115,17 +117,14 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
 
         # Open gripper
         open_gripper(franka_arm)
-        time.sleep(5)
+        time.sleep(2)
 
         # Stop recording
         if i == num_trials - 1: _close_socket = True
         data_recorder.end_stream(_close_socket=_close_socket)
         print('Done streaming.')
 
-        # Save
-        data_recorder.auto_clip()
-        # data_recorder.save(f'./data/{folder_name}/{object_name}_t{str(i)}_E{str(object_modulus)}')
-        data_recorder.save('./TEST')
+        # data_recorder.auto_clip()
 
         if plot_collected_data:
             plt.plot(abs(data_recorder.forces()) / abs(data_recorder.forces()).max(), label="Forces")
@@ -134,24 +133,31 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
             plt.legend()
             plt.show()
 
+        # Save
+        data_recorder.save(f'./example_data/{folder_name}/{object_name}__t={str(i)}')
+
+        print('Max depth in mm:', data_recorder.max_depths().max())
+        print('Max force of N:', data_recorder.forces().max())
+        print('Length of data:', len(data_recorder.forces()))
+
         # Reset data
         data_recorder._reset_data()
 
-        # User confirmation to continue
-        if i != num_trials-1:
-            input('Press Enter to continue collecting data...')
+        # # User confirmation to continue
+        # if i != num_trials-1:
+        #     input('Press Enter to continue collecting data...')
 
     _plot_stream = False
-    _stream_thread.join()
+    # _stream_thread.join()
 
     return True
 
 
 if __name__ == "__main__":
 
-    OBJECT_NAME     = "TEST"
-    OBJECT_MODULUS  = "0.0"
-    NUM_TRIALS      = 2
+    OBJECT_NAME     = "rigid_strawberry"
+    OBJECT_MODULUS  = 0.0
+    NUM_TRIALS      = 3
     collect_data_for_object(
         OBJECT_NAME, \
         OBJECT_MODULUS, \
