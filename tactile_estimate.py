@@ -15,7 +15,6 @@ from data_recorder import DataRecorder
 data_recorder = DataRecorder()
 
 from scipy.ndimage import convolve
-from scipy.optimize import minimize
 
 # Archived measurements from calipers on surface in x and y directions
 WARPED_PX_TO_MM = (11, 11)
@@ -27,6 +26,10 @@ SENSOR_PAD_DIM_MM = (24, 33) # [mm]
 PX_TO_MM = np.sqrt((IMG_R / SENSOR_PAD_DIM_MM[0])**2 + (IMG_C / SENSOR_PAD_DIM_MM[1])**2)
 MM_TO_PX = 1/PX_TO_MM
 
+# Constants for zero-ing the edges of depth images
+EDGE_CROP_MARGIN = 30
+CROP_VERTICAL_SHIFT = 0
+
 # Random shades for consistent plotting over multiple trials
 def random_shade_of_color(color_name):
     try:
@@ -36,20 +39,18 @@ def random_shade_of_color(color_name):
         # Randomize the lightness while keeping hue and saturation constant
         lightness = random.uniform(0.5, 1.0)
         rgb_shaded = colorsys.hls_to_rgb(hls[0], lightness, hls[2])
-
         hex_color = "#{:02x}{:02x}{:02x}".format(
             int(rgb_shaded[0] * 255),
             int(rgb_shaded[1] * 255),
             int(rgb_shaded[2] * 255)
         )
-
         return hex_color
 
     except ValueError:
         raise ValueError("Invalid color name")
 
 class EstimateModulus():
-    def __init__(self, depth_threshold=0.001*DEPTH_THRESHOLD, assumed_poissons_ratio=0.45, edge_crop_margin=55, use_gripper_width=True):
+    def __init__(self, depth_threshold=0.001*DEPTH_THRESHOLD, assumed_poissons_ratio=0.45, edge_crop_margin=EDGE_CROP_MARGIN, use_gripper_width=True):
         self.assumed_poisson_ratio = assumed_poissons_ratio # [\]
         self.depth_threshold = depth_threshold # [m]
         self.edge_crop_margin = edge_crop_margin # [pixels]
@@ -99,6 +100,7 @@ class EstimateModulus():
         data_recorder.load(path_to_file)
         if auto_clip:
             data_recorder.auto_clip()
+        self.data_recorder = data_recorder
 
         # Extract the data we need
         if len(data_recorder.forces()) > len(data_recorder.depth_images()):
@@ -126,7 +128,7 @@ class EstimateModulus():
 
     # Return mask to disgard outside pixels
     # Vertically shift crop away from bottom (where depth is most noisy)
-    def crop_edges(self, depth, vertical_shift=20):
+    def crop_edges(self, depth, vertical_shift=CROP_VERTICAL_SHIFT):
         assert depth.shape[0] > 2*self.edge_crop_margin and depth.shape[1] > 2*self.edge_crop_margin
         filtered_depth = depth.copy()
         filtered_depth[0:self.edge_crop_margin, :] = 0
@@ -136,16 +138,17 @@ class EstimateModulus():
         return filtered_depth
     
     # Filter all depth images using masks and cropping
-    def filter_depths(self, concave_mask=False, crop_edges=True):
+    def filter_depths(self, threshold_contact=True, concave_mask=False, crop_edges=True):
         for i in range(self.depth_images.shape[0]):
-            depth = self.depth_images[i,:,:]
+            filtered_depth = self.depth_images[i,:,:]
 
             # Mask depth to consider contact area only
-            contact_mask = self.contact_mask(depth)
-            filtered_depth = depth * contact_mask
+            if threshold_contact:
+                contact_mask = self.contact_mask(filtered_depth)
+                filtered_depth = filtered_depth * contact_mask
 
             if concave_mask: # Only consider convex points on surface
-                filtered_depth = self.concave_mask(depth) * filtered_depth
+                filtered_depth = self.concave_mask(filtered_depth) * filtered_depth
             if crop_edges: # Remove edge regions which could be noisy
                 filtered_depth = self.crop_edges(filtered_depth)
             self.depth_images[i,:,:] = filtered_depth
@@ -153,12 +156,41 @@ class EstimateModulus():
         return
     
     # Return maximum value in every depth image
-    def max_depths(self, depth_images):
-        return np.max(depth_images, axis=(1,2))
+    def max_depths(self):
+        return np.max(self.depth_images, axis=(1,2))
+    
+    # Return mean of neighborhood around max value in every depth image
+    def mean_max_depths(self, kernel_radius=5):
+        mean_max_depths = []
+        for i in range(len(self.depth_images)):
+            depth_image = self.depth_images[i]
+            max_index = np.argmax(depth_image)
+            r, c = np.unravel_index(max_index, depth_image.shape)
+            mean_max_depth = depth_image[r-kernel_radius:r+kernel_radius, c-kernel_radius:c+kernel_radius].mean()
+            mean_max_depths.append(mean_max_depth)
+        return np.array(mean_max_depths)
+    
+    # Return highest percentile of depth population
+    def top_percentile_depths(self, percentile=97):
+        top_percentile_depths = []
+        for i in range(len(self.depth_images)):
+            top_percentile_depths.append(np.percentile(self.depth_images[i], percentile))
+        return np.array(top_percentile_depths)
     
     # Return mean value in every depth image
-    def mean_depths(self, depth_images):
-        return np.mean(depth_images, axis=(1,2))
+    def mean_depths(self):
+        return np.mean(self.depth_images, axis=(1,2))
+    
+    def plot_depth_metrics(self):
+        plt.plot(self.max_depths(), label="Max Depth")
+        plt.plot(self.mean_max_depths(), label="Mean Max Depth")
+        plt.plot(self.top_percentile_depths(), label="Top Percentile Depth")
+        plt.plot(self.mean_depths(), label="Mean Depth")
+        plt.xlabel('Index [/]')
+        plt.ylabel('Depth [m]')
+        plt.legend()
+        plt.show()
+        return
 
     # Fit linear equation with least squares
     def linear_coeff_fit(self, x, y):
@@ -168,7 +200,7 @@ class EstimateModulus():
     # Cip a press sequence to only the loading sequence (positive force)
     def clip_to_press(self, pct_of_max=0.985):
         # Find maximum depth over press
-        max_depths = self.max_depths(self.depth_images)
+        max_depths = self.max_depths()
         i_start = np.argmax(max_depths >= self.depth_threshold)
 
         i_peak = np.argmax(max_depths)
@@ -264,47 +296,6 @@ class EstimateModulus():
         radius = np.sqrt((C[0]*C[0]) + (C[1]*C[1]) + (C[2]*C[2]) + C[3])
 
         return [radius, C[0], C[1], C[2]] # [ radius, center_x, center_y, center_z ]
-
-        # init_guess = [0.01, np.mean(X), np.mean(Y), np.mean(Z) - 0.01]
-
-        # def sphere_res(params, x, y, z):
-        #     r, cx, cy, cz = params
-        #     distances = np.sqrt((x - cx)**2 + (y - cy)**2 + (z - cz)**2)
-        #     return np.sum((distances - r)**2)
-        
-        # def center_constraint(x):
-        #     return -x[3] # c_z <= 0
-        
-        # def contact_constraint(x):
-        #     return x[0] + x[3]  # r + c_z >= 0
-        
-        # def max_depth_constraint(x):
-        #     return np.max(Z) - x[0] - x[3] # r + c_z <= max_depth
-        
-        # eps = 0.005
-        # def xc1(x):
-        #     return x[1] - np.mean(X) + eps
-        # def xc2(x):
-        #     return np.mean(X) - x[1] + eps
-        # def yc1(x):
-        #     return x[2] - np.mean(Y) + eps
-        # def yc2(x):
-        #     return np.mean(Y) - x[2] + eps
-
-        # # Use optimization to minimize residuals
-        # c = (   {"type": "ineq", "fun": center_constraint},
-        #         {"type": "ineq", "fun": contact_constraint},
-        #         {"type": "ineq", "fun": max_depth_constraint},
-        #         {"type": "ineq", "fun": xc1},
-        #         {"type": "ineq", "fun": xc2},
-        #         {"type": "ineq", "fun": yc1},
-        #         {"type": "ineq", "fun": yc2} )
-        # result = minimize(sphere_res, init_guess, args=(X, Y, Z), constraints=c)
-
-        # # Extract fitted parameters
-        # r, cx, cy, cz = result.x
-
-        # return [r, cx, cy, cz]
     
     # Check sphere fit by plotting data and fit shape
     def plot_depth(self, depth):
@@ -403,7 +394,7 @@ class EstimateModulus():
     def plot_grasp_data(self):
         plt.plot(abs(self.forces) / abs(self.forces).max(), label="Normalized Forces")
         plt.plot(self.gripper_widths / self.gripper_widths.max(), label="Normalized Gripper Width")
-        plt.plot(self.max_depths(self.depth_images) / self.max_depths(self.depth_images).max(), label="Normalized Depth")
+        plt.plot(self.max_depths() / self.max_depths().max(), label="Normalized Depth")
         plt.legend()
         plt.show()
         return
@@ -480,7 +471,7 @@ class EstimateModulus():
         return E_star
     
     # Naively estimate modulus based on gripper width change and aggregate modulus
-    def fit_modulus_naive(self, use_mean=True):
+    def fit_modulus_naive(self, use_mean=False):
         assert self.use_gripper_width
 
         # Find initial length of first contact
@@ -589,11 +580,11 @@ if __name__ == "__main__":
     obj_to_color = {
         "yellow_foam_brick_softest" : "yellow",
         "red_foam_brick_softer"     : "red",
-        "blue_foam_brick_hardest"   : "blue",
+        "blue_foam_brick_harder"    : "blue",
         "orange_ball_softest"       : "orange",
         "green_ball_softer"         : "green",
-        "purple_ball_hardest"       : "purple",
-        "rigid_strawberry"          : "pink",
+        "purple_ball_hardest"       : "indigo",
+        "rigid_strawberry"          : "purple",
         "golf_ball"                 : "gray",
     }
 
@@ -609,9 +600,13 @@ if __name__ == "__main__":
         # Load data and clip
         estimator = EstimateModulus(use_gripper_width=True)
         estimator.load_from_file(data_folder + "/" + os.path.splitext(file_name)[0], auto_clip=True)
-        estimator.filter_depths(concave_mask=False)
         estimator.clip_to_press()
         assert len(estimator.depth_images) == len(estimator.forces) == len(estimator.gripper_widths)
+
+        # Filter depth data?
+        estimator.filter_depths(threshold_contact=False, concave_mask=False, crop_edges=True)
+
+        estimator.plot_depth_metrics()
 
         estimator.smooth_gripper_widths()
 
@@ -619,9 +614,9 @@ if __name__ == "__main__":
         # E_star = estimator.fit_modulus()
         # E_object, v_object = estimator.Estar_to_E(E_star)
 
-        E_object = estimator.fit_modulus_hertz()
+        E_object = estimator.fit_modulus_naive()
 
-        print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths(estimator.depth_images)))
+        print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
         print(f'Maximum force of {obj_name}:', np.max(estimator.forces))
         print(f'Strain range of {obj_name}:', min(estimator.x_data), 'to', max(estimator.x_data))
         print(f'Stress range of {obj_name}:', min(estimator.y_data), 'to', max(estimator.y_data))
@@ -632,7 +627,7 @@ if __name__ == "__main__":
 
         # Plot
         plotting_color = random_shade_of_color(obj_to_color[obj_name])
-        sp1.plot(estimator.max_depths(estimator.depth_images), estimator.forces, ".", label=obj_name, markersize=8, color=plotting_color)
+        sp1.plot(estimator.max_depths(), estimator.forces, ".", label=obj_name, markersize=8, color=plotting_color)
         sp2.plot(estimator.x_data, estimator.y_data, ".", label=obj_name, markersize=8, color=plotting_color)
 
         # F_fit = []

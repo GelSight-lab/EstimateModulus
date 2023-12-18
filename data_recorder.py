@@ -13,7 +13,13 @@ class DataRecorder():
     '''
     Class to streamline recording of data from Gelsight Wedge's / force gauge and package into training
     '''
-    def __init__(self, wedge_video=GelsightWedgeVideo(), other_wedge_video=None, contact_force=ContactForce(), gripper_width=GripperWidth(), use_gripper_width=True):
+    def __init__(self, 
+                 wedge_video=GelsightWedgeVideo(config_csv="./config_100.csv"),
+                 other_wedge_video=None, 
+                 contact_force=ContactForce(), 
+                 gripper_width=GripperWidth(), 
+                 use_gripper_width=True
+        ):
         self.wedge_video = wedge_video              # Object containing all video data for wedge on force-sensing finger
         self.other_wedge_video = other_wedge_video  # Object containing all video data for wedge on other finger
         self.contact_force = contact_force          # Object containing all force measurements
