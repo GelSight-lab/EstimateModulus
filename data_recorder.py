@@ -3,7 +3,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-from wedge_video import GelsightWedgeVideo, DEPTH_THRESHOLD
+from wedge_video import GelsightWedgeVideo, DEPTH_THRESHOLD, AUTO_CLIP_DIFF_OFFSET
 from contact_force import ContactForce
 from gripper_width import GripperWidth
 
@@ -150,7 +150,7 @@ class DataRecorder():
         return
     
     # Clip data to first press via thresholding
-    def auto_clip(self, depth_threshold=DEPTH_THRESHOLD, diff_offset=5):
+    def auto_clip(self, depth_threshold=DEPTH_THRESHOLD, diff_offset=AUTO_CLIP_DIFF_OFFSET):
         i_start, i_end = self.wedge_video.auto_clip(depth_threshold=depth_threshold, diff_offset=diff_offset, return_indices=True)
         if self._wedge_video_count > 1:
             self.other_wedge_video.clip(i_start, i_end)
