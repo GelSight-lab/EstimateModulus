@@ -1,8 +1,9 @@
 import os
 import time
 import numpy as np
+import matplotlib.pyplot as plt
 
-from wedge_video import GelsightWedgeVideo
+from wedge_video import GelsightWedgeVideo, DEPTH_THRESHOLD
 from contact_force import ContactForce
 from gripper_width import GripperWidth
 
@@ -149,13 +150,22 @@ class DataRecorder():
         return
     
     # Clip data to first press via thresholding
-    def auto_clip(self, depth_threshold=0.1, diff_offset=15):
+    def auto_clip(self, depth_threshold=DEPTH_THRESHOLD, diff_offset=5):
         i_start, i_end = self.wedge_video.auto_clip(depth_threshold=depth_threshold, diff_offset=diff_offset, return_indices=True)
         if self._wedge_video_count > 1:
             self.other_wedge_video.clip(i_start, i_end)
         self.contact_force.clip(i_start, i_end)
         if self.use_gripper_width:
             self.gripper_width.clip(i_start, i_end)
+        return
+    
+    # Plot all data over indices
+    def plot_grasp_data(self):
+        plt.plot(abs(self.forces()) / abs(self.forces()).max(), label="Normalized Forces")
+        plt.plot(self.widths() / self.widths().max(), label="Normalized Gripper Width")
+        plt.plot(self.max_depths() / self.max_depths().max(), label="Normalized Depth")
+        plt.legend()
+        plt.show()
         return
 
     # Read frames from a video file and associated pickle files

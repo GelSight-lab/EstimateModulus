@@ -1,9 +1,13 @@
+import os
 import cv2
+import colorsys
+import random
+import webcolors
 import numpy as np
 import warnings
 import matplotlib.pyplot as plt
 
-from wedge_video import GelsightWedgeVideo
+from wedge_video import GelsightWedgeVideo, DEPTH_THRESHOLD
 from contact_force import ContactForce
 from gripper_width import GripperWidth
 from data_recorder import DataRecorder
@@ -23,8 +27,29 @@ SENSOR_PAD_DIM_MM = (24, 33) # [mm]
 PX_TO_MM = np.sqrt((IMG_R / SENSOR_PAD_DIM_MM[0])**2 + (IMG_C / SENSOR_PAD_DIM_MM[1])**2)
 MM_TO_PX = 1/PX_TO_MM
 
+# Random shades for consistent plotting over multiple trials
+def random_shade_of_color(color_name):
+    try:
+        rgb = webcolors.name_to_rgb(color_name)
+        hls = colorsys.rgb_to_hls(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255)
+
+        # Randomize the lightness while keeping hue and saturation constant
+        lightness = random.uniform(0.5, 1.0)
+        rgb_shaded = colorsys.hls_to_rgb(hls[0], lightness, hls[2])
+
+        hex_color = "#{:02x}{:02x}{:02x}".format(
+            int(rgb_shaded[0] * 255),
+            int(rgb_shaded[1] * 255),
+            int(rgb_shaded[2] * 255)
+        )
+
+        return hex_color
+
+    except ValueError:
+        raise ValueError("Invalid color name")
+
 class EstimateModulus():
-    def __init__(self, depth_threshold=0.00008, assumed_poissons_ratio=0.45, edge_crop_margin=55, use_gripper_width=True):
+    def __init__(self, depth_threshold=0.001*DEPTH_THRESHOLD, assumed_poissons_ratio=0.45, edge_crop_margin=55, use_gripper_width=True):
         self.assumed_poisson_ratio = assumed_poissons_ratio # [\]
         self.depth_threshold = depth_threshold # [m]
         self.edge_crop_margin = edge_crop_margin # [pixels]
@@ -555,42 +580,34 @@ if __name__ == "__main__":
     sp2.set_xlabel('dL / L')
     sp2.set_ylabel('F / A')
 
-    # fig2 = plt.figure(2)
-    # sp2 = fig2.add_subplot(211)
-    # sp2.set_xlabel('Measured Sensor Deformation (d) [m]')
-    # sp2.set_ylabel('Measured Contact Radius (a) [m]')
-    
-    # fig3 = plt.figure(3)
-    # sp3 = fig3.add_subplot(211)
-    # sp3.set_xlabel('d*a [m^2]')
-    # sp3.set_ylabel('Force [N]')
-
     wedge_video    = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
     contact_force  = ContactForce()
     data_recorder  = DataRecorder(wedge_video=wedge_video, contact_force=contact_force, use_gripper_width=True)
 
-    objs = [
-            "foam_brick_1", "foam_brick_2", "foam_brick_3", \
-            "orange_ball_softest_1", "orange_ball_softest_2", "orange_ball_softest_3", \
-            "green_ball_softer_1", "green_ball_softer_2", "green_ball_softer_3", \
-            # "blue_ball_harder_1", "blue_ball_harder_2", "blue_ball_harder_3", \
-            "purple_ball_hardest_1", "purple_ball_hardest_2", "purple_ball_hardest_3", \
-            "golf_ball_1", "golf_ball_2", "golf_ball_3", \
-        ]
-    plotting_colors = [
-        "#FF3131", "#C41E3A", "#800020", \
-        "#FFAC1C", "#FF7F50", "#FFD700", \
-        "#50C878", "#4CBB17", "#355E3B", \
-        # "#89CFF0", "#0096FF", "#0000FF", \
-        "#BF40BF", "#CF9FFF", "#5D3FD3", \
-        "#89CFF0", "#0096FF", "#0000FF", \
-    ]
-    for i in range(len(objs)):
-        obj_name = objs[i]
+    # For plotting
+    obj_to_color = {
+        "yellow_foam_brick_softest" : "yellow",
+        "red_foam_brick_softer"     : "red",
+        "blue_foam_brick_hardest"   : "blue",
+        "orange_ball_softest"       : "orange",
+        "green_ball_softer"         : "green",
+        "purple_ball_hardest"       : "purple",
+        "rigid_strawberry"          : "pink",
+        "golf_ball"                 : "gray",
+    }
+
+    # Unload data from folder
+    data_folder = "./example_data/2023-12-16"
+    data_files = os.listdir(data_folder)
+    for i in range(len(data_files)):
+        file_name = data_files[i]
+        if os.path.splitext(file_name)[1] != '.avi':
+            continue
+        obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
         # Load data and clip
         estimator = EstimateModulus(use_gripper_width=True)
-        estimator.load_from_file("./example_data/2023-12-06/" + obj_name)
+        estimator.load_from_file(data_folder + "/" + obj_name)
         estimator.filter_depths(concave_mask=False)
         estimator.clip_to_press()
         assert len(estimator.depth_images) == len(estimator.forces) == len(estimator.gripper_widths)
@@ -613,12 +630,9 @@ if __name__ == "__main__":
         print('\n')
 
         # Plot
-        sp1.plot(estimator.max_depths(estimator.depth_images), estimator.forces, ".", label=obj_name, markersize=8, color=plotting_colors[i])
-        sp2.plot(estimator.x_data, estimator.y_data, ".", label=obj_name, markersize=8, color=plotting_colors[i])
-
-        # sp1.plot(estimator.d, estimator.F, ".", label=obj_name, markersize=8, color=plotting_colors[i])
-        # sp2.plot(estimator.d, estimator.a, ".", label=obj_name, markersize=8, color=plotting_colors[i])
-        # sp3.plot(estimator.d*estimator.a, estimator.F, ".", label=obj_name, markersize=8, color=plotting_colors[i])
+        plotting_color = random_shade_of_color(obj_to_color[obj_name])
+        sp1.plot(estimator.max_depths(estimator.depth_images), estimator.forces, ".", label=obj_name, markersize=8, color=plotting_color)
+        sp2.plot(estimator.x_data, estimator.y_data, ".", label=obj_name, markersize=8, color=plotting_color)
 
         # F_fit = []
         # R = 0.025
@@ -637,7 +651,4 @@ if __name__ == "__main__":
     fig2.legend()
     fig2.set_figwidth(10)
     fig2.set_figheight(10)
-    # fig3.legend()
-    # fig3.set_figwidth(10)
-    # fig3.set_figheight(10)
     plt.show()

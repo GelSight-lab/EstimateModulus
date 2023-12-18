@@ -33,6 +33,9 @@ PX_TO_MM = np.sqrt(WARPED_PX_TO_MM[0]**2 + WARPED_PX_TO_MM[1]**2)
 # Derived from linear fit from max depth measured to known calibration ball diameter
 DEPTH_TO_MM = 21.5
 
+# Threshold which is considered more than noise (significant penetration)
+DEPTH_THRESHOLD = 0.075 # [mm]
+
 class GelsightWedgeVideo():
     '''
     Class to streamline processing of data from Gelsight Wedge's
@@ -142,13 +145,13 @@ class GelsightWedgeVideo():
         depth = self.grad2depth(diff_img, dx, dy)
         return depth
     
+    # Return maximum from each depth image
+    def max_depths(self):
+        return np.max(self.depth_images(), axis=(1,2))
+    
     # Return the maximum depth across all frames
     def max_depth(self):
-        max_depth = 0
-        for i in range(self.depth_images().shape[0]):
-            depth = self.depth_images()[i,:,:]
-            if depth.max() >= max_depth:    max_depth = depth.max()
-        return max_depth
+        return self.max_depths().max()
     
     # Convert IP addres to streaming url
     def IP_to_URL(self, IP, port=8080):
@@ -298,15 +301,20 @@ class GelsightWedgeVideo():
         return
     
     # Automatically clip frames to first press via thresholding
-    def auto_clip(self, depth_threshold=0.08, diff_offset=15, return_indices=False):
+    def auto_clip(self, depth_threshold=DEPTH_THRESHOLD, diff_offset=5, return_indices=False):
         i_start, i_end = len(self._raw_rgb_frames), len(self._raw_rgb_frames)-1
-        for i in range(len(self._raw_rgb_frames)):
-            max_depth_i = self.depth_images()[i].max()
-            if max_depth_i > depth_threshold and i <= i_start:
+        max_depths = self.max_depths()
+        for i in range(2, len(self._raw_rgb_frames)-2):
+            # Check if next 3 consecutive indices are aboue threshold
+            penetration = max_depths[i] > depth_threshold and max_depths[i+1] > depth_threshold and max_depths[i+2] > depth_threshold
+            if penetration and i <= i_start:
                 i_start = i
-            if max_depth_i < depth_threshold and i >= i_start and i <= i_end:
+
+            # Check if past 3 consecutive indices are below threshold
+            no_penetration = max_depths[i] < depth_threshold and max_depths[i-1] < depth_threshold and max_depths[i-2] < depth_threshold
+            if no_penetration and i >= i_start and i <= i_end:
                 i_end = i
-            if max_depth_i < depth_threshold and i >= i_start: break
+            if no_penetration and i >= i_start: break
 
         if i_start >= i_end:
             warnings.warn("No press detected! Cannot clip.", Warning)            
