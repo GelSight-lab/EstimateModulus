@@ -93,11 +93,12 @@ class EstimateModulus():
         return
 
     # Load data from a file
-    def load_from_file(self, path_to_file):
+    def load_from_file(self, path_to_file, auto_clip=True):
         self._reset_data()
         data_recorder = DataRecorder(use_gripper_width=self.use_gripper_width)
         data_recorder.load(path_to_file)
-        data_recorder.auto_clip()
+        if auto_clip:
+            data_recorder.auto_clip()
 
         # Extract the data we need
         if len(data_recorder.forces()) > len(data_recorder.depth_images()):
@@ -607,7 +608,7 @@ if __name__ == "__main__":
 
         # Load data and clip
         estimator = EstimateModulus(use_gripper_width=True)
-        estimator.load_from_file(data_folder + "/" + obj_name)
+        estimator.load_from_file(data_folder + "/" + os.path.splitext(file_name)[0], auto_clip=True)
         estimator.filter_depths(concave_mask=False)
         estimator.clip_to_press()
         assert len(estimator.depth_images) == len(estimator.forces) == len(estimator.gripper_widths)

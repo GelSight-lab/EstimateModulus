@@ -161,9 +161,13 @@ class DataRecorder():
     
     # Plot all data over indices
     def plot_grasp_data(self):
-        plt.plot(abs(self.forces()) / abs(self.forces()).max(), label="Normalized Forces")
-        plt.plot(self.widths() / self.widths().max(), label="Normalized Gripper Width")
-        plt.plot(self.max_depths() / self.max_depths().max(), label="Normalized Depth")
+        forces      = abs(self.forces())
+        widths      = self.widths()
+        max_depths  = self.max_depths()
+        plt.plot(forces / forces.max(), label="Normalized Contact Forces")
+        plt.plot(widths / widths.max(), label="Normalized Gripper Width")
+        plt.plot(max_depths / max_depths.max(), label="Normalized Max Depth")
+        plt.xlabel('Index [/]')
         plt.legend()
         plt.show()
         return
