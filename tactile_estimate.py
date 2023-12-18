@@ -103,9 +103,6 @@ class EstimateModulus():
         self.data_recorder = data_recorder
 
         # Extract the data we need
-        if len(data_recorder.forces()) > len(data_recorder.depth_images()):
-            data_recorder.contact_force.clip(0, len(data_recorder.depth_images()))
-        # TODO: Fix this. We shouldn't need to clip
         assert len(data_recorder.depth_images()) == len(data_recorder.forces())
         self.depth_images = 0.001 * data_recorder.depth_images()
         self.forces = data_recorder.forces()
@@ -489,7 +486,7 @@ class EstimateModulus():
                               self.edge_crop_margin+20:depth_i.shape[1]-self.edge_crop_margin+20].mean()
                 contact_area_i = (0.001 / PX_TO_MM)**2 * (depth_i.shape[0] - 2*self.edge_crop_margin) * (depth_i.shape[1] - 2*self.edge_crop_margin)
             else:
-                d_i = depth_i.max()
+                d_i = self.top_percentile_depths()[i] # depth_i.max()
                 contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(depth_i >= self.depth_threshold)
 
             a_i = np.sqrt(contact_area_i / np.pi)
@@ -597,6 +594,8 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
+        if file_name[0] != 'y': continue
+
         # Load data and clip
         estimator = EstimateModulus(use_gripper_width=True)
         estimator.load_from_file(data_folder + "/" + os.path.splitext(file_name)[0], auto_clip=True)
@@ -605,8 +604,6 @@ if __name__ == "__main__":
 
         # Filter depth data?
         estimator.filter_depths(threshold_contact=False, concave_mask=False, crop_edges=True)
-
-        estimator.plot_depth_metrics()
 
         estimator.smooth_gripper_widths()
 
