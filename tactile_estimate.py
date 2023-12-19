@@ -54,7 +54,7 @@ class EstimateModulus():
             self, depth_threshold=0.001*DEPTH_THRESHOLD, force_threshold=FORCE_THRESHOLD, 
             assumed_poissons_ratio=0.45, edge_crop_margin=EDGE_CROP_MARGIN, use_gripper_width=True
         ):
-        
+
         self.assumed_poisson_ratio = assumed_poissons_ratio # [\]
         self.depth_threshold = depth_threshold # [m]
         self.force_threshold = force_threshold # [N]
@@ -201,26 +201,15 @@ class EstimateModulus():
         return np.dot(x, y) / np.dot(x, x)
     
     # Cip a press sequence to only the loading sequence (positive force)
-    def clip_to_press(self, pct_of_max=0.99, use_force=True):
+    def clip_to_press(self, use_force=True):
         # Find maximum depth over press
         if use_force:
             i_start = np.argmax(self.forces >= self.force_threshold)
             i_peak = np.argmax(self.forces)
-            peak_force = np.max(self.forces)
-            for i in range(len(self.forces.shape)):
-                if self.forces[i] >= pct_of_max*peak_force:
-                    i_peak = i
-                    break
         else:
             # Find peak and start over depth values
-            max_depths = self.max_depths()
-            i_start = np.argmax(max_depths >= self.depth_threshold)
-            i_peak = np.argmax(max_depths)
-            peak_depth = np.max(max_depths)
-            for i in range(max_depths.shape[0]):
-                if max_depths[i] > pct_of_max*peak_depth:
-                    i_peak = i
-                    break
+            i_start = np.argmax(self.max_depths() >= self.depth_threshold)
+            i_peak = np.argmax(self.max_depths())
 
         if i_start >= i_peak:
             warnings.warn("No press detected! Cannot clip.", Warning)
