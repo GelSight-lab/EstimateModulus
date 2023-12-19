@@ -35,7 +35,7 @@ DEPTH_TO_MM = 21.5
 
 # Threshold which is considered more than noise (significant penetration)
 DEPTH_THRESHOLD = 0.075 # [mm]
-AUTO_CLIP_OFFSET = 5 # indices
+AUTO_CLIP_OFFSET = 10 # indices
 
 class GelsightWedgeVideo():
     '''
@@ -350,7 +350,7 @@ class GelsightWedgeVideo():
 
 if __name__ == "__main__":
     # Typical video recording workflow might be...
-    wedge_video = GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config_100.csv")
+    wedge_video = GelsightWedgeVideo(IP="172.16.0.100", config_csv="./config_100.csv")
     wedge_video.start_stream(plot=True, plot_diff=True, plot_depth=True)
     time.sleep(200)
     wedge_video.end_stream()

@@ -9,7 +9,7 @@ from threading import Thread
 from wedge_video import AUTO_CLIP_OFFSET
 
 # For automatically clipping
-FORCE_THRESHOLD = 0.3 # [N]
+FORCE_THRESHOLD = 0.65 # [N]
 
 class ContactForce():
     '''
@@ -169,7 +169,7 @@ class ContactForce():
 
 if __name__ == "__main__":
     # Read data from source
-    contact_force = ContactForce(IP="10.10.10.50")
+    contact_force = ContactForce(IP="172.16.0.50")
     contact_force.start_stream(verbose=True)
     print('If measurements not being received, ssh directly into the pi.')
     time.sleep(10)

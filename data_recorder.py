@@ -222,9 +222,9 @@ if __name__ == "__main__":
     # Typical data collection workflow might be...
 
     # Define streaming addresses
-    wedge_video         =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config_100.csv") # Force-sensing finger
-    # other_wedge_video   =   GelsightWedgeVideo(IP="10.10.10.200", config_csv="./config_200.csv") # Other finger
-    contact_force       =   ContactForce(IP="10.10.10.50", port=8888)
+    wedge_video         =   GelsightWedgeVideo(IP="172.16.0.100", config_csv="./config_100.csv") # Force-sensing finger
+    # other_wedge_video   =   GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_200.csv") # Other finger
+    contact_force       =   ContactForce(IP="172.16.0.50", port=8888)
     data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force)
 
     # Record example data and save

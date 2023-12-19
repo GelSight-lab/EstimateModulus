@@ -37,9 +37,9 @@ def close_gripper(_franka_arm): {
 
 def collect_data_for_object(object_name, object_modulus, num_trials, folder_name=None, plot_collected_data=False):
     # Define streaming addresses
-    wedge_video         =   GelsightWedgeVideo(IP="10.10.10.100", config_csv="./config_100.csv")
-    # other_wedge_video   =   GelsightWedgeVideo(IP="10.10.10.200", config_csv="./config_200.csv")
-    contact_force       =   ContactForce(IP="10.10.10.50", port=8888)
+    wedge_video         =   GelsightWedgeVideo(IP="172.16.0.100", config_csv="./config_100.csv")
+    # other_wedge_video   =   GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_200.csv")
+    contact_force       =   ContactForce(IP="172.16.0.50", port=8888)
     gripper_width       =   GripperWidth(franka_arm=franka_arm)
     # data_recorder       =   DataRecorder(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width)
     data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force, gripper_width=gripper_width)
