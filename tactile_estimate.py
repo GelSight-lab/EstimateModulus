@@ -8,7 +8,7 @@ import warnings
 import matplotlib.pyplot as plt
 
 from wedge_video import GelsightWedgeVideo, DEPTH_THRESHOLD
-from contact_force import ContactForce
+from contact_force import ContactForce, FORCE_THRESHOLD
 from gripper_width import GripperWidth
 from data_recorder import DataRecorder
 
@@ -50,9 +50,14 @@ def random_shade_of_color(color_name):
         raise ValueError("Invalid color name")
 
 class EstimateModulus():
-    def __init__(self, depth_threshold=0.001*DEPTH_THRESHOLD, assumed_poissons_ratio=0.45, edge_crop_margin=EDGE_CROP_MARGIN, use_gripper_width=True):
+    def __init__(
+            self, depth_threshold=0.001*DEPTH_THRESHOLD, force_threshold=FORCE_THRESHOLD, 
+            assumed_poissons_ratio=0.45, edge_crop_margin=EDGE_CROP_MARGIN, use_gripper_width=True
+        ):
+        
         self.assumed_poisson_ratio = assumed_poissons_ratio # [\]
         self.depth_threshold = depth_threshold # [m]
+        self.force_threshold = force_threshold # [N]
         self.edge_crop_margin = edge_crop_margin # [pixels]
         self.use_gripper_width = use_gripper_width # Boolean of whether or not to include gripper width
 
@@ -98,6 +103,7 @@ class EstimateModulus():
         self._reset_data()
         data_recorder = DataRecorder(use_gripper_width=self.use_gripper_width)
         data_recorder.load(path_to_file)
+
         if auto_clip:
             data_recorder.auto_clip()
         self.data_recorder = data_recorder
@@ -195,17 +201,26 @@ class EstimateModulus():
         return np.dot(x, y) / np.dot(x, x)
     
     # Cip a press sequence to only the loading sequence (positive force)
-    def clip_to_press(self, pct_of_max=0.985):
+    def clip_to_press(self, pct_of_max=0.99, use_force=True):
         # Find maximum depth over press
-        max_depths = self.max_depths()
-        i_start = np.argmax(max_depths >= self.depth_threshold)
-
-        i_peak = np.argmax(max_depths)
-        peak_depth = np.max(max_depths)
-        for i in range(max_depths.shape[0]):
-            if max_depths[i] > pct_of_max*peak_depth:
-                i_peak = i
-                break
+        if use_force:
+            i_start = np.argmax(self.forces >= self.force_threshold)
+            i_peak = np.argmax(self.forces)
+            peak_force = np.max(self.forces)
+            for i in range(len(self.forces.shape)):
+                if self.forces[i] >= pct_of_max*peak_force:
+                    i_peak = i
+                    break
+        else:
+            # Find peak and start over depth values
+            max_depths = self.max_depths()
+            i_start = np.argmax(max_depths >= self.depth_threshold)
+            i_peak = np.argmax(max_depths)
+            peak_depth = np.max(max_depths)
+            for i in range(max_depths.shape[0]):
+                if max_depths[i] > pct_of_max*peak_depth:
+                    i_peak = i
+                    break
 
         if i_start >= i_peak:
             warnings.warn("No press detected! Cannot clip.", Warning)
@@ -499,7 +514,7 @@ class EstimateModulus():
                 a.append(a_i)
                 d.append(d_i)
 
-        # Save stuff
+        # Save stuff for plotting
         self.x_data = x_data
         self.y_data = y_data
         self.contact_areas = contact_areas
@@ -522,7 +537,6 @@ class EstimateModulus():
 
         # Find initial length of first contact
         L0 = self.gripper_widths[0]
-        d0 = 0
 
         x_data, y_data = [], []
         d, contact_areas, a = [], [], []

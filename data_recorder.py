@@ -1,10 +1,11 @@
 import os
 import time
 import numpy as np
+import warnings
 import matplotlib.pyplot as plt
 
-from wedge_video import GelsightWedgeVideo, DEPTH_THRESHOLD, AUTO_CLIP_DIFF_OFFSET
-from contact_force import ContactForce
+from wedge_video import GelsightWedgeVideo, DEPTH_THRESHOLD, AUTO_CLIP_OFFSET
+from contact_force import ContactForce, FORCE_THRESHOLD
 from gripper_width import GripperWidth
 
 from threading import Thread
@@ -156,8 +157,26 @@ class DataRecorder():
         return
     
     # Clip data to first press via thresholding
-    def auto_clip(self, depth_threshold=DEPTH_THRESHOLD, diff_offset=AUTO_CLIP_DIFF_OFFSET):
-        i_start, i_end = self.wedge_video.auto_clip(depth_threshold=depth_threshold, diff_offset=diff_offset, return_indices=True)
+    def auto_clip(self, use_force=True, force_threshold=FORCE_THRESHOLD, depth_threshold=DEPTH_THRESHOLD, clip_offset=AUTO_CLIP_OFFSET):
+        if use_force:
+            self.auto_clip_by_force(force_threshold=force_threshold, clip_offset=clip_offset)
+        else:
+            self.auto_clip_by_depth(depth_threshold=depth_threshold, clip_offset=clip_offset)
+        return
+
+    # Auto clip based on force
+    def auto_clip_by_force(self, force_threshold=FORCE_THRESHOLD, clip_offset=AUTO_CLIP_OFFSET):
+        i_start, i_end = self.contact_force.auto_clip(force_threshold=force_threshold, clip_offset=clip_offset, return_indices=True)
+        self.wedge_video.clip(i_start, i_end)
+        if self._wedge_video_count > 1:
+            self.other_wedge_video.clip(i_start, i_end)
+        if self.use_gripper_width:
+            self.gripper_width.clip(i_start, i_end)
+        return
+            
+    # Auto clip based on depth of frames
+    def auto_clip_by_depth(self, depth_threshold=DEPTH_THRESHOLD, clip_offset=AUTO_CLIP_OFFSET):
+        i_start, i_end = self.wedge_video.auto_clip(depth_threshold=depth_threshold, clip_offset=clip_offset, return_indices=True)
         if self._wedge_video_count > 1:
             self.other_wedge_video.clip(i_start, i_end)
         self.contact_force.clip(i_start, i_end)

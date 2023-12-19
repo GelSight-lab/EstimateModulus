@@ -1,9 +1,15 @@
 import socket
+import time
+import warnings
 import pickle
 import numpy as np
-import time
 
 from threading import Thread
+
+from wedge_video import AUTO_CLIP_OFFSET
+
+# For automatically clipping
+FORCE_THRESHOLD = 0.3 # [N]
 
 class ContactForce():
     '''
@@ -40,6 +46,31 @@ class ContactForce():
         i_end = min(i_end, len(self._forces))
         self._forces = self._forces[i_start:i_end]
         return
+    
+    # Automatically clip based on threshold
+    def auto_clip(self, force_threshold=FORCE_THRESHOLD, clip_offset=AUTO_CLIP_OFFSET, return_indices=False):
+        forces = self.forces()
+        i_start, i_end = len(forces), len(forces)-1
+        for i in range(2, len(forces)-2):
+            # Check if next 3 consecutive indices are aboue threshold
+            penetration = forces[i] > force_threshold and forces[i+1] > force_threshold and forces[i+2] > force_threshold
+            if penetration and i <= i_start:
+                i_start = i
+
+            # Check if past 3 consecutive indices are below threshold
+            no_penetration = forces[i] < force_threshold and forces[i-1] < force_threshold and forces[i-2] < force_threshold
+            if no_penetration and i >= i_start and i <= i_end:
+                i_end = i
+            if no_penetration and i >= i_start: break
+
+        if i_start >= i_end:
+            warnings.warn("No press detected! Cannot clip.", Warning)            
+        else:
+            i_start_offset = max(0, i_start - clip_offset)
+            i_end_offset = min(i_end + clip_offset, len(forces)-1)
+            self.clip(i_start_offset, i_end_offset)
+            if return_indices:
+                return i_start_offset, i_end_offset
 
     # Open socket to begin streaming values
     def start_stream(self, IP=None, port=None, read_only=False, verbose=False, _open_socket=True):

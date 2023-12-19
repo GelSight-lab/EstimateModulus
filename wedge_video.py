@@ -35,7 +35,7 @@ DEPTH_TO_MM = 21.5
 
 # Threshold which is considered more than noise (significant penetration)
 DEPTH_THRESHOLD = 0.075 # [mm]
-AUTO_CLIP_DIFF_OFFSET = 5 # indices
+AUTO_CLIP_OFFSET = 5 # indices
 
 class GelsightWedgeVideo():
     '''
@@ -302,7 +302,7 @@ class GelsightWedgeVideo():
         return
     
     # Automatically clip frames to first press via thresholding
-    def auto_clip(self, depth_threshold=DEPTH_THRESHOLD, diff_offset=AUTO_CLIP_DIFF_OFFSET, return_indices=False):
+    def auto_clip(self, depth_threshold=DEPTH_THRESHOLD, clip_offset=AUTO_CLIP_OFFSET, return_indices=False):
         i_start, i_end = len(self._raw_rgb_frames), len(self._raw_rgb_frames)-1
         max_depths = self.max_depths()
         for i in range(2, len(self._raw_rgb_frames)-2):
@@ -320,8 +320,8 @@ class GelsightWedgeVideo():
         if i_start >= i_end:
             warnings.warn("No press detected! Cannot clip.", Warning)            
         else:
-            i_start_offset = max(0, i_start - diff_offset)
-            i_end_offset = min(i_end + diff_offset, len(self._raw_rgb_frames)-1)
+            i_start_offset = max(0, i_start - clip_offset)
+            i_end_offset = min(i_end + clip_offset, len(self._raw_rgb_frames)-1)
             self.clip(i_start_offset, i_end_offset)
             if return_indices:
                 return i_start_offset, i_end_offset
