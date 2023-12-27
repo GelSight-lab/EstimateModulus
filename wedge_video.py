@@ -37,15 +37,21 @@ DEPTH_TO_MM = 21.5
 DEPTH_THRESHOLD = 0.075 # [mm]
 AUTO_CLIP_OFFSET = 10 # indices
 
+# Size before and after warping
+ORIGINAL_IMG_SIZE = (480, 640)
+WARPED_IMG_SIZE = (400, 300)
+
+STREAM_FPS = 30.0
+
 class GelsightWedgeVideo():
     '''
     Class to streamline processing of data from Gelsight Wedge's
     '''
-    def __init__(self, config_csv="./config.csv", IP=None, warped_size=(400, 300)):
+    def __init__(self, config_csv="./config.csv", IP=None, warped_size=WARPED_IMG_SIZE):
         self.corners = read_csv(config_csv)     # CSV with pixel coordinates of mirror corners in the order (topleft,topright,bottomleft,bottomright)
         self.warped_size = warped_size          # The size of the image to output from warping process
-        self.image_size = (480, 640)            # The size of original image from camera
-        self.FPS = 30.0                         # Default FPS from Raspberry Pi camera
+        self.image_size = ORIGINAL_IMG_SIZE     # The size of original image from camera
+        self.FPS = STREAM_FPS                   # Default FPS from Raspberry Pi camera
         self.PX_TO_MM = PX_TO_MM                # Conversion from pixels to mm
 
         self._IP = IP                       # IP address of Raspberry Pi stream via mjpg_streamer
@@ -121,7 +127,6 @@ class GelsightWedgeVideo():
     
     # Calculate difference image from reference frame
     def calc_diff_image(self, ref_img, img):
-        # return img*1.0 - cv2.GaussianBlur(ref_img, (11, 11), 0)*1.0 + 127.0
         return (img * 1.0 - cv2.GaussianBlur(ref_img, (11, 11), 0) * 1.0) / 255 + 0.5
 
     # Calculate gradients from a cropped / warped difference image
@@ -355,12 +360,3 @@ if __name__ == "__main__":
     time.sleep(200)
     wedge_video.end_stream()
     print(wedge_video.max_depth())
-
-    # wedge_video.upload('./example_data/example.avi')
-    # wedge_video.auto_clip()
-    # wedge_video.download('./example_data/example_clipped.avi')
-
-    # wedge_video = GelsightWedgeVideo(config_csv="./config_100.csv")
-    # wedge_video.upload('./example_data/example_clipped.avi')
-    # wedge_video.watch()
-
