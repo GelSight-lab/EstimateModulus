@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 
 from wedge_video import GelsightWedgeVideo, DEPTH_THRESHOLD
 from contact_force import ContactForce, FORCE_THRESHOLD
-from gripper_width import GripperWidth
-from data_recorder import DataRecorder
+from gripper_width import GripperWidth, SMOOTHING_POLY_ORDER
+from grasp_data import GraspData
 
-data_recorder = DataRecorder()
+grasp_data = GraspData()
 
 from scipy.ndimage import convolve
 
@@ -59,15 +59,9 @@ class EstimateModulus():
         self.depth_threshold = depth_threshold # [m]
         self.force_threshold = force_threshold # [N]
         self.edge_crop_margin = edge_crop_margin # [pixels]
+
         self.use_gripper_width = use_gripper_width # Boolean of whether or not to include gripper width
-
-        self.depth_images = []      # Depth images [in m]
-        self.forces = []            # Measured contact forces
-        self.gripper_widths = []    # Measured width of gripper
-
-        self.F = []                 # Contact forces for fitting
-        self.d = []                 # Contact depth for fitting
-        self.a = []                 # Contact radius for fitting
+        self.grasp_data = GraspData(use_gripper_width=self.use_gripper_width)
 
         # Gel material: Silicone XP-565
         # Datasheet:
@@ -80,40 +74,70 @@ class EstimateModulus():
         self.gel_width = 0.035 # [m]
         self.gel_depth = 0.0055 # [m] (slightly adjusted because of depth inaccuracies)
 
+        self._F = []                 # Contact forces for fitting
+        self._d = []                 # Contact depth for fitting
+        self._a = []                 # Contact radius for fitting
+        self._contact_areas = []     # Contact areas for fitting
+        self._x_data = []            # Save fitting data for plotting
+        self._y_data = []            # Save fitting data for plotting
+
     # Clear out the data values
     def _reset_data(self):
-        self.depth_images = []
-        self.forces = []
-        self.gripper_widths = []
-        self.F = []
-        self.d = []
-        self.a = []
-
-    # Directly load measurement data
-    def load(self, depth_images, forces, gripper_widths):
-        self._reset_data()
-        assert len(depth_images) == len(forces)
-        self.depth_images = 0.001 * depth_images # Convert to [m]
-        self.forces = forces
-        self.gripper_widths = gripper_widths
-        return
+        self.grasp_data = GraspData(use_gripper_width=self.use_gripper_width)
+        self._F = []
+        self._d = []
+        self._a = []
+        self._contact_areas = []
+        self._x_data = []
+        self._y_data = []
 
     # Load data from a file
     def load_from_file(self, path_to_file, auto_clip=True):
         self._reset_data()
-        data_recorder = DataRecorder(use_gripper_width=self.use_gripper_width)
-        data_recorder.load(path_to_file)
-
+        self.grasp_data.load(path_to_file)
         if auto_clip:
-            data_recorder.auto_clip()
-        self.data_recorder = data_recorder
-
-        # Extract the data we need
-        assert len(data_recorder.depth_images()) == len(data_recorder.forces())
-        self.depth_images = 0.001 * data_recorder.depth_images()
-        self.forces = data_recorder.forces()
-        if self.use_gripper_width: self.gripper_widths = data_recorder.widths()
+            self.grasp_data.auto_clip()
+        assert len(self.grasp_data.depth_images()) == len(self.grasp_data.forces())
         return
+
+    # Return forces
+    def forces(self):
+        return self.grasp_data.forces()
+    
+    # Return gripper widths
+    def gripper_widths(self):
+        assert self.use_gripper_width
+        return self.grasp_data.gripper_widths()
+    
+    # Return depth images (in meters)
+    def depth_images(self):
+        return 0.001 * self.grasp_data.depth_images()
+    
+    # Return maximum value from each depth image (in meters)
+    def max_depths(self):
+        return 0.001 * self.grasp_data.max_depths()
+    
+    # Return mean value from each depth image (in meters)
+    def mean_depths(self):
+        return 0.001 * self.grasp_data.mean_depths()
+    
+    # Return mean of neighborhood around max value from each depth image (in meters)
+    def mean_max_depths(self, kernel_radius=5):
+        mean_max_depths = []
+        for i in range(len(self.depth_images())):
+            depth_image = self.depth_images()[i]
+            max_index = np.argmax(depth_image)
+            r, c = np.unravel_index(max_index, depth_image.shape)
+            mean_max_depth = depth_image[r-kernel_radius:r+kernel_radius, c-kernel_radius:c+kernel_radius].mean()
+            mean_max_depths.append(mean_max_depth)
+        return np.array(mean_max_depths)
+    
+    # Return highest percentile of depth population (in meters)
+    def top_percentile_depths(self, percentile=97):
+        top_percentile_depths = []
+        for i in range(len(self.depth_images())):
+            top_percentile_depths.append(np.percentile(self.depth_images()[i], percentile))
+        return np.array(top_percentile_depths)
 
     # Return mask of which pixels are in contact with object
     def contact_mask(self, depth):
@@ -142,8 +166,8 @@ class EstimateModulus():
     
     # Filter all depth images using masks and cropping
     def filter_depths(self, threshold_contact=True, concave_mask=False, crop_edges=True):
-        for i in range(self.depth_images.shape[0]):
-            filtered_depth = self.depth_images[i,:,:]
+        for i in range(self.depth_images().shape[0]):
+            filtered_depth = self.depth_images()[i,:,:]
 
             # Mask depth to consider contact area only
             if threshold_contact:
@@ -154,35 +178,9 @@ class EstimateModulus():
                 filtered_depth = self.concave_mask(filtered_depth) * filtered_depth
             if crop_edges: # Remove edge regions which could be noisy
                 filtered_depth = self.crop_edges(filtered_depth)
-            self.depth_images[i,:,:] = filtered_depth
+            self.depth_images()[i,:,:] = filtered_depth
 
         return
-    
-    # Return maximum value in every depth image
-    def max_depths(self):
-        return np.max(self.depth_images, axis=(1,2))
-    
-    # Return mean of neighborhood around max value in every depth image
-    def mean_max_depths(self, kernel_radius=5):
-        mean_max_depths = []
-        for i in range(len(self.depth_images)):
-            depth_image = self.depth_images[i]
-            max_index = np.argmax(depth_image)
-            r, c = np.unravel_index(max_index, depth_image.shape)
-            mean_max_depth = depth_image[r-kernel_radius:r+kernel_radius, c-kernel_radius:c+kernel_radius].mean()
-            mean_max_depths.append(mean_max_depth)
-        return np.array(mean_max_depths)
-    
-    # Return highest percentile of depth population
-    def top_percentile_depths(self, percentile=97):
-        top_percentile_depths = []
-        for i in range(len(self.depth_images)):
-            top_percentile_depths.append(np.percentile(self.depth_images[i], percentile))
-        return np.array(top_percentile_depths)
-    
-    # Return mean value in every depth image
-    def mean_depths(self):
-        return np.mean(self.depth_images, axis=(1,2))
     
     def plot_depth_metrics(self):
         plt.plot(self.max_depths(), label="Max Depth")
@@ -204,8 +202,8 @@ class EstimateModulus():
     def clip_to_press(self, use_force=True):
         # Find maximum depth over press
         if use_force:
-            i_start = np.argmax(self.forces >= self.force_threshold)
-            i_peak = np.argmax(self.forces)
+            i_start = np.argmax(self.forces() >= self.force_threshold)
+            i_peak = np.argmax(self.forces())
         else:
             # Find peak and start over depth values
             i_start = np.argmax(self.max_depths() >= self.depth_threshold)
@@ -215,30 +213,12 @@ class EstimateModulus():
             warnings.warn("No press detected! Cannot clip.", Warning)
         else:
             # Clip from start to peak depth
-            self.depth_images = self.depth_images[i_start:i_peak+1, :, :]
-            self.forces = self.forces[i_start:i_peak+1]
-            if self.use_gripper_width: 
-                self.gripper_widths = self.gripper_widths[i_start:i_peak+1]
+            self.grasp_data.clip(i_start, i_peak+1)
         return
     
     # Fit to continuous function and down sample to smooth measurements
-    def smooth_gripper_widths(self, plot_smoothing=False, poly_order=5):
-        smooth_widths = []
-        indices = np.arange(len(self.gripper_widths))
-        p = np.polyfit(indices, self.gripper_widths, poly_order)
-        for i in indices.tolist():
-            w = 0
-            for k in range(len(p)):
-                w += p[k] * i**(poly_order-k)
-            smooth_widths.append(w)
-
-        if plot_smoothing:
-            # Plot to check how the smoothing of data looks
-            plt.plot(indices, self.gripper_widths, 'r.')
-            plt.plot(indices, smooth_widths, 'b-')
-            plt.show()
-
-        self.gripper_widths = np.array(smooth_widths)
+    def smooth_gripper_widths(self, plot_smoothing=False, poly_order=SMOOTHING_POLY_ORDER):
+        self.grasp_data.gripper_width.smooth_gripper_widths(plot_smoothing=plot_smoothing, poly_order=poly_order)
         return
     
     # Convert depth image to 3D data
@@ -350,51 +330,51 @@ class EstimateModulus():
     
     # Return force, contact depth, and contact radius
     def _compute_contact_data(self):
-        if len(self.F) > 0 and len(self.d) > 0 and len(self.a) > 0:
-            assert len(self.F) == len(self.d) == len(self.a)
-            return self.F, self.d, self.a
+        if len(self._F) > 0 and len(self.d) > 0 and len(self.a) > 0:
+            assert len(self._F) == len(self.d) == len(self.a)
+            return self._F, self.d, self.a
         
         # Fit to depth and radius for each frame
         F, d, a = [], [], []
-        for i in range(self.depth_images.shape[0]):
+        for i in range(self.depth_images().shape[0]):
             # sphere = [0, 0, 0, 0] # [r, cx, cy, cz]
-            # if np.max(self.depth_images[i]) > 0:
-            #     sphere = self.fit_depth_to_sphere(self.depth_images[i])
+            # if np.max(self.depth_images()[i]) > 0:
+            #     sphere = self.fit_depth_to_sphere(self.depth_images()[i])
 
             # if 0 < self.estimate_contact_depth(sphere) and \
             #     0 < self.estimate_contact_radius(sphere) < self.gel_width/2:
 
-            #     F.append(-self.forces[i])
+            #     F.append(-self.forces()[i])
             #     d.append(self.estimate_contact_depth(sphere))
             #     a.append(self.estimate_contact_radius(sphere))
-            #     # self.plot_sphere_fit(self.depth_images[i], sphere)
+            #     # self.plot_sphere_fit(self.depth_images()[i], sphere)
             #     # if self.estimate_contact_radius(sphere) > self.gel_width/2:
             #     #     raise ValueError("Contact radius larger than sensor gel!")
 
             # Don't use sphere fitting at all...
-            if np.max(self.depth_images[i]) >= self.depth_threshold:
-                F.append(abs(self.forces[i]))
-                # d.append(np.max(self.depth_images[i]))
+            if np.max(self.depth_images()[i]) >= self.depth_threshold:
+                F.append(abs(self.forces()[i]))
+                # d.append(np.max(self.depth_images()[i]))
 
                 # Get average of top 10 values
-                flattened_depth = self.depth_images[i].flatten()
+                flattened_depth = self.depth_images()[i].flatten()
                 d.append(np.mean(np.sort(flattened_depth)[-10:]) )
 
-                contact_area = (0.001 / PX_TO_MM)**2 * np.sum(self.depth_images[i] > 0.0000001)
+                contact_area = (0.001 / PX_TO_MM)**2 * np.sum(self.depth_images()[i] > 0.0000001)
                 a.append(np.sqrt(contact_area / np.pi))
 
         # TODO: Fit d and a to strictly increasing / step function (e.g. sigmoid?)
 
         assert len(d) > 0, "Could not find any reasonable contact!"
-        self.F = np.squeeze(np.array(F))
-        self.d = np.squeeze(np.array(d))
-        self.a = np.squeeze(np.array(a))
+        self._F = np.squeeze(np.array(F))
+        self._d = np.squeeze(np.array(d))
+        self._a = np.squeeze(np.array(a))
         return
     
     # Plot all data over indices
     def plot_grasp_data(self):
-        plt.plot(abs(self.forces) / abs(self.forces).max(), label="Normalized Forces")
-        plt.plot(self.gripper_widths / self.gripper_widths.max(), label="Normalized Gripper Width")
+        plt.plot(abs(self.forces()) / abs(self.forces()).max(), label="Normalized Forces")
+        plt.plot(self.gripper_widths() / self.gripper_widths().max(), label="Normalized Gripper Width")
         plt.plot(self.max_depths() / self.max_depths().max(), label="Normalized Depth")
         plt.legend()
         plt.show()
@@ -408,12 +388,12 @@ class EstimateModulus():
         plt.title(plot_title)
 
         self._compute_contact_data()
-        plt.plot(self.d, self.F, 'r.', label="Raw measurements", markersize=10)
+        plt.plot(self._d, self._F, 'r.', label="Raw measurements", markersize=10)
         
         if plot_fit:
-            E_star = self.linear_coeff_fit((4/3)*self.a*self.d, self.F)
-            F_fit = (4/3)*E_star*self.a*self.d
-            plt.plot(self.d, F_fit, 'b-', label="Fit", markersize=10)
+            E_star = self.linear_coeff_fit((4/3)*self._a*self._d, self._F)
+            F_fit = (4/3)*E_star*self._a*self._d
+            plt.plot(self._d, F_fit, 'b-', label="Fit", markersize=10)
 
         plt.legend(); plt.show(block=False)
         return
@@ -442,14 +422,14 @@ class EstimateModulus():
         # TODO: Generalize this radius
         R = 0.025 # [m], measured for elastic balls
 
-        for i in range(self.depth_images.shape[0]):
-            F_i = abs(self.forces[i])
-            contact_area = (0.001 / PX_TO_MM)**2 * np.sum(self.depth_images[i] > 0.0000001)
+        for i in range(self.depth_images().shape[0]):
+            F_i = abs(self.forces()[i])
+            contact_area = (0.001 / PX_TO_MM)**2 * np.sum(self.depth_images()[i] > 1e-10)
             a_i = np.sqrt(contact_area / np.pi)
 
             # Take mean of 5x5 neighborhood around maximum depth
-            max_index = np.unravel_index(np.argmax(self.depth_images[i]), self.depth_images[i].shape)
-            d_i = np.mean(self.depth_images[i][max_index[0]-2:max_index[0]+3, max_index[1]-2:max_index[1]+3])
+            max_index = np.unravel_index(np.argmax(self.depth_images()[i]), self.depth_images()[i].shape)
+            d_i = np.mean(self.depth_images()[i][max_index[0]-2:max_index[0]+3, max_index[1]-2:max_index[1]+3])
 
             if F_i > 0 and a_i >= 0.003 and d_i > self.depth_threshold:
                 p_0 = (1/np.pi) * (6*F_i/(R**2))**(1/3) # times E_star^2/3
@@ -461,9 +441,9 @@ class EstimateModulus():
                 x_data.append(w_1D_0)
                 y_data.append(d_i)
 
-        self.d = np.array(d)
-        self.a = np.array(a)
-        self.F = np.array(F)
+        self._d = np.array(d)
+        self._a = np.array(a)
+        self._F = np.array(F)
         self.x_data = np.array(x_data)
         self.y_data = np.array(y_data)
 
@@ -476,13 +456,13 @@ class EstimateModulus():
         assert self.use_gripper_width
 
         # Find initial length of first contact
-        L0 = self.gripper_widths[0]
+        L0 = self.gripper_widths()[0]
         d0 = 0
         
         contact_areas, a = [], []
         x_data, y_data, d = [], [], []
-        for i in range(len(self.depth_images)):
-            depth_i = self.depth_images[i]
+        for i in range(len(self.depth_images())):
+            depth_i = self.depth_images()[i]
 
             if use_mean:
                 # d_i = depth_i.mean()
@@ -495,20 +475,20 @@ class EstimateModulus():
 
             a_i = np.sqrt(contact_area_i / np.pi)
 
-            dL = -(self.gripper_widths[i] - L0 + 2*(d_i - d0))
+            dL = -(self.gripper_widths()[i] - L0 + 2*(d_i - d0))
             if contact_area_i >= 1e-5 and dL >= 0:
                 x_data.append(dL/L0) # Strain
-                y_data.append(abs(self.forces[i]) / contact_area_i) # Stress
+                y_data.append(abs(self.forces()[i]) / contact_area_i) # Stress
                 contact_areas.append(contact_area_i)
                 a.append(a_i)
                 d.append(d_i)
 
         # Save stuff for plotting
-        self.x_data = x_data
-        self.y_data = y_data
-        self.contact_areas = contact_areas
-        self.a = a
-        self.d = d
+        self._x_data = x_data
+        self._y_data = y_data
+        self._contact_areas = contact_areas
+        self._a = a
+        self._d = d
 
         # Fit to modulus
         E = self.linear_coeff_fit(x_data, y_data)
@@ -525,13 +505,13 @@ class EstimateModulus():
         #       [From (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov]
 
         # Find initial length of first contact
-        L0 = self.gripper_widths[0]
+        L0 = self.gripper_widths()[0]
 
         x_data, y_data = [], []
         d, contact_areas, a = [], [], []
-        for i in range(len(self.depth_images)):
-            depth_i = self.depth_images[i]
-            d_i = L0 - self.gripper_widths[i]
+        for i in range(len(self.depth_images())):
+            depth_i = self.depth_images()[i]
+            d_i = L0 - self.gripper_widths()[i]
             
             # contact_area_i = (0.001 / PX_TO_MM)**2 * (depth_i.shape[0] - 2*self.edge_crop_margin) * (depth_i.shape[1] - 2*self.edge_crop_margin)
             contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(depth_i >= self.depth_threshold)
@@ -540,16 +520,16 @@ class EstimateModulus():
 
             if contact_area_i >= 1e-5 and d_i > 0:
                 x_data.append(2*d_i*a_i)
-                y_data.append(self.forces[i])
+                y_data.append(self.forces()[i])
                 contact_areas.append(contact_area_i)
                 d.append(d_i)
                 a.append(a_i)
 
-        self.x_data = x_data
-        self.y_data = y_data
-        self.contact_areas = contact_areas
-        self.a = a
-        self.d = d
+        self._x_data = x_data
+        self._y_data = y_data
+        self._contact_areas = contact_areas
+        self._a = a
+        self._d = d
 
         E_agg = self.linear_coeff_fit(x_data, y_data)
         E = (1/E_agg - 1/self.E_gel)**(-1)  
@@ -574,7 +554,8 @@ if __name__ == "__main__":
 
     wedge_video    = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
     contact_force  = ContactForce()
-    data_recorder  = DataRecorder(wedge_video=wedge_video, contact_force=contact_force, use_gripper_width=True)
+    gripper_width  = GripperWidth()
+    grasp_data     = GraspData(wedge_video=wedge_video, contact_force=contact_force, gripper_width=gripper_width, use_gripper_width=True)
 
     # For plotting
     obj_to_color = {
@@ -603,7 +584,7 @@ if __name__ == "__main__":
         estimator = EstimateModulus(use_gripper_width=True)
         estimator.load_from_file(data_folder + "/" + os.path.splitext(file_name)[0], auto_clip=True)
         estimator.clip_to_press()
-        assert len(estimator.depth_images) == len(estimator.forces) == len(estimator.gripper_widths)
+        assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
 
         # Filter depth data?
         estimator.filter_depths(threshold_contact=False, concave_mask=False, crop_edges=True)
@@ -617,29 +598,18 @@ if __name__ == "__main__":
         E_object = estimator.fit_modulus_naive()
 
         print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
-        print(f'Maximum force of {obj_name}:', np.max(estimator.forces))
-        print(f'Strain range of {obj_name}:', min(estimator.x_data), 'to', max(estimator.x_data))
-        print(f'Stress range of {obj_name}:', min(estimator.y_data), 'to', max(estimator.y_data))
-        print(f'Contact radius range of {obj_name}:', min(estimator.a), 'to', max(estimator.a))
-        print(f'Depth range of {obj_name}:', min(estimator.d), 'to', max(estimator.d))
+        print(f'Maximum force of {obj_name}:', np.max(estimator.forces()))
+        print(f'Strain range of {obj_name}:', min(estimator._x_data), 'to', max(estimator._x_data))
+        print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
+        print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))
+        print(f'Depth range of {obj_name}:', min(estimator._d), 'to', max(estimator._d))
         print(f'Estimated modulus of {obj_name}:', E_object)
         print('\n')
 
         # Plot
         plotting_color = random_shade_of_color(obj_to_color[obj_name])
-        sp1.plot(estimator.max_depths(), estimator.forces, ".", label=obj_name, markersize=8, color=plotting_color)
-        sp2.plot(estimator.x_data, estimator.y_data, ".", label=obj_name, markersize=8, color=plotting_color)
-
-        # F_fit = []
-        # R = 0.025
-        # for j in range(len(estimator.d)):
-        #     d_i = estimator.d[j]
-        #     a_i = estimator.a[j]
-        #     q_1D_0 = d_i * estimator.E_gel / (1 - estimator.nu_gel**2)
-        #     p_0 = 2 * q_1D_0 / (np.pi * a_i)
-        #     F_fit_i = (p_0 * np.pi)**3 * (R**2 / E_star**2) / 6
-        #     F_fit.append(F_fit_i)
-        # sp1.plot(estimator.d, F_fit, "-", label=(obj_name + " fit"), markersize=10, color=plotting_colors[i])
+        sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
+        sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
 
     fig1.legend()
     fig1.set_figwidth(10)

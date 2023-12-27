@@ -7,6 +7,8 @@ from scipy.optimize import curve_fit
 
 from threading import Thread
 
+SMOOTHING_POLY_ORDER = 5
+
 class GripperWidth():
     '''
     Class to read and record contact gripper width over grasping
@@ -86,6 +88,26 @@ class GripperWidth():
         self._stream_thread.join()
         self._post_process_measurements()
         if verbose: print('Done streaming.')
+        return
+    
+    # Fit widths to continuous function and down sample to smooth measurements
+    def smooth_gripper_widths(self, plot_smoothing=False, poly_order=SMOOTHING_POLY_ORDER):
+        smooth_widths = []
+        indices = np.arange(len(self._widths))
+        p = np.polyfit(indices, self._widths, poly_order)
+        for i in indices.tolist():
+            w = 0
+            for k in range(len(p)):
+                w += p[k] * i**(poly_order-k)
+            smooth_widths.append(w)
+
+        if plot_smoothing:
+            # Plot to check how the smoothing of data looks
+            plt.plot(indices, self._widths, 'r.')
+            plt.plot(indices, smooth_widths, 'b-')
+            plt.show()
+
+        self._widths = smooth_widths
         return
 
     # Save array of width measurements to path

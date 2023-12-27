@@ -2,9 +2,9 @@ import os
 
 from wedge_video import GelsightWedgeVideo
 from contact_force import ContactForce
-from data_recorder import DataRecorder
+from grasp_data import GraspData
 
-def preprocess(path_to_file, data_recorder=DataRecorder()):
+def preprocess(path_to_file, grasp_data=GraspData()):
     '''
     Preprocess recorded data for training
     '''
@@ -35,8 +35,8 @@ if __name__ == "__main__":
 
     wedge_video         = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
     other_wedge_video   = GelsightWedgeVideo(config_csv="./config_200.csv") # Other finger
-    data_recorder       = DataRecorder(wedge_video=wedge_video, contact_force=ContactForce())
+    grasp_data       = GraspData(wedge_video=wedge_video, contact_force=ContactForce())
 
     DATA_DIR = "./data"
     for filename in os.listdir(DATA_DIR):
-        preprocess(DATA_DIR + filename, data_recorder=data_recorder)
+        preprocess(DATA_DIR + filename, grasp_data=grasp_data)

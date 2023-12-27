@@ -11,7 +11,7 @@ from frankapy import FrankaArm
 from wedge_video import GelsightWedgeVideo
 from contact_force import ContactForce
 from gripper_width import GripperWidth
-from data_recorder import DataRecorder
+from grasp_data import GraspData
 
 franka_arm = FrankaArm()
 
@@ -41,8 +41,8 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
     # other_wedge_video   =   GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_200.csv")
     contact_force       =   ContactForce(IP="172.16.0.50", port=8888)
     gripper_width       =   GripperWidth(franka_arm=franka_arm)
-    # data_recorder       =   DataRecorder(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width)
-    data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force, gripper_width=gripper_width)
+    # grasp_data       =   GraspData(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width)
+    grasp_data       =   GraspData(wedge_video=wedge_video, contact_force=contact_force, gripper_width=gripper_width)
 
     if folder_name == None:
         # Choose folder name as YYYY-MM-DD by default
@@ -54,25 +54,25 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
 
     # Dedicated plotting function for multi-trial plotting
     # Note: this became necessary because cv2.imshow() is not great with multiple threads
-    def plot_stream(data_recorder=None, plot_diff=False, plot_depth=False, verbose=False):
+    def plot_stream(grasp_data=None, plot_diff=False, plot_depth=False, verbose=False):
         Vis3D = None
         while _plot_stream:
-            if type(data_recorder.wedge_video._curr_rgb_image) != type(None):
+            if type(grasp_data.wedge_video._curr_rgb_image) != type(None):
                 if verbose: print('Plotting...')
 
                 if plot_diff or plot_depth:
-                    diff_img = data_recorder.wedge_video.calc_diff_image(data_recorder.wedge_video.warp_image(data_recorder.wedge_video._raw_rgb_frames[0]), data_recorder.wedge_video.warp_image(data_recorder.wedge_video._curr_rgb_image))
+                    diff_img = grasp_data.wedge_video.calc_diff_image(grasp_data.wedge_video.warp_image(grasp_data.wedge_video._raw_rgb_frames[0]), grasp_data.wedge_video.warp_image(grasp_data.wedge_video._curr_rgb_image))
 
                 # Plot depth in 3D
                 if plot_depth:
                     if no_data and type(Vis3D) == type(None): # Re-initialize 3D plotting
-                        Vis3D = ClassVis3D(n=data_recorder.wedge_video.warped_size[0], m=data_recorder.wedge_video.warped_size[1])
-                    Vis3D.update(data_recorder.wedge_video.img2depth(diff_img) / data_recorder.wedge_video.PX_TO_MM)
+                        Vis3D = ClassVis3D(n=grasp_data.wedge_video.warped_size[0], m=grasp_data.wedge_video.warped_size[1])
+                    Vis3D.update(grasp_data.wedge_video.img2depth(diff_img) / grasp_data.wedge_video.PX_TO_MM)
 
-                if type(data_recorder.wedge_video._curr_rgb_image) != type(None):
+                if type(grasp_data.wedge_video._curr_rgb_image) != type(None):
 
                     # Plot raw RGB image
-                    cv2.imshow('raw_RGB', data_recorder.wedge_video._curr_rgb_image)
+                    cv2.imshow('raw_RGB', grasp_data.wedge_video._curr_rgb_image)
 
                     # Plot difference image
                     if plot_diff:
@@ -96,7 +96,7 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
     # TODO: Do not stream / plot video while recording training data!
 
     # _plot_stream = True
-    # _stream_thread = Thread(target=plot_stream, kwargs={"data_recorder": data_recorder, "plot_diff": True, "plot_depth": True})
+    # _stream_thread = Thread(target=plot_stream, kwargs={"grasp_data": grasp_data, "plot_diff": True, "plot_depth": True})
     # _stream_thread.daemon = True
     # _stream_thread.start()
 
@@ -109,7 +109,7 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
         # Start recording
         if i > 0: _open_socket = False
         print('Starting stream...')
-        data_recorder.start_stream(plot=False, verbose=False, _open_socket=_open_socket)
+        grasp_data.start_stream(plot=False, verbose=False, _open_socket=_open_socket)
 
         # Close gripper
         close_gripper(franka_arm)
@@ -121,27 +121,27 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
 
         # Stop recording
         if i == num_trials - 1: _close_socket = True
-        data_recorder.end_stream(_close_socket=_close_socket)
+        grasp_data.end_stream(_close_socket=_close_socket)
         print('Done streaming.')
 
-        # data_recorder.auto_clip()
+        # grasp_data.auto_clip()
 
         if plot_collected_data:
-            plt.plot(abs(data_recorder.forces()) / abs(data_recorder.forces()).max(), label="Forces")
-            plt.plot(data_recorder.widths() / data_recorder.widths().max(), label="Gripper Width")
-            plt.plot(data_recorder.max_depths() / data_recorder.max_depths().max(), label="Max Depth")
+            plt.plot(abs(grasp_data.forces()) / abs(grasp_data.forces()).max(), label="Forces")
+            plt.plot(grasp_data.gripper_widths() / grasp_data.gripper_widths().max(), label="Gripper Widths")
+            plt.plot(grasp_data.max_depths() / grasp_data.max_depths().max(), label="Max Depths")
             plt.legend()
             plt.show()
 
         # Save
-        data_recorder.save(f'./example_data/{folder_name}/{object_name}__t={str(i)}')
+        grasp_data.save(f'./example_data/{folder_name}/{object_name}__t={str(i)}')
 
-        print('Max depth in mm:', data_recorder.max_depths().max())
-        print('Max force of N:', data_recorder.forces().max())
-        print('Length of data:', len(data_recorder.forces()))
+        print('Max depth in mm:', grasp_data.max_depths().max())
+        print('Max force of N:', grasp_data.forces().max())
+        print('Length of data:', len(grasp_data.forces()))
 
         # Reset data
-        data_recorder._reset_data()
+        grasp_data._reset_data()
 
         # # User confirmation to continue
         # if i != num_trials-1:
@@ -154,7 +154,7 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
 
 
 if __name__ == "__main__":
-
+    # Record grasp data for the given object
     OBJECT_NAME     = "rigid_strawberry"
     OBJECT_MODULUS  = 0.0
     NUM_TRIALS      = 3

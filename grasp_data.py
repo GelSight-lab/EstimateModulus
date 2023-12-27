@@ -10,7 +10,7 @@ from gripper_width import GripperWidth
 
 from threading import Thread
 
-class DataRecorder():
+class GraspData():
     '''
     Class to streamline recording of data from Gelsight Wedge's / force gauge and package into training
     '''
@@ -50,6 +50,11 @@ class DataRecorder():
     def forces(self):
         return self.contact_force.forces()
     
+    # Return gripper widths
+    def gripper_widths(self):
+        assert self.use_gripper_width
+        return self.gripper_width.widths()
+    
     # Return depth images
     def depth_images(self, other_finger=False):
         if other_finger:
@@ -61,17 +66,16 @@ class DataRecorder():
     def max_depths(self, other_finger=False):
         return np.max(self.depth_images(other_finger=other_finger), axis=(1,2))
     
-    # Return gripper widths
-    def widths(self):
-        assert self.use_gripper_width
-        return self.gripper_width.widths()
+    # Return mean value from each depth image
+    def mean_depths(self, other_finger=False):
+        return np.mean(self.depth_images(other_finger=other_finger), axis=(1,2))
     
     # TODO: Re-Implement this method once delay between width and depth is addressed
     # Return the gripper width where first contact occurs above threshold
     # def width_of_first_contact(self, depth_threshold=0.5):
     #     for i in range(len(self.depth_images())):
     #         if (self.depth_images()[i] >= depth_threshold).any():
-    #             return self.widths()[i]
+    #             return self.gripper_widths()[i]
     #     return None
     
     # Initiate streaming thread
@@ -184,14 +188,25 @@ class DataRecorder():
             self.gripper_width.clip(i_start, i_end)
         return
     
+    # Clip data between frame indices
+    def clip(self, i_start, i_end):
+        assert 0 < i_start < i_end < len(self.wedge_video._raw_rgb_frames)
+        self.wedge_video.clip(i_start, i_end)
+        if self._wedge_video_count > 1:
+            self.other_wedge_video.clip(i_start, i_end)
+        self.contact_force.clip(i_start, i_end)
+        if self.use_gripper_width:
+            self.gripper_width.clip(i_start, i_end)
+        return
+    
     # Plot all data over indices
     def plot_grasp_data(self):
         forces      = abs(self.forces())
-        widths      = self.widths()
+        widths      = self.gripper_widths()
         max_depths  = self.max_depths()
         plt.plot(forces / forces.max(), label="Normalized Contact Forces")
-        plt.plot(widths / widths.max(), label="Normalized Gripper Width")
-        plt.plot(max_depths / max_depths.max(), label="Normalized Max Depth")
+        plt.plot(widths / widths.max(), label="Normalized Gripper Widths")
+        plt.plot(max_depths / max_depths.max(), label="Normalized Max Depths")
         plt.xlabel('Index [/]')
         plt.legend()
         plt.show()
@@ -225,11 +240,10 @@ if __name__ == "__main__":
     wedge_video         =   GelsightWedgeVideo(IP="172.16.0.100", config_csv="./config_100.csv") # Force-sensing finger
     # other_wedge_video   =   GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_200.csv") # Other finger
     contact_force       =   ContactForce(IP="172.16.0.50", port=8888)
-    data_recorder       =   DataRecorder(wedge_video=wedge_video, contact_force=contact_force)
+    grasp_data          =   GraspData(wedge_video=wedge_video, contact_force=contact_force)
 
     # Record example data and save
-    data_recorder.start_stream(verbose=True, plot=True, plot_diff=True, plot_depth=True)
+    grasp_data.start_stream(verbose=True, plot=True, plot_diff=True, plot_depth=True)
     time.sleep(3)
-    data_recorder.end_stream(verbose=True)
-    data_recorder.auto_clip()
-    # data_recorder.save('./example_data/example')
+    grasp_data.end_stream(verbose=True)
+    grasp_data.auto_clip()
