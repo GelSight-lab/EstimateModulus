@@ -138,6 +138,24 @@ class EstimateModulus():
         for i in range(len(self.depth_images())):
             top_percentile_depths.append(np.percentile(self.depth_images()[i], percentile))
         return np.array(top_percentile_depths)
+    
+    # Clip a press sequence to only the loading sequence (positive force)
+    def clip_to_press(self, use_force=True):
+        # Find maximum depth over press
+        if use_force:
+            i_start = np.argmax(self.forces() >= self.force_threshold)
+            i_peak = np.argmax(self.forces())
+        else:
+            # Find peak and start over depth values
+            i_start = np.argmax(self.max_depths() >= self.depth_threshold)
+            i_peak = np.argmax(self.max_depths())
+
+        if i_start >= i_peak:
+            warnings.warn("No press detected! Cannot clip.", Warning)
+        else:
+            # Clip from start to peak depth
+            self.grasp_data.clip(i_start, i_peak+1)
+        return
 
     # Return mask of which pixels are in contact with object
     def contact_mask(self, depth):
@@ -181,45 +199,16 @@ class EstimateModulus():
             self.depth_images()[i,:,:] = filtered_depth
 
         return
-    
-    def plot_depth_metrics(self):
-        plt.plot(self.max_depths(), label="Max Depth")
-        plt.plot(self.mean_max_depths(), label="Mean Max Depth")
-        plt.plot(self.top_percentile_depths(), label="Top Percentile Depth")
-        plt.plot(self.mean_depths(), label="Mean Depth")
-        plt.xlabel('Index [/]')
-        plt.ylabel('Depth [m]')
-        plt.legend()
-        plt.show()
+
+    # Fit to continuous function and down sample to smooth measurements
+    def smooth_gripper_widths(self, plot_smoothing=False, poly_order=SMOOTHING_POLY_ORDER):
+        self.grasp_data.gripper_width.smooth_gripper_widths(plot_smoothing=plot_smoothing, poly_order=poly_order)
         return
 
     # Fit linear equation with least squares
     def linear_coeff_fit(self, x, y):
         # Solve for best A given data and equation of form y = A*x
         return np.dot(x, y) / np.dot(x, x)
-    
-    # Cip a press sequence to only the loading sequence (positive force)
-    def clip_to_press(self, use_force=True):
-        # Find maximum depth over press
-        if use_force:
-            i_start = np.argmax(self.forces() >= self.force_threshold)
-            i_peak = np.argmax(self.forces())
-        else:
-            # Find peak and start over depth values
-            i_start = np.argmax(self.max_depths() >= self.depth_threshold)
-            i_peak = np.argmax(self.max_depths())
-
-        if i_start >= i_peak:
-            warnings.warn("No press detected! Cannot clip.", Warning)
-        else:
-            # Clip from start to peak depth
-            self.grasp_data.clip(i_start, i_peak+1)
-        return
-    
-    # Fit to continuous function and down sample to smooth measurements
-    def smooth_gripper_widths(self, plot_smoothing=False, poly_order=SMOOTHING_POLY_ORDER):
-        self.grasp_data.gripper_width.smooth_gripper_widths(plot_smoothing=plot_smoothing, poly_order=poly_order)
-        return
     
     # Convert depth image to 3D data
     def depth_to_XYZ(self, depth, remove_zeros=True, remove_outliers=True):
@@ -278,48 +267,6 @@ class EstimateModulus():
 
         return [radius, C[0], C[1], C[2]] # [ radius, center_x, center_y, center_z ]
     
-    # Check sphere fit by plotting data and fit shape
-    def plot_depth(self, depth):
-        # Extract 3D data
-        X, Y, Z = self.depth_to_XYZ(depth, remove_zeros=False, remove_outliers=False)
-
-        # Plot sphere in 3D
-        fig = plt.figure()
-        axes = fig.add_subplot(111, projection='3d')
-        axes.scatter(X, Y, Z, s=8, c=Z, cmap='winter', rasterized=True)
-        axes.set_xlabel('$X$ [m]',fontsize=16)
-        axes.set_ylabel('\n$Y$ [m]',fontsize=16)
-        axes.set_zlabel('\n$Z$ [m]',fontsize=16)
-        axes.set_title('Sphere Fitting',fontsize=16)
-        plt.show()
-        return
-    
-    # Check sphere fit by plotting data and fit shape
-    def plot_sphere_fit(self, depth, sphere):
-        # Extract 3D data
-        X, Y, Z = self.depth_to_XYZ(depth)
-
-        # Create discrete graph of sphere mesh
-        r, x0, y0, z0 = sphere
-        # u, v = np.mgrid[0:2*np.pi:20j, 0:np.cos(-z0/r):10j] # Plot top half of sphere
-        u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi/10:10j] # Plot top half of sphere
-        # u, v = np.mgrid[0:2*np.pi:20j, 0:2*np.pi:20j] # Plot full sphere
-        sphere_x = x0 + np.cos(u)*np.sin(v)*r
-        sphere_y = y0 + np.sin(u)*np.sin(v)*r
-        sphere_z = z0 + np.cos(v)*r
-
-        # Plot sphere in 3D
-        fig = plt.figure()
-        axes = fig.add_subplot(111, projection='3d')
-        axes.scatter(X, Y, Z, s=8, c=Z, cmap='winter', rasterized=True)
-        axes.plot_wireframe(sphere_x, sphere_y, sphere_z, color="r")
-        axes.set_xlabel('$X$ [m]',fontsize=16)
-        axes.set_ylabel('\n$Y$ [m]',fontsize=16)
-        axes.set_zlabel('\n$Z$ [m]',fontsize=16)
-        axes.set_title('Sphere Fitting',fontsize=16)
-        plt.show()
-        return
-
     # Compute radius of contact from sphere fit
     def estimate_contact_radius(self, sphere):
         return np.sqrt(max(sphere[0]**2 - sphere[3]**2, 0))
@@ -371,39 +318,6 @@ class EstimateModulus():
         self._a = np.squeeze(np.array(a))
         return
     
-    # Plot all data over indices
-    def plot_grasp_data(self):
-        plt.plot(abs(self.forces()) / abs(self.forces()).max(), label="Normalized Forces")
-        plt.plot(self.gripper_widths() / self.gripper_widths().max(), label="Normalized Gripper Width")
-        plt.plot(self.max_depths() / self.max_depths().max(), label="Normalized Depth")
-        plt.legend()
-        plt.show()
-        return
-    
-    # Plot force versus contact depth
-    def plot_F_vs_d(self, plot_fit=True, plot_title=None):
-        plt.figure()
-        plt.xlabel('Depth [m]')
-        plt.ylabel('Force [N]')
-        plt.title(plot_title)
-
-        self._compute_contact_data()
-        plt.plot(self._d, self._F, 'r.', label="Raw measurements", markersize=10)
-        
-        if plot_fit:
-            E_star = self.linear_coeff_fit((4/3)*self._a*self._d, self._F)
-            F_fit = (4/3)*E_star*self._a*self._d
-            plt.plot(self._d, F_fit, 'b-', label="Fit", markersize=10)
-
-        plt.legend(); plt.show(block=False)
-        return
-    
-    def Estar_to_E(self, E_star):
-        # Compute compliance from E_star by assuming Poisson's ratio
-        nu = self.assumed_poisson_ratio
-        E = (1 - nu**2) / (1/E_star - (1 - self.nu_gel**2)/(self.E_gel))
-        return E, nu
-    
     def fit_modulus(self):
         # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
 
@@ -450,6 +364,12 @@ class EstimateModulus():
         # Fit for E_star
         E_star = self.linear_coeff_fit(x_data, y_data)**(3/2)
         return E_star
+    
+    def Estar_to_E(self, E_star):
+        # Compute compliance from E_star by assuming Poisson's ratio
+        nu = self.assumed_poisson_ratio
+        E = (1 - nu**2) / (1/E_star - (1 - self.nu_gel**2)/(self.E_gel))
+        return E, nu
     
     # Naively estimate modulus based on gripper width change and aggregate modulus
     def fit_modulus_naive(self, use_mean=False):
@@ -535,6 +455,88 @@ class EstimateModulus():
         E = (1/E_agg - 1/self.E_gel)**(-1)  
 
         return E
+    
+    # Check sphere fit by plotting data and fit shape
+    def plot_raw_depth(self, depth):
+        # Extract 3D data
+        X, Y, Z = self.depth_to_XYZ(depth, remove_zeros=False, remove_outliers=False)
+
+        # Plot sphere in 3D
+        fig = plt.figure()
+        axes = fig.add_subplot(111, projection='3d')
+        axes.scatter(X, Y, Z, s=8, c=Z, cmap='winter', rasterized=True)
+        axes.set_xlabel('$X$ [m]',fontsize=16)
+        axes.set_ylabel('\n$Y$ [m]',fontsize=16)
+        axes.set_zlabel('\n$Z$ [m]',fontsize=16)
+        axes.set_title('Sphere Fitting',fontsize=16)
+        plt.show()
+        return
+    
+    # Check sphere fit by plotting data and fit shape
+    def plot_sphere_fit(self, depth, sphere):
+        # Extract 3D data
+        X, Y, Z = self.depth_to_XYZ(depth)
+
+        # Create discrete graph of sphere mesh
+        r, x0, y0, z0 = sphere
+        # u, v = np.mgrid[0:2*np.pi:20j, 0:np.cos(-z0/r):10j] # Plot top half of sphere
+        u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi/10:10j] # Plot top half of sphere
+        # u, v = np.mgrid[0:2*np.pi:20j, 0:2*np.pi:20j] # Plot full sphere
+        sphere_x = x0 + np.cos(u)*np.sin(v)*r
+        sphere_y = y0 + np.sin(u)*np.sin(v)*r
+        sphere_z = z0 + np.cos(v)*r
+
+        # Plot sphere in 3D
+        fig = plt.figure()
+        axes = fig.add_subplot(111, projection='3d')
+        axes.scatter(X, Y, Z, s=8, c=Z, cmap='winter', rasterized=True)
+        axes.plot_wireframe(sphere_x, sphere_y, sphere_z, color="r")
+        axes.set_xlabel('$X$ [m]',fontsize=16)
+        axes.set_ylabel('\n$Y$ [m]',fontsize=16)
+        axes.set_zlabel('\n$Z$ [m]',fontsize=16)
+        axes.set_title('Sphere Fitting',fontsize=16)
+        plt.show()
+        return
+    
+    # Plot different ways of aggregating depth from each image
+    def plot_depth_metrics(self):
+        plt.plot(self.max_depths(), label="Max Depth")
+        plt.plot(self.mean_max_depths(), label="Mean Max Depth")
+        plt.plot(self.top_percentile_depths(), label="Top Percentile Depth")
+        plt.plot(self.mean_depths(), label="Mean Depth")
+        plt.xlabel('Index [/]')
+        plt.ylabel('Depth [m]')
+        plt.legend()
+        plt.show()
+        return
+    
+    # Plot all data over indices
+    def plot_grasp_data(self):
+        plt.plot(abs(self.forces()) / abs(self.forces()).max(), label="Normalized Forces")
+        plt.plot(self.gripper_widths() / self.gripper_widths().max(), label="Normalized Gripper Width")
+        plt.plot(self.max_depths() / self.max_depths().max(), label="Normalized Depth")
+        plt.legend()
+        plt.show()
+        return
+    
+    # Plot force versus contact depth
+    def plot_F_vs_d(self, plot_fit=True, plot_title=None):
+        plt.figure()
+        plt.xlabel('Depth [m]')
+        plt.ylabel('Force [N]')
+        plt.title(plot_title)
+
+        self._compute_contact_data()
+        plt.plot(self._d, self._F, 'r.', label="Raw measurements", markersize=10)
+        
+        if plot_fit:
+            E_star = self.linear_coeff_fit((4/3)*self._a*self._d, self._F)
+            F_fit = (4/3)*E_star*self._a*self._d
+            plt.plot(self._d, F_fit, 'b-', label="Fit", markersize=10)
+
+        plt.legend(); plt.show(block=False)
+        return
+
 
 if __name__ == "__main__":
 
