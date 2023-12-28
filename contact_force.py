@@ -40,38 +40,6 @@ class ContactForce():
     def forces(self):
         return np.array(self._forces)
 
-    # Clip measurements between provided indices
-    def clip(self, i_start, i_end):
-        i_start = max(0, i_start)
-        i_end = min(i_end, len(self._forces))
-        self._forces = self._forces[i_start:i_end]
-        return
-    
-    # Automatically clip based on threshold
-    def auto_clip(self, force_threshold=FORCE_THRESHOLD, clip_offset=AUTO_CLIP_OFFSET, return_indices=False):
-        forces = self.forces()
-        i_start, i_end = len(forces), len(forces)-1
-        for i in range(2, len(forces)-2):
-            # Check if next 3 consecutive indices are aboue threshold
-            penetration = forces[i] > force_threshold and forces[i+1] > force_threshold and forces[i+2] > force_threshold
-            if penetration and i <= i_start:
-                i_start = i
-
-            # Check if past 3 consecutive indices are below threshold
-            no_penetration = forces[i] < force_threshold and forces[i-1] < force_threshold and forces[i-2] < force_threshold
-            if no_penetration and i >= i_start and i <= i_end:
-                i_end = i
-            if no_penetration and i >= i_start: break
-
-        if i_start >= i_end:
-            warnings.warn("No press detected! Cannot clip.", Warning)            
-        else:
-            i_start_offset = max(0, i_start - clip_offset)
-            i_end_offset = min(i_end + clip_offset, len(forces)-1)
-            self.clip(i_start_offset, i_end_offset)
-            if return_indices:
-                return i_start_offset, i_end_offset
-
     # Open socket to begin streaming values
     def start_stream(self, IP=None, port=None, read_only=False, verbose=False, _open_socket=True):
         if IP != None:      self._IP = IP
@@ -150,6 +118,38 @@ class ContactForce():
         self._post_process_measurements()
         if verbose: print('Done streaming.')
         return
+    
+    # Clip measurements between provided indices
+    def clip(self, i_start, i_end):
+        i_start = max(0, i_start)
+        i_end = min(i_end, len(self._forces))
+        self._forces = self._forces[i_start:i_end]
+        return
+    
+    # Automatically clip based on threshold
+    def auto_clip(self, force_threshold=FORCE_THRESHOLD, clip_offset=AUTO_CLIP_OFFSET, return_indices=False):
+        forces = self.forces()
+        i_start, i_end = len(forces), len(forces)-1
+        for i in range(2, len(forces)-2):
+            # Check if next 3 consecutive indices are aboue threshold
+            penetration = forces[i] > force_threshold and forces[i+1] > force_threshold and forces[i+2] > force_threshold
+            if penetration and i <= i_start:
+                i_start = i
+
+            # Check if past 3 consecutive indices are below threshold
+            no_penetration = forces[i] < force_threshold and forces[i-1] < force_threshold and forces[i-2] < force_threshold
+            if no_penetration and i >= i_start and i <= i_end:
+                i_end = i
+            if no_penetration and i >= i_start: break
+
+        if i_start >= i_end:
+            warnings.warn("No press detected! Cannot clip.", Warning)            
+        else:
+            i_start_offset = max(0, i_start - clip_offset)
+            i_end_offset = min(i_end + clip_offset, len(forces)-1)
+            self.clip(i_start_offset, i_end_offset)
+            if return_indices:
+                return i_start_offset, i_end_offset
 
     # Save array of force measurements to path
     def load(self, path_to_file):

@@ -121,6 +121,18 @@ class GelsightWedgeVideo():
                 self._depth_images.append(self.img2depth(frame))
         return np.stack(self._depth_images, axis=0)
     
+    # Return maximum depth from each depth image
+    def max_depths(self):
+        return np.max(self.depth_images(), axis=(1,2))
+    
+    # Return the maximum depth across all frames
+    def max_depth(self):
+        return self.max_depths().max()
+    
+    # Return mean depth from each depth image
+    def mean_depths(self):
+        return np.mean(self.depth_images(), axis=(1,2))
+    
     # Crop and warp a raw image to mirror shape based on config corners
     def warp_image(self, img):
         return warp_perspective(img, self.corners, self.warped_size)
@@ -150,14 +162,6 @@ class GelsightWedgeVideo():
         dx, dy = self.img2grad(diff_img)
         depth = self.grad2depth(diff_img, dx, dy)
         return depth
-    
-    # Return maximum from each depth image
-    def max_depths(self):
-        return np.max(self.depth_images(), axis=(1,2))
-    
-    # Return the maximum depth across all frames
-    def max_depth(self):
-        return self.max_depths().max()
     
     # Convert IP addres to streaming url
     def IP_to_URL(self, IP, port=8080):
@@ -269,25 +273,6 @@ class GelsightWedgeVideo():
         self._plot_thread = None
         return
     
-    # Plot video for your viewing pleasure
-    def watch(self, plot_diff=False, plot_depth=False):
-        if plot_depth or plot_diff:
-            diff_images = self.diff_images()
-        if plot_depth:
-            depth_images = self.depth_images()
-            Vis3D = ClassVis3D(n=self.warped_size[0], m=self.warped_size[1])
-        for i in range(len(self._raw_rgb_frames)):
-            cv2.imshow('raw_RGB', self._raw_rgb_frames[i])
-            if plot_diff:   cv2.imshow('diff_img', diff_images[i])
-            if plot_depth:  Vis3D.update(depth_images[i] / PX_TO_MM)
-            if cv2.waitKey(1) & 0xFF == ord('q'): # Exit windows by pressing "q"
-                break
-            if cv2.waitKey(1) == 27: # Exit window by pressing Esc
-                break
-            time.sleep(1/self.FPS)
-        cv2.destroyAllWindows()
-        return
-    
     # Clip frames to indices
     def clip(self, i_start, i_end):
         i_start = max(0, i_start)
@@ -331,8 +316,27 @@ class GelsightWedgeVideo():
             if return_indices:
                 return i_start_offset, i_end_offset
 
+    # Plot video for your viewing pleasure
+    def watch(self, plot_diff=False, plot_depth=False):
+        if plot_depth or plot_diff:
+            diff_images = self.diff_images()
+        if plot_depth:
+            depth_images = self.depth_images()
+            Vis3D = ClassVis3D(n=self.warped_size[0], m=self.warped_size[1])
+        for i in range(len(self._raw_rgb_frames)):
+            cv2.imshow('raw_RGB', self._raw_rgb_frames[i])
+            if plot_diff:   cv2.imshow('diff_img', diff_images[i])
+            if plot_depth:  Vis3D.update(depth_images[i] / PX_TO_MM)
+            if cv2.waitKey(1) & 0xFF == ord('q'): # Exit windows by pressing "q"
+                break
+            if cv2.waitKey(1) == 27: # Exit window by pressing Esc
+                break
+            time.sleep(1/self.FPS)
+        cv2.destroyAllWindows()
+        return
+    
     # Read frames from a video file
-    def upload(self, path_to_file):
+    def load(self, path_to_file):
         self._reset_frames()
         cap = cv2.VideoCapture(path_to_file)
         while True:
@@ -344,7 +348,7 @@ class GelsightWedgeVideo():
         return
 
     # Write recorded frames to video file
-    def download(self, path_to_file):
+    def save(self, path_to_file):
         fourcc = cv2.VideoWriter_fourcc(*'MJPG')
         video_writer = cv2.VideoWriter(path_to_file, fourcc, self.FPS, (self.image_size[1], self.image_size[0]))
         for frame in self._raw_rgb_frames:

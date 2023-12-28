@@ -64,11 +64,17 @@ class GraspData():
     
     # Return maximum from each depth image
     def max_depths(self, other_finger=False):
-        return np.max(self.depth_images(other_finger=other_finger), axis=(1,2))
+        if other_finger:
+            assert self._wedge_video_count > 1
+            return self.other_wedge_video.max_depths()
+        return self.wedge_video.max_depths()
     
     # Return mean value from each depth image
     def mean_depths(self, other_finger=False):
-        return np.mean(self.depth_images(other_finger=other_finger), axis=(1,2))
+        if other_finger:
+            assert self._wedge_video_count > 1
+            return self.other_wedge_video.mean_depths()
+        return self.wedge_video.mean_depths()
     
     # TODO: Re-Implement this method once delay between width and depth is addressed
     # Return the gripper width where first contact occurs above threshold
@@ -151,13 +157,15 @@ class GraspData():
         self.gripper_width.clip(0, len(self.gripper_width.widths())-2)
         return
     
-    # Plot video for your viewing pleasure
-    def watch(self, plot_diff=False, plot_depth=False, other_finger=False):
-        if not other_finger:
-            self.wedge_video.watch(plot_diff=plot_diff, plot_depth=plot_depth)
-        else:
-            assert self._wedge_video_count > 1
-            self.other_wedge_video.watch(plot_diff=plot_diff, plot_depth=plot_depth)
+    # Clip data between frame indices
+    def clip(self, i_start, i_end):
+        assert 0 < i_start < i_end < len(self.wedge_video._raw_rgb_frames)
+        self.wedge_video.clip(i_start, i_end)
+        if self._wedge_video_count > 1:
+            self.other_wedge_video.clip(i_start, i_end)
+        self.contact_force.clip(i_start, i_end)
+        if self.use_gripper_width:
+            self.gripper_width.clip(i_start, i_end)
         return
     
     # Clip data to first press via thresholding
@@ -188,17 +196,6 @@ class GraspData():
             self.gripper_width.clip(i_start, i_end)
         return
     
-    # Clip data between frame indices
-    def clip(self, i_start, i_end):
-        assert 0 < i_start < i_end < len(self.wedge_video._raw_rgb_frames)
-        self.wedge_video.clip(i_start, i_end)
-        if self._wedge_video_count > 1:
-            self.other_wedge_video.clip(i_start, i_end)
-        self.contact_force.clip(i_start, i_end)
-        if self.use_gripper_width:
-            self.gripper_width.clip(i_start, i_end)
-        return
-    
     # Plot all data over indices
     def plot_grasp_data(self):
         forces      = abs(self.forces())
@@ -212,11 +209,20 @@ class GraspData():
         plt.show()
         return
 
+    # Plot video for your viewing pleasure
+    def watch(self, plot_diff=False, plot_depth=False, other_finger=False):
+        if not other_finger:
+            self.wedge_video.watch(plot_diff=plot_diff, plot_depth=plot_depth)
+        else:
+            assert self._wedge_video_count > 1
+            self.other_wedge_video.watch(plot_diff=plot_diff, plot_depth=plot_depth)
+        return
+    
     # Read frames from a video file and associated pickle files
     def load(self, path_to_file):
-        self.wedge_video.upload(path_to_file + '.avi')
+        self.wedge_video.load(path_to_file + '.avi')
         if self._wedge_video_count > 1:
-            self.wedge_video.upload(path_to_file + '_other_finger.avi')
+            self.wedge_video.load(path_to_file + '_other_finger.avi')
         self.contact_force.load(path_to_file + '_forces.pkl')
         if self.use_gripper_width:
             self.gripper_width.load(path_to_file + '_widths.pkl')
@@ -224,9 +230,9 @@ class GraspData():
 
     # Save collected data to video and pickle files
     def save(self, path_to_file):
-        self.wedge_video.download(path_to_file + '.avi')
+        self.wedge_video.save(path_to_file + '.avi')
         if self._wedge_video_count > 1:
-            self.other_wedge_video.download(path_to_file + '_other_finger.avi')
+            self.other_wedge_video.save(path_to_file + '_other_finger.avi')
         self.contact_force.save(path_to_file + '_forces.pkl')
         if self.use_gripper_width:
             self.gripper_width.save(path_to_file + '_widths.pkl')

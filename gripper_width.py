@@ -34,13 +34,6 @@ class GripperWidth():
     def widths(self):
         return np.array(self._widths)
 
-    # Clip measurements between provided indices
-    def clip(self, i_start, i_end):
-        i_start = max(0, i_start)
-        i_end = min(i_end, len(self._widths))
-        self._widths = self._widths[i_start:i_end]
-        return
-
     # Open socket to begin streaming values
     def start_stream(self, read_only=False, verbose=False):
         self._reset_values()
@@ -88,6 +81,13 @@ class GripperWidth():
         self._stream_thread.join()
         self._post_process_measurements()
         if verbose: print('Done streaming.')
+        return
+
+    # Clip measurements between provided indices
+    def clip(self, i_start, i_end):
+        i_start = max(0, i_start)
+        i_end = min(i_end, len(self._widths))
+        self._widths = self._widths[i_start:i_end]
         return
     
     # Fit widths to continuous function and down sample to smooth measurements
