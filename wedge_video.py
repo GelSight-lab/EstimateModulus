@@ -144,8 +144,8 @@ class GelsightWedgeVideo():
 
     # Calculate gradients from a cropped / warped difference image
     def img2grad(self, diff_img):
-        dx = (diff_img[:, :, 1] - (diff_img[:, :, 0] + diff_img[:, :, 2]) * 0.5) # / 255.0
-        dy = (diff_img[:, :, 0] - diff_img[:, :, 2]) # / 255.0
+        dx = (diff_img[:, :, 1] - (diff_img[:, :, 0] + diff_img[:, :, 2]) * 0.5)
+        dy = (diff_img[:, :, 0] - diff_img[:, :, 2])
         dx = dx / (1 - dx ** 2) ** 0.5 / 128
         dy = dy / (1 - dy ** 2) ** 0.5 / 128
         return dx, dy

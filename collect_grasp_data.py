@@ -134,7 +134,7 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
             plt.show()
 
         # Save
-        grasp_data.save(f'./example_data/{folder_name}/{object_name}__t={str(i)}')
+        grasp_data.save(f'./example_data/{folder_name}/{object_name}__E={str(object_modulus)}__t={str(i)}')
 
         print('Max depth in mm:', grasp_data.max_depths().max())
         print('Max force of N:', grasp_data.forces().max())

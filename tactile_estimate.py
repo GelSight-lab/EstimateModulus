@@ -422,7 +422,7 @@ class EstimateModulus():
         return E
     
     # Check sphere fit by plotting data and fit shape
-    def plot_raw_depth(self, depth):
+    def plot_depth(self, depth):
         # Extract 3D data
         X, Y, Z = self.depth_to_XYZ(depth, remove_zeros=False, remove_outliers=False)
 
@@ -518,6 +518,10 @@ if __name__ == "__main__":
         "golf_ball"                 : "gray",
     }
 
+    max_uncontacted_depths = []
+    mean_uncontacted_depths = []
+    std_uncontacted_depths = []
+
     # Unload data from folder
     data_folder = "./example_data/2023-12-16"
     data_files = os.listdir(data_folder)
@@ -527,43 +531,53 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        # if file_name[0] != 'y': continue
+        # if file_name[0] != 'g': continue
 
         # Load data and clip
         estimator = EstimateModulus(use_gripper_width=True)
         estimator.load_from_file(data_folder + "/" + os.path.splitext(file_name)[0], auto_clip=True)
+        
+        max_uncontacted_depths.append(estimator.depth_images()[0].max())
+        mean_uncontacted_depths.append(estimator.depth_images()[0].mean())
+        std_uncontacted_depths.append(np.std(estimator.depth_images()[0]))
+        
         estimator.clip_to_press()
         assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
 
-        # Filter depth data?
-        estimator.filter_depths(threshold_contact=False, concave_mask=False, crop_edges=True)
+        print(file_name, estimator.depth_images()[-1][150, 200])
+        
 
-        estimator.smooth_gripper_widths()
+    print('here')
 
-        # # Fit using our MDR estimator
-        # E_star = estimator.fit_modulus()
-        # E_object, v_object = estimator.Estar_to_E(E_star)
+    #     # Filter depth data?
+    #     estimator.filter_depths(threshold_contact=False, concave_mask=False, crop_edges=True)
 
-        E_object = estimator.fit_modulus_naive()
+    #     estimator.smooth_gripper_widths()
 
-        print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
-        print(f'Maximum force of {obj_name}:', np.max(estimator.forces()))
-        print(f'Strain range of {obj_name}:', min(estimator._x_data), 'to', max(estimator._x_data))
-        print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
-        print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))
-        print(f'Depth range of {obj_name}:', min(estimator._d), 'to', max(estimator._d))
-        print(f'Estimated modulus of {obj_name}:', E_object)
-        print('\n')
+    #     # # Fit using our MDR estimator
+    #     # E_star = estimator.fit_modulus()
+    #     # E_object, v_object = estimator.Estar_to_E(E_star)
 
-        # Plot
-        plotting_color = random_shade_of_color(obj_to_color[obj_name])
-        sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
-        sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
+    #     E_object = estimator.fit_modulus_naive()
 
-    fig1.legend()
-    fig1.set_figwidth(10)
-    fig1.set_figheight(10)
-    fig2.legend()
-    fig2.set_figwidth(10)
-    fig2.set_figheight(10)
-    plt.show()
+    #     print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
+    #     print(f'Maximum force of {obj_name}:', np.max(estimator.forces()))
+    #     print(f'Strain range of {obj_name}:', min(estimator._x_data), 'to', max(estimator._x_data))
+    #     print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
+    #     print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))
+    #     print(f'Depth range of {obj_name}:', min(estimator._d), 'to', max(estimator._d))
+    #     print(f'Estimated modulus of {obj_name}:', E_object)
+    #     print('\n')
+
+    #     # Plot
+    #     plotting_color = random_shade_of_color(obj_to_color[obj_name])
+    #     sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
+    #     sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
+
+    # fig1.legend()
+    # fig1.set_figwidth(10)
+    # fig1.set_figheight(10)
+    # fig2.legend()
+    # fig2.set_figwidth(10)
+    # fig2.set_figheight(10)
+    # plt.show()
