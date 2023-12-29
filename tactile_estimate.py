@@ -145,16 +145,24 @@ class EstimateModulus():
         if use_force:
             i_start = np.argmax(self.forces() >= self.force_threshold)
             i_peak = np.argmax(self.forces())
+
+            # Grab index before below 97.5% of peak
+            i_end = i_peak
+            for i in range(len(self.forces())):
+                if i > i_peak and self.forces()[i] <= 0.975*self.forces()[i_peak]:
+                    i_end = i-1
+                    break
         else:
             # Find peak and start over depth values
             i_start = np.argmax(self.max_depths() >= self.depth_threshold)
             i_peak = np.argmax(self.max_depths())
+            i_end = i_peak
 
-        if i_start >= i_peak:
+        if i_start >= i_end:
             warnings.warn("No press detected! Cannot clip.", Warning)
         else:
             # Clip from start to peak depth
-            self.grasp_data.clip(i_start, i_peak+1)
+            self.grasp_data.clip(i_start, i_end+1)
         return
 
     # Return mask of which pixels are in contact with object
@@ -580,7 +588,7 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        if file_name[0] != 'y': continue
+        # if file_name[0] != 'y': continue
 
         # Load data and clip
         estimator = EstimateModulus(use_gripper_width=True)

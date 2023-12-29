@@ -76,14 +76,6 @@ class GraspData():
             return self.other_wedge_video.mean_depths()
         return self.wedge_video.mean_depths()
     
-    # TODO: Re-Implement this method once delay between width and depth is addressed
-    # Return the gripper width where first contact occurs above threshold
-    # def width_of_first_contact(self, depth_threshold=0.5):
-    #     for i in range(len(self.depth_images())):
-    #         if (self.depth_images()[i] >= depth_threshold).any():
-    #             return self.gripper_widths()[i]
-    #     return None
-    
     # Initiate streaming thread
     def start_stream(self, verbose=True, plot=False, plot_other=False, plot_diff=False, plot_depth=False, _open_socket=True):
         self._reset_data()
