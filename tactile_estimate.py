@@ -283,49 +283,6 @@ class EstimateModulus():
     def estimate_contact_depth(self, sphere):
         return sphere[0] + sphere[3]
     
-    # Return force, contact depth, and contact radius
-    def _compute_contact_data(self):
-        if len(self._F) > 0 and len(self.d) > 0 and len(self.a) > 0:
-            assert len(self._F) == len(self.d) == len(self.a)
-            return self._F, self.d, self.a
-        
-        # Fit to depth and radius for each frame
-        F, d, a = [], [], []
-        for i in range(self.depth_images().shape[0]):
-            # sphere = [0, 0, 0, 0] # [r, cx, cy, cz]
-            # if np.max(self.depth_images()[i]) > 0:
-            #     sphere = self.fit_depth_to_sphere(self.depth_images()[i])
-
-            # if 0 < self.estimate_contact_depth(sphere) and \
-            #     0 < self.estimate_contact_radius(sphere) < self.gel_width/2:
-
-            #     F.append(-self.forces()[i])
-            #     d.append(self.estimate_contact_depth(sphere))
-            #     a.append(self.estimate_contact_radius(sphere))
-            #     # self.plot_sphere_fit(self.depth_images()[i], sphere)
-            #     # if self.estimate_contact_radius(sphere) > self.gel_width/2:
-            #     #     raise ValueError("Contact radius larger than sensor gel!")
-
-            # Don't use sphere fitting at all...
-            if np.max(self.depth_images()[i]) >= self.depth_threshold:
-                F.append(abs(self.forces()[i]))
-                # d.append(np.max(self.depth_images()[i]))
-
-                # Get average of top 10 values
-                flattened_depth = self.depth_images()[i].flatten()
-                d.append(np.mean(np.sort(flattened_depth)[-10:]) )
-
-                contact_area = (0.001 / PX_TO_MM)**2 * np.sum(self.depth_images()[i] > 0.0000001)
-                a.append(np.sqrt(contact_area / np.pi))
-
-        # TODO: Fit d and a to strictly increasing / step function (e.g. sigmoid?)
-
-        assert len(d) > 0, "Could not find any reasonable contact!"
-        self._F = np.squeeze(np.array(F))
-        self._d = np.squeeze(np.array(d))
-        self._a = np.squeeze(np.array(a))
-        return
-    
     def fit_modulus(self):
         # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
 
@@ -525,24 +482,6 @@ class EstimateModulus():
         plt.plot(self.max_depths() / self.max_depths().max(), label="Normalized Depth")
         plt.legend()
         plt.show()
-        return
-    
-    # Plot force versus contact depth
-    def plot_F_vs_d(self, plot_fit=True, plot_title=None):
-        plt.figure()
-        plt.xlabel('Depth [m]')
-        plt.ylabel('Force [N]')
-        plt.title(plot_title)
-
-        self._compute_contact_data()
-        plt.plot(self._d, self._F, 'r.', label="Raw measurements", markersize=10)
-        
-        if plot_fit:
-            E_star = self.linear_coeff_fit((4/3)*self._a*self._d, self._F)
-            F_fit = (4/3)*E_star*self._a*self._d
-            plt.plot(self._d, F_fit, 'b-', label="Fit", markersize=10)
-
-        plt.legend(); plt.show(block=False)
         return
 
 
