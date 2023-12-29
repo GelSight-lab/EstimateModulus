@@ -95,7 +95,7 @@ class EstimateModulus():
     def load_from_file(self, path_to_file, auto_clip=True):
         self._reset_data()
         self.grasp_data.load(path_to_file)
-        if auto_clip:
+        if auto_clip: # Clip to the entire press
             self.grasp_data.auto_clip()
         assert len(self.grasp_data.depth_images()) == len(self.grasp_data.forces())
         return

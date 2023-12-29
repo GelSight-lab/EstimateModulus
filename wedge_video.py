@@ -41,7 +41,8 @@ AUTO_CLIP_OFFSET = 10 # indices
 ORIGINAL_IMG_SIZE = (480, 640)
 WARPED_IMG_SIZE = (400, 300)
 
-STREAM_FPS = 30.0
+# Streaming parameters
+STREAM_FPS = 30.0 # [1/s]
 
 class GelsightWedgeVideo():
     '''

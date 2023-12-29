@@ -9,7 +9,7 @@ from threading import Thread
 from wedge_video import AUTO_CLIP_OFFSET
 
 # For automatically clipping
-FORCE_THRESHOLD = 0.65 # [N]
+FORCE_THRESHOLD = 0.7 # [N]
 
 class ContactForce():
     '''

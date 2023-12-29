@@ -35,7 +35,7 @@ def close_gripper(_franka_arm): {
     )
 }
 
-def collect_data_for_object(object_name, object_modulus, num_trials, folder_name=None, plot_collected_data=False):
+def collect_data_for_object(object_name, object_modulus, num_trials, folder_name=None, plot_collected_data=True):
     # Define streaming addresses
     wedge_video         =   GelsightWedgeVideo(IP="172.16.0.100", config_csv="./config_100.csv")
     # other_wedge_video   =   GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_200.csv")
@@ -124,7 +124,7 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
         grasp_data.end_stream(_close_socket=_close_socket)
         print('Done streaming.')
 
-        # grasp_data.auto_clip()
+        grasp_data.auto_clip()
 
         if plot_collected_data:
             plt.plot(abs(grasp_data.forces()) / abs(grasp_data.forces()).max(), label="Forces")
