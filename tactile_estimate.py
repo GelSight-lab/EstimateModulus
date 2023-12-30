@@ -26,10 +26,6 @@ SENSOR_PAD_DIM_MM = (24, 33) # [mm]
 PX_TO_MM = np.sqrt((IMG_R / SENSOR_PAD_DIM_MM[0])**2 + (IMG_C / SENSOR_PAD_DIM_MM[1])**2)
 MM_TO_PX = 1/PX_TO_MM
 
-# Constants for zero-ing the edges of depth images
-EDGE_CROP_MARGIN = 30
-CROP_VERTICAL_SHIFT = 0
-
 # Random shades for consistent plotting over multiple trials
 def random_shade_of_color(color_name):
     try:
@@ -52,13 +48,12 @@ def random_shade_of_color(color_name):
 class EstimateModulus():
     def __init__(
             self, depth_threshold=0.001*DEPTH_THRESHOLD, force_threshold=FORCE_THRESHOLD, 
-            assumed_poissons_ratio=0.45, edge_crop_margin=EDGE_CROP_MARGIN, use_gripper_width=True
+            assumed_poissons_ratio=0.45, use_gripper_width=True
         ):
 
         self.assumed_poisson_ratio = assumed_poissons_ratio # [\]
         self.depth_threshold = depth_threshold # [m]
         self.force_threshold = force_threshold # [N]
-        self.edge_crop_margin = edge_crop_margin # [pixels]
 
         self.use_gripper_width = use_gripper_width # Boolean of whether or not to include gripper width
         self.grasp_data = GraspData(use_gripper_width=self.use_gripper_width)
@@ -191,9 +186,9 @@ class EstimateModulus():
         return filtered_depth
     
     # Filter all depth images using masks and cropping
-    def filter_depths(self, threshold_contact=True, concave_mask=False, crop_edges=True):
+    def filter_depths(self, threshold_contact=False, concave_mask=False):
         for i in range(self.depth_images().shape[0]):
-            filtered_depth = self.depth_images()[i,:,:]
+            filtered_depth = self.depth_images()[i,:,:].copy()
 
             # Mask depth to consider contact area only
             if threshold_contact:
@@ -202,9 +197,7 @@ class EstimateModulus():
 
             if concave_mask: # Only consider convex points on surface
                 filtered_depth = self.concave_mask(filtered_depth) * filtered_depth
-            if crop_edges: # Remove edge regions which could be noisy
-                filtered_depth = self.crop_edges(filtered_depth)
-            self.depth_images()[i,:,:] = filtered_depth
+            self.grasp_data.wedge_video._depth_images[i] = filtered_depth
 
         return
 
@@ -283,7 +276,7 @@ class EstimateModulus():
     def estimate_contact_depth(self, sphere):
         return sphere[0] + sphere[3]
     
-    def fit_modulus(self):
+    def fit_modulus_MDR(self):
         # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
 
         # p_0     = f(E*, F, a)
@@ -531,7 +524,7 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        # if file_name[0] != 'g': continue
+        if file_name[0] != 'y': continue
 
         # Load data and clip
         estimator = EstimateModulus(use_gripper_width=True)
@@ -543,6 +536,11 @@ if __name__ == "__main__":
         
         estimator.clip_to_press()
         assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
+
+        # Filter depth data?
+        estimator.filter_depths(threshold_contact=False, concave_mask=False, crop_edges=True)
+
+        estimator.plot_depth(estimator.depth_images()[-1])
 
         print(file_name, estimator.depth_images()[-1][150, 200])
         

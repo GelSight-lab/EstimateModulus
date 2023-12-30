@@ -37,9 +37,16 @@ DEPTH_TO_MM = 21.5
 DEPTH_THRESHOLD = 0.075 # [mm]
 AUTO_CLIP_OFFSET = 10 # indices
 
-# Size before and after warping
+# Constants for cropping the edges of images
+EDGE_CROP_MARGIN = 25 # [pixels]
+CROP_VERTICAL_SHIFT = 0 # [pixels]
+
+# Size before and after warping + cropping
 ORIGINAL_IMG_SIZE = (480, 640)
 WARPED_IMG_SIZE = (400, 300)
+CROPPED_IMG_SIZE = WARPED_IMG_SIZE.copy()
+CROPPED_IMG_SIZE[0] -= 2*EDGE_CROP_MARGIN
+CROPPED_IMG_SIZE[1] -= 2*EDGE_CROP_MARGIN
 
 # Streaming parameters
 STREAM_FPS = 30.0 # [1/s]
