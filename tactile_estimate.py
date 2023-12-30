@@ -7,7 +7,7 @@ import numpy as np
 import warnings
 import matplotlib.pyplot as plt
 
-from wedge_video import GelsightWedgeVideo, DEPTH_THRESHOLD
+from wedge_video import GelsightWedgeVideo, DEPTH_THRESHOLD, WARPED_IMG_SIZE
 from contact_force import ContactForce, FORCE_THRESHOLD
 from gripper_width import GripperWidth, SMOOTHING_POLY_ORDER
 from grasp_data import GraspData
@@ -21,9 +21,8 @@ WARPED_PX_TO_MM = (11, 11)
 RAW_PX_TO_MM = (12.5, 11)
 
 # Use sensor size and warped data to choose conversion
-IMG_R, IMG_C = 300, 400
 SENSOR_PAD_DIM_MM = (24, 33) # [mm]
-PX_TO_MM = np.sqrt((IMG_R / SENSOR_PAD_DIM_MM[0])**2 + (IMG_C / SENSOR_PAD_DIM_MM[1])**2)
+PX_TO_MM = np.sqrt((WARPED_IMG_SIZE[0] / SENSOR_PAD_DIM_MM[0])**2 + (WARPED_IMG_SIZE[1] / SENSOR_PAD_DIM_MM[1])**2)
 MM_TO_PX = 1/PX_TO_MM
 
 # Random shades for consistent plotting over multiple trials
@@ -173,17 +172,6 @@ class EstimateModulus():
 
         # Create a mask: 1 for convex regions, 0 for concave regions
         return (laplacian <= 0).astype(int)
-
-    # Return mask to disgard outside pixels
-    # Vertically shift crop away from bottom (where depth is most noisy)
-    def crop_edges(self, depth, vertical_shift=CROP_VERTICAL_SHIFT):
-        assert depth.shape[0] > 2*self.edge_crop_margin and depth.shape[1] > 2*self.edge_crop_margin
-        filtered_depth = depth.copy()
-        filtered_depth[0:self.edge_crop_margin, :] = 0
-        filtered_depth[:, 0:self.edge_crop_margin+vertical_shift] = 0
-        filtered_depth[depth.shape[0]-self.edge_crop_margin:depth.shape[0], :] = 0
-        filtered_depth[:, depth.shape[1]-self.edge_crop_margin+vertical_shift:depth.shape[1]] = 0
-        return filtered_depth
     
     # Filter all depth images using masks and cropping
     def filter_depths(self, threshold_contact=False, concave_mask=False):
@@ -343,10 +331,8 @@ class EstimateModulus():
             depth_i = self.depth_images()[i]
 
             if use_mean:
-                # d_i = depth_i.mean()
-                d_i = depth_i[self.edge_crop_margin:depth_i.shape[0]-self.edge_crop_margin, \
-                              self.edge_crop_margin+20:depth_i.shape[1]-self.edge_crop_margin+20].mean()
-                contact_area_i = (0.001 / PX_TO_MM)**2 * (depth_i.shape[0] - 2*self.edge_crop_margin) * (depth_i.shape[1] - 2*self.edge_crop_margin)
+                d_i = depth_i.mean()
+                contact_area_i = (0.001 / PX_TO_MM)**2 * (depth_i.shape[0]) * (depth_i.shape[1])
             else:
                 d_i = self.top_percentile_depths()[i] # depth_i.max()
                 contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(depth_i >= self.depth_threshold)
@@ -391,7 +377,6 @@ class EstimateModulus():
             depth_i = self.depth_images()[i]
             d_i = L0 - self.gripper_widths()[i]
             
-            # contact_area_i = (0.001 / PX_TO_MM)**2 * (depth_i.shape[0] - 2*self.edge_crop_margin) * (depth_i.shape[1] - 2*self.edge_crop_margin)
             contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(depth_i >= self.depth_threshold)
 
             a_i = np.sqrt(contact_area_i / np.pi)
@@ -524,7 +509,7 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        if file_name[0] != 'y': continue
+        if file_name[0] != 'r': continue
 
         # Load data and clip
         estimator = EstimateModulus(use_gripper_width=True)
@@ -538,17 +523,17 @@ if __name__ == "__main__":
         assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
 
         # Filter depth data?
-        estimator.filter_depths(threshold_contact=False, concave_mask=False, crop_edges=True)
+        estimator.filter_depths(threshold_contact=False, concave_mask=False)
 
         estimator.plot_depth(estimator.depth_images()[-1])
 
-        print(file_name, estimator.depth_images()[-1][150, 200])
+        print(file_name, ", center_depth:", estimator.depth_images()[-1][100, 150], ", mean_depth:", estimator.depth_images()[-1].mean())
         
 
     print('here')
 
     #     # Filter depth data?
-    #     estimator.filter_depths(threshold_contact=False, concave_mask=False, crop_edges=True)
+    #     estimator.filter_depths(threshold_contact=False, concave_mask=False)
 
     #     estimator.smooth_gripper_widths()
 

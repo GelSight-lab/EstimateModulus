@@ -35,18 +35,14 @@ DEPTH_TO_MM = 21.5
 
 # Threshold which is considered more than noise (significant penetration)
 DEPTH_THRESHOLD = 0.075 # [mm]
-AUTO_CLIP_OFFSET = 10 # indices
+AUTO_CLIP_OFFSET = 10 # [frames]
 
 # Constants for cropping the edges of images
-EDGE_CROP_MARGIN = 25 # [pixels]
-CROP_VERTICAL_SHIFT = 0 # [pixels]
+EDGE_CROP_MARGIN = 30 # [pixels]
 
 # Size before and after warping + cropping
 ORIGINAL_IMG_SIZE = (480, 640)
 WARPED_IMG_SIZE = (400, 300)
-CROPPED_IMG_SIZE = WARPED_IMG_SIZE.copy()
-CROPPED_IMG_SIZE[0] -= 2*EDGE_CROP_MARGIN
-CROPPED_IMG_SIZE[1] -= 2*EDGE_CROP_MARGIN
 
 # Streaming parameters
 STREAM_FPS = 30.0 # [1/s]
@@ -55,12 +51,17 @@ class GelsightWedgeVideo():
     '''
     Class to streamline processing of data from Gelsight Wedge's
     '''
-    def __init__(self, config_csv="./config.csv", IP=None, warped_size=WARPED_IMG_SIZE):
-        self.corners = read_csv(config_csv)     # CSV with pixel coordinates of mirror corners in the order (topleft,topright,bottomleft,bottomright)
-        self.warped_size = warped_size          # The size of the image to output from warping process
-        self.image_size = ORIGINAL_IMG_SIZE     # The size of original image from camera
-        self.FPS = STREAM_FPS                   # Default FPS from Raspberry Pi camera
-        self.PX_TO_MM = PX_TO_MM                # Conversion from pixels to mm
+    def __init__(self, config_csv="./config.csv", IP=None, warped_size=WARPED_IMG_SIZE, edge_crop_margin=EDGE_CROP_MARGIN):
+        self.corners = read_csv(config_csv)         # CSV with pixel coordinates of mirror corners in the order (topleft,topright,bottomleft,bottomright)
+        self.image_size = ORIGINAL_IMG_SIZE         # The size of original image from camera
+        self.warped_size = warped_size              # The size of the image to output from warping process
+        self.edge_crop_margin = edge_crop_margin    # Number of pixels to crop off edge after warping
+        self.FPS = STREAM_FPS                       # Default FPS from Raspberry Pi camera
+        self.PX_TO_MM = PX_TO_MM                    # Conversion from pixels to mm
+
+        # Compute size of the image after warping and edges are cropped
+        self.cropped_size = (warped_size[0] - 2*self.edge_crop_margin, \
+                             warped_size[1] - 2*self.edge_crop_margin)
 
         self._IP = IP                       # IP address of Raspberry Pi stream via mjpg_streamer
         self._url = ''                      # URL address of Raspberry Pi stream via mjpg_streamer
@@ -100,10 +101,10 @@ class GelsightWedgeVideo():
         if len(self._warped_rgb_frames) != len(self._raw_rgb_frames):
             self._warped_rgb_frames = []
             for img in self.raw_RGB_frames():
-                self._warped_rgb_frames.append(self.warp_image(img))
+                self._warped_rgb_frames.append(self.crop_image(self.warp_image(img)))
         return np.stack(self._warped_rgb_frames, axis=0)
 
-    # Return warped difference images from initial frame to rest of video
+    # Return cropped and warped difference images from initial frame to rest of video
     def diff_images(self):
         if len(self._diff_images) != len(self._raw_rgb_frames):
             self._diff_images = []
@@ -141,9 +142,13 @@ class GelsightWedgeVideo():
     def mean_depths(self):
         return np.mean(self.depth_images(), axis=(1,2))
     
-    # Crop and warp a raw image to mirror shape based on config corners
+    # Warp raw image to mirror shape based on config corners
     def warp_image(self, img):
         return warp_perspective(img, self.corners, self.warped_size)
+    
+    # Crop edges of the image to avoid inaccuracies
+    def crop_image(self, img):
+        return img[EDGE_CROP_MARGIN:img.shape[0]-EDGE_CROP_MARGIN, EDGE_CROP_MARGIN:img.shape[1]-EDGE_CROP_MARGIN]
     
     # Calculate difference image from reference frame
     def calc_diff_image(self, ref_img, img):
@@ -159,7 +164,7 @@ class GelsightWedgeVideo():
     
     # Calculate depth based on image gradients
     def grad2depth(self, diff_img, dx, dy):
-        dx, dy = demark(diff_img, dx, dy)
+        # dx, dy = demark(diff_img, dx, dy)
         zeros = np.zeros_like(dx)
         unitless_depth = poisson_reconstruct(dy, dx, zeros)
         depth_in_mm = DEPTH_TO_MM * unitless_depth # Derived from linear fit of ball calibration
@@ -231,7 +236,7 @@ class GelsightWedgeVideo():
 
     # Plot relevant images during streaming
     def _plot(self, plot_diff=False, plot_depth=False, verbose=False):
-        if plot_depth:  Vis3D = ClassVis3D(n=self.warped_size[0], m=self.warped_size[1])
+        if plot_depth:  Vis3D = ClassVis3D(n=self.cropped_size[0], m=self.cropped_size[1])
         while self._plotting:
             if verbose: print('Plotting...')
 
@@ -330,7 +335,7 @@ class GelsightWedgeVideo():
             diff_images = self.diff_images()
         if plot_depth:
             depth_images = self.depth_images()
-            Vis3D = ClassVis3D(n=self.warped_size[0], m=self.warped_size[1])
+            Vis3D = ClassVis3D(n=self.cropped_size[0], m=self.cropped_size[1])
         for i in range(len(self._raw_rgb_frames)):
             cv2.imshow('raw_RGB', self._raw_rgb_frames[i])
             if plot_diff:   cv2.imshow('diff_img', diff_images[i])
