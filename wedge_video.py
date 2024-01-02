@@ -38,7 +38,7 @@ DEPTH_THRESHOLD = 0.075 # [mm]
 AUTO_CLIP_OFFSET = 10 # [frames]
 
 # Constants for cropping the edges of images
-EDGE_CROP_MARGIN = 25 # [pixels]
+EDGE_CROP_MARGIN = 0 # [pixels]
 
 # Size before and after warping + cropping
 ORIGINAL_IMG_SIZE = (480, 640)
@@ -163,8 +163,7 @@ class GelsightWedgeVideo():
         return dx, dy
     
     # Calculate depth based on image gradients
-    def grad2depth(self, diff_img, dx, dy):
-        # dx, dy = demark(diff_img, dx, dy)
+    def grad2depth(self, dx, dy):
         zeros = np.zeros_like(dx)
         unitless_depth = poisson_reconstruct(dy, dx, zeros)
         depth_in_mm = DEPTH_TO_MM * unitless_depth # Derived from linear fit of ball calibration
@@ -173,7 +172,7 @@ class GelsightWedgeVideo():
     # Calculate depth from a cropped / warped difference image
     def img2depth(self, diff_img):
         dx, dy = self.img2grad(diff_img)
-        depth = self.grad2depth(diff_img, dx, dy)
+        depth = self.grad2depth(dx, dy)
         return depth
     
     # Convert IP addres to streaming url
