@@ -38,7 +38,7 @@ DEPTH_THRESHOLD = 0.075 # [mm]
 AUTO_CLIP_OFFSET = 10 # [frames]
 
 # Constants for cropping the edges of images
-EDGE_CROP_MARGIN = 0 # [pixels]
+EDGE_CROP_MARGIN = 25 # [pixels]
 
 # Size before and after warping + cropping
 ORIGINAL_IMG_SIZE = (480, 640)
