@@ -159,17 +159,21 @@ class EstimateModulus():
             self.grasp_data.clip(i_start, i_end+1)
         return
 
-    # Return mask of which pixels are in contact with object based on threshold
-    def contact_mask(self, depth):
+    # Return mask of which pixels are in contact with object based on constant threshold
+    def constant_threshold_contact_mask(self, depth):
         return depth >= self.depth_threshold
 
+    # Return mask of which pixels are in contact with object based on mean of image
     def mean_threshold_contact_mask(self, depth):
         return depth >= depth.mean()
 
+    # Return mask of which pixels are in contact with object based on range of image
     def range_threshold_contact_mask(self, depth):
         halfway = 0.5*(depth.max() - depth.min()) + depth.min()
         return depth >= halfway
 
+    # Return mask of which pixels are in contact with object using constant threshold
+    # But, flip if the mean depth of the image is negative (...a bit hacky)
     def flipped_threshold_contact_mask(self, depth):
         mask = depth >= self.depth_threshold
         if depth.mean() < 0:
@@ -420,7 +424,7 @@ class EstimateModulus():
     # Display computed contact mask for a given depth image
     def plot_contact_mask(self, depth):
         plt.figure()
-        plt.imshow(self.contact_mask(depth), cmap=plt.cm.gray)
+        plt.imshow(self.mean_threshold_contact_mask(depth), cmap=plt.cm.gray)
         plt.title(f'Contact Mask')
         plt.xlabel('Y')
         plt.ylabel('X')
