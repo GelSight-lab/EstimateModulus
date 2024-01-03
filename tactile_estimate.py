@@ -14,8 +14,6 @@ from grasp_data import GraspData
 
 grasp_data = GraspData()
 
-from scipy.ndimage import convolve
-
 # Archived measurements from calipers on surface in x and y directions
 WARPED_PX_TO_MM = (11, 11)
 RAW_PX_TO_MM = (12.5, 11)
@@ -166,6 +164,10 @@ class EstimateModulus():
     # Return mask of which pixels are in contact with object based on mean of image
     def mean_threshold_contact_mask(self, depth):
         return depth >= depth.mean()
+    
+    # Return mask of which pixels are in contact with object based on mean of all images
+    def total_mean_threshold_contact_mask(self, depth):
+        return depth >= self.mean_depths().mean()
 
     # Return mask of which pixels are in contact with object based on range of image
     def range_threshold_contact_mask(self, depth):
@@ -178,6 +180,13 @@ class EstimateModulus():
         mask = depth >= self.depth_threshold
         if depth.mean() < 0:
             mask = depth <= -self.depth_threshold
+        return mask
+    
+    # Same as flipped, but use relative threshold
+    def flipped_total_mean_threshold_contact_mask(self, depth):
+        mask = depth >= self.mean_depths().mean()
+        if depth.mean() < 0:
+            mask = depth <= -self.mean_depths().mean()
         return mask
 
     # Fit to continuous function and down sample to smooth measurements
@@ -326,7 +335,7 @@ class EstimateModulus():
                 # d_i = depth_i.mean()
                 # contact_area_i = (0.001 / PX_TO_MM)**2 * (depth_i.shape[0]) * (depth_i.shape[1])
 
-                mask = self.mean_threshold_contact_mask(depth_i)
+                mask = self.flipped_total_mean_threshold_contact_mask(depth_i)
                 d_i = np.sum(depth_i * mask) / np.sum(mask)
                 contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
             else:
@@ -402,12 +411,12 @@ class EstimateModulus():
 
         # Plot sphere in 3D
         fig = plt.figure()
-        axes = fig.add_subplot(111, projection='3d')
-        axes.scatter(X, Y, Z, s=8, c=Z, cmap='winter', rasterized=True)
-        axes.set_xlabel('$X$ [m]',fontsize=16)
-        axes.set_ylabel('\n$Y$ [m]',fontsize=16)
-        axes.set_zlabel('\n$Z$ [m]',fontsize=16)
-        axes.set_title('Sphere Fitting',fontsize=16)
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(X, Y, Z, s=8, c=Z, cmap='winter', rasterized=True)
+        ax.set_xlabel('$X$ [m]', fontsize=16)
+        ax.set_ylabel('\n$Y$ [m]', fontsize=16)
+        ax.set_zlabel('\n$Z$ [m]', fontsize=16)
+        ax.set_title('Sphere Fitting', fontsize=16)
         plt.show()
         return
     
@@ -419,16 +428,48 @@ class EstimateModulus():
         plt.xlabel('Y')
         plt.ylabel('X')
         plt.colorbar()
-        plt.show(block=False)
+        plt.show()
+    
+    # Watch evolution of depth images over time
+    def watch_depth_2D(self):
+        plt.ion()
+        _, ax = plt.subplots()
+        ax.set_title(f'Depth')
+        ax.set_xlabel('Y')
+        ax.set_ylabel('X')
+        im = ax.imshow(self.depth_images()[0], cmap="winter")
+        for i in range(len(self.depth_images())):
+            im.set_array(self.depth_images()[i])
+            plt.draw()
+            plt.pause(0.5)
+        plt.ioff()
+        plt.show()
+        return
     
     # Display computed contact mask for a given depth image
     def plot_contact_mask(self, depth):
         plt.figure()
-        plt.imshow(self.mean_threshold_contact_mask(depth), cmap=plt.cm.gray)
+        plt.imshow(self.flipped_total_mean_threshold_contact_mask(depth), cmap=plt.cm.gray)
         plt.title(f'Contact Mask')
         plt.xlabel('Y')
         plt.ylabel('X')
         plt.colorbar()
+        plt.show()
+        return
+    
+    # Watch evolution of computed contact mask over time
+    def watch_contact_mask(self):
+        plt.ion()
+        _, ax = plt.subplots()
+        ax.set_title(f'Contact Mask')
+        ax.set_xlabel('Y')
+        ax.set_ylabel('X')
+        im = ax.imshow(self.depth_images()[0], cmap=plt.cm.gray)
+        for i in range(len(self.depth_images())):
+            im.set_array(self.flipped_total_mean_threshold_contact_mask(self.depth_images()[i]))
+            plt.draw()
+            plt.pause(0.5)
+        plt.ioff()
         plt.show()
         return
     
@@ -448,13 +489,13 @@ class EstimateModulus():
 
         # Plot sphere in 3D
         fig = plt.figure()
-        axes = fig.add_subplot(111, projection='3d')
-        axes.scatter(X, Y, Z, s=8, c=Z, cmap='winter', rasterized=True)
-        axes.plot_wireframe(sphere_x, sphere_y, sphere_z, color="r")
-        axes.set_xlabel('$X$ [m]',fontsize=16)
-        axes.set_ylabel('\n$Y$ [m]',fontsize=16)
-        axes.set_zlabel('\n$Z$ [m]',fontsize=16)
-        axes.set_title('Sphere Fitting',fontsize=16)
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(X, Y, Z, s=8, c=Z, cmap='winter', rasterized=True)
+        ax.plot_wireframe(sphere_x, sphere_y, sphere_z, color="r")
+        ax.set_xlabel('$X$ [m]', fontsize=16)
+        ax.set_ylabel('\n$Y$ [m]', fontsize=16)
+        ax.set_zlabel('\n$Z$ [m]', fontsize=16)
+        ax.set_title('Sphere Fitting', fontsize=16)
         plt.show()
         return
     
@@ -488,15 +529,15 @@ if __name__ == "__main__":
     # GET ESTIMATED MODULUS (E) FOR SET OF TEST DATA #
     ##################################################
 
-    fig1 = plt.figure(1)
-    sp1 = fig1.add_subplot(211)
-    sp1.set_xlabel('Measured Sensor Deformation (d) [m]')
-    sp1.set_ylabel('Force [N]')
+    # fig1 = plt.figure(1)
+    # sp1 = fig1.add_subplot(211)
+    # sp1.set_xlabel('Measured Sensor Deformation (d) [m]')
+    # sp1.set_ylabel('Force [N]')
     
-    fig2 = plt.figure(2)
-    sp2 = fig2.add_subplot(211)
-    sp2.set_xlabel('dL / L')
-    sp2.set_ylabel('F / A')
+    # fig2 = plt.figure(2)
+    # sp2 = fig2.add_subplot(211)
+    # sp2.set_xlabel('dL / L')
+    # sp2.set_ylabel('F / A')
 
     wedge_video    = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
     contact_force  = ContactForce()
@@ -524,6 +565,9 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
+        # if obj_name.count('foam') == 0: continue
+        print('Object:', obj_name)
+
         # Load data and clip
         estimator = EstimateModulus(use_gripper_width=True)
         estimator.load_from_file(data_folder + "/" + os.path.splitext(file_name)[0], auto_clip=True)
@@ -532,44 +576,10 @@ if __name__ == "__main__":
         assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
 
 
-
-
-        # estimator.plot_depth_2D(estimator.depth_images()[-1])
-
-        # plt.figure()
-        # halfway = 0.5*(estimator.depth_images()[-1].max() - estimator.depth_images()[-1].min()) + estimator.depth_images()[-1].min()
-        # plt.imshow(estimator.depth_images()[-1] >= halfway)
-        # plt.title(f'Range Threshold Mask, file={file_name}')
-        # plt.colorbar()
-        # plt.show(block=False)
-
-        # plt.figure()
-        # plt.imshow(estimator.depth_images()[-1] >= estimator.depth_images()[-1].mean())
-        # plt.title(f'Mean Threshold Mask, file={file_name}')
-        # plt.colorbar()
-        # plt.show(block=False)
-
-        # plt.figure()
-        # plt.imshow(estimator.depth_images()[-1] >= np.median(estimator.depth_images()[-1]))
-        # plt.title(f'Median Threshold Mask, file={file_name}')
-        # plt.colorbar()
-        # plt.show(block=False)
-
-        # plt.figure()
-        # mask = estimator.depth_images()[-1] >= estimator.depth_threshold
-        # if estimator.depth_images()[-1].mean() < 0:
-        #     mask = estimator.depth_images()[-1] <= -estimator.depth_threshold
-        # plt.imshow(mask)
-        # plt.title(f'Mean Flipped Mask, file={file_name}')
-        # plt.colorbar()
-        # plt.show(block=False)
-
         # estimator.plot_depth(estimator.depth_images()[-1])
         # estimator.plot_contact_mask(estimator.depth_images()[-1])
 
         # print(file_name, ", center_depth:", estimator.depth_images()[-1][100, 150], ", mean_depth:", estimator.depth_images()[-1].mean(), ", max_depth:", estimator.depth_images()[-1].max(), ", min_depth:", estimator.depth_images()[-1].min())
-
-
 
 
         # # Smooth gripper width measurements?
@@ -590,15 +600,15 @@ if __name__ == "__main__":
         print(f'Estimated modulus of {obj_name}:', E_object)
         print('\n')
 
-        # Plot
-        plotting_color = random_shade_of_color(obj_to_color[obj_name])
-        sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
-        sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
+    #     # Plot
+    #     plotting_color = random_shade_of_color(obj_to_color[obj_name])
+    #     sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
+    #     sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
 
-    fig1.legend()
-    fig1.set_figwidth(10)
-    fig1.set_figheight(10)
-    fig2.legend()
-    fig2.set_figwidth(10)
-    fig2.set_figheight(10)
-    plt.show()
+    # fig1.legend()
+    # fig1.set_figwidth(10)
+    # fig1.set_figheight(10)
+    # fig2.legend()
+    # fig2.set_figwidth(10)
+    # fig2.set_figheight(10)
+    # plt.show()
