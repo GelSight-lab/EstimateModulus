@@ -34,7 +34,7 @@ PX_TO_MM = np.sqrt(WARPED_PX_TO_MM[0]**2 + WARPED_PX_TO_MM[1]**2)
 DEPTH_TO_MM = 21.5
 
 # Threshold which is considered more than noise (significant penetration)
-DEPTH_THRESHOLD = 0.075 # [mm]
+DEPTH_THRESHOLD = 0.015 # [mm]
 AUTO_CLIP_OFFSET = 10 # [frames]
 
 # Constants for cropping the edges of images

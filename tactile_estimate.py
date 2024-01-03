@@ -159,40 +159,22 @@ class EstimateModulus():
             self.grasp_data.clip(i_start, i_end+1)
         return
 
-    # Return mask of which pixels are in contact with object
+    # Return mask of which pixels are in contact with object based on threshold
     def contact_mask(self, depth):
         return depth >= self.depth_threshold
 
-    # Return mask of which pixels are in contact with object
-    # Based on absolute value of disturbance
-    def absolute_contact_mask(self, depth):
-        return np.abs(depth) >= self.depth_threshold
-    
-    # Return mask of only where depth is concave
-    def concave_mask(self, depth):
-        laplacian_kernel = np.array([[0, 1, 0],
-                                     [1, -4, 1],
-                                     [0, 1, 0]])
-        laplacian = convolve(depth, laplacian_kernel, mode='constant', cval=0)
+    def mean_threshold_contact_mask(self, depth):
+        return depth >= depth.mean()
 
-        # Create a mask: 1 for convex regions, 0 for concave regions
-        return (laplacian <= 0).astype(int)
-    
-    # Filter all depth images using masks and cropping
-    def filter_depths(self, threshold_contact=False, concave_mask=False):
-        for i in range(self.depth_images().shape[0]):
-            filtered_depth = self.depth_images()[i,:,:].copy()
+    def range_threshold_contact_mask(self, depth):
+        halfway = 0.5*(depth.max() - depth.min()) + depth.min()
+        return depth >= halfway
 
-            # Mask depth to consider contact area only
-            if threshold_contact:
-                contact_mask = self.contact_mask(filtered_depth)
-                filtered_depth = filtered_depth * contact_mask
-
-            if concave_mask: # Only consider convex points on surface
-                filtered_depth = self.concave_mask(filtered_depth) * filtered_depth
-            self.grasp_data.wedge_video._depth_images[i] = 1000 * filtered_depth # Convert back to [mm]
-
-        return
+    def flipped_threshold_contact_mask(self, depth):
+        mask = depth >= self.depth_threshold
+        if depth.mean() < 0:
+            mask = depth <= -self.depth_threshold
+        return mask
 
     # Fit to continuous function and down sample to smooth measurements
     def smooth_gripper_widths(self, plot_smoothing=False, poly_order=SMOOTHING_POLY_ORDER):
@@ -278,8 +260,9 @@ class EstimateModulus():
         # w_1d(x) = (1-v^2)/E_sensor * q_1d(x)
         # w_1d(0) = max_depth
 
-        # Filter depth images to mask and crop
-        self.filter_depths(concave_mask=False)
+        # TODO: Replace this
+        # # Filter depth images to mask and crop
+        # self.filter_depths(concave_mask=False)
 
         x_data, y_data = [], []
         d, a, F = [], [], []
@@ -323,7 +306,7 @@ class EstimateModulus():
         return E, nu
     
     # Naively estimate modulus based on gripper width change and aggregate modulus
-    def fit_modulus_naive(self, use_mean=False):
+    def fit_modulus_naive(self, use_mean=True):
         assert self.use_gripper_width
 
         # Find initial length of first contact
@@ -336,8 +319,12 @@ class EstimateModulus():
             depth_i = self.depth_images()[i]
 
             if use_mean:
-                d_i = depth_i.mean()
-                contact_area_i = (0.001 / PX_TO_MM)**2 * (depth_i.shape[0]) * (depth_i.shape[1])
+                # d_i = depth_i.mean()
+                # contact_area_i = (0.001 / PX_TO_MM)**2 * (depth_i.shape[0]) * (depth_i.shape[1])
+
+                mask = self.mean_threshold_contact_mask(depth_i)
+                d_i = np.sum(depth_i * mask) / np.sum(mask)
+                contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
             else:
                 d_i = self.top_percentile_depths()[i] # depth_i.max()
                 contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(depth_i >= self.depth_threshold)
@@ -345,7 +332,7 @@ class EstimateModulus():
             a_i = np.sqrt(contact_area_i / np.pi)
 
             dL = -(self.gripper_widths()[i] - L0 + 2*(d_i - d0))
-            if contact_area_i >= 1e-5 and dL >= 0:
+            if dL >= 0: # and contact_area_i >= 1e-5:
                 x_data.append(dL/L0) # Strain
                 y_data.append(abs(self.forces()[i]) / contact_area_i) # Stress
                 contact_areas.append(contact_area_i)
@@ -404,7 +391,7 @@ class EstimateModulus():
 
         return E
     
-    # Display raw data from a depth image
+    # Display raw data from a depth image in 3D
     def plot_depth(self, depth):
         # Extract 3D data
         X, Y, Z = self.depth_to_XYZ(depth, remove_zeros=False, remove_outliers=False)
@@ -420,25 +407,21 @@ class EstimateModulus():
         plt.show()
         return
     
-    # Display computed contact mask for a given depth image
-    def plot_contact_mask(self, depth, use_absolute_mask=False):
+    # Display raw data from a depth image as 2D heightmap
+    def plot_depth_2D(self, depth):
         plt.figure()
-        if use_absolute_mask == True:
-            plt.imshow(self.absolute_contact_mask(depth), cmap=plt.cm.gray)
-        else:
-            plt.imshow(self.contact_mask(depth), cmap=plt.cm.gray)
-        plt.title(f'Contact Mask, use_absolute_mask={str(use_absolute_mask)}')
+        plt.imshow(depth, cmap="winter")
+        plt.title(f'Depth')
         plt.xlabel('Y')
         plt.ylabel('X')
         plt.colorbar()
-        plt.show()
-        return
+        plt.show(block=False)
     
-    # Display computed concave mask for a given depth image
-    def plot_concave_mask(self, depth):
+    # Display computed contact mask for a given depth image
+    def plot_contact_mask(self, depth):
         plt.figure()
-        plt.imshow(self.concave_mask(depth), cmap=plt.cm.gray)
-        plt.title('Concave Mask')
+        plt.imshow(self.contact_mask(depth), cmap=plt.cm.gray)
+        plt.title(f'Contact Mask')
         plt.xlabel('Y')
         plt.ylabel('X')
         plt.colorbar()
@@ -501,15 +484,15 @@ if __name__ == "__main__":
     # GET ESTIMATED MODULUS (E) FOR SET OF TEST DATA #
     ##################################################
 
-    # fig1 = plt.figure(1)
-    # sp1 = fig1.add_subplot(211)
-    # sp1.set_xlabel('Measured Sensor Deformation (d) [m]')
-    # sp1.set_ylabel('Force [N]')
+    fig1 = plt.figure(1)
+    sp1 = fig1.add_subplot(211)
+    sp1.set_xlabel('Measured Sensor Deformation (d) [m]')
+    sp1.set_ylabel('Force [N]')
     
-    # fig2 = plt.figure(2)
-    # sp2 = fig2.add_subplot(211)
-    # sp2.set_xlabel('dL / L')
-    # sp2.set_ylabel('F / A')
+    fig2 = plt.figure(2)
+    sp2 = fig2.add_subplot(211)
+    sp2.set_xlabel('dL / L')
+    sp2.set_ylabel('F / A')
 
     wedge_video    = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
     contact_force  = ContactForce()
@@ -528,10 +511,6 @@ if __name__ == "__main__":
         "golf_ball"                 : "gray",
     }
 
-    # max_uncontacted_depths = []
-    # mean_uncontacted_depths = []
-    # std_uncontacted_depths = []
-
     # Unload data from folder
     data_folder = "./example_data/2023-12-16"
     data_files = os.listdir(data_folder)
@@ -541,61 +520,81 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        if file_name[0] != 'y': continue
-
         # Load data and clip
-        estimator = EstimateModulus(use_gripper_width=True, depth_threshold=1e-05)
+        estimator = EstimateModulus(use_gripper_width=True)
         estimator.load_from_file(data_folder + "/" + os.path.splitext(file_name)[0], auto_clip=True)
-        
-        # max_uncontacted_depths.append(estimator.depth_images()[0].max())
-        # mean_uncontacted_depths.append(estimator.depth_images()[0].mean())
-        # std_uncontacted_depths.append(np.std(estimator.depth_images()[0]))
         
         estimator.clip_to_press()
         assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
 
-        # Filter depth data?
-        estimator.filter_depths(threshold_contact=False, concave_mask=False)
 
-        estimator.plot_depth(estimator.depth_images()[-1])
-        estimator.plot_contact_mask(estimator.depth_images()[-1], use_absolute_mask=False)
-        estimator.plot_contact_mask(estimator.depth_images()[-1], use_absolute_mask=True)
-        estimator.plot_concave_mask(estimator.depth_images()[-1])
 
-        print(file_name, ", center_depth:", estimator.depth_images()[-1][100, 150], ", mean_depth:", estimator.depth_images()[-1].mean(), ", max_depth:", estimator.depth_images()[-1].max(), ", min_depth:", estimator.depth_images()[-1].min())
-        
 
-    print('here')
+        # estimator.plot_depth_2D(estimator.depth_images()[-1])
 
-    #     # Filter depth data?
-    #     estimator.filter_depths(threshold_contact=False, concave_mask=False)
+        # plt.figure()
+        # halfway = 0.5*(estimator.depth_images()[-1].max() - estimator.depth_images()[-1].min()) + estimator.depth_images()[-1].min()
+        # plt.imshow(estimator.depth_images()[-1] >= halfway)
+        # plt.title(f'Range Threshold Mask, file={file_name}')
+        # plt.colorbar()
+        # plt.show(block=False)
 
-    #     estimator.smooth_gripper_widths()
+        # plt.figure()
+        # plt.imshow(estimator.depth_images()[-1] >= estimator.depth_images()[-1].mean())
+        # plt.title(f'Mean Threshold Mask, file={file_name}')
+        # plt.colorbar()
+        # plt.show(block=False)
 
-    #     # # Fit using our MDR estimator
-    #     # E_star = estimator.fit_modulus()
-    #     # E_object, v_object = estimator.Estar_to_E(E_star)
+        # plt.figure()
+        # plt.imshow(estimator.depth_images()[-1] >= np.median(estimator.depth_images()[-1]))
+        # plt.title(f'Median Threshold Mask, file={file_name}')
+        # plt.colorbar()
+        # plt.show(block=False)
 
-    #     E_object = estimator.fit_modulus_naive()
+        # plt.figure()
+        # mask = estimator.depth_images()[-1] >= estimator.depth_threshold
+        # if estimator.depth_images()[-1].mean() < 0:
+        #     mask = estimator.depth_images()[-1] <= -estimator.depth_threshold
+        # plt.imshow(mask)
+        # plt.title(f'Mean Flipped Mask, file={file_name}')
+        # plt.colorbar()
+        # plt.show(block=False)
 
-    #     print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
-    #     print(f'Maximum force of {obj_name}:', np.max(estimator.forces()))
-    #     print(f'Strain range of {obj_name}:', min(estimator._x_data), 'to', max(estimator._x_data))
-    #     print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
-    #     print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))
-    #     print(f'Depth range of {obj_name}:', min(estimator._d), 'to', max(estimator._d))
-    #     print(f'Estimated modulus of {obj_name}:', E_object)
-    #     print('\n')
+        # estimator.plot_depth(estimator.depth_images()[-1])
+        # estimator.plot_contact_mask(estimator.depth_images()[-1])
 
-    #     # Plot
-    #     plotting_color = random_shade_of_color(obj_to_color[obj_name])
-    #     sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
-    #     sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
+        # print(file_name, ", center_depth:", estimator.depth_images()[-1][100, 150], ", mean_depth:", estimator.depth_images()[-1].mean(), ", max_depth:", estimator.depth_images()[-1].max(), ", min_depth:", estimator.depth_images()[-1].min())
 
-    # fig1.legend()
-    # fig1.set_figwidth(10)
-    # fig1.set_figheight(10)
-    # fig2.legend()
-    # fig2.set_figwidth(10)
-    # fig2.set_figheight(10)
-    # plt.show()
+
+
+
+        # # Smooth gripper width measurements?
+        # estimator.smooth_gripper_widths()
+
+        # # Fit using our MDR estimator
+        # E_star = estimator.fit_modulus()
+        # E_object, v_object = estimator.Estar_to_E(E_star)
+
+        E_object = estimator.fit_modulus_naive()
+
+        # print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
+        # print(f'Maximum force of {obj_name}:', np.max(estimator.forces()))
+        # print(f'Strain range of {obj_name}:', min(estimator._x_data), 'to', max(estimator._x_data))
+        # print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
+        # print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))
+        # print(f'Depth range of {obj_name}:', min(estimator._d), 'to', max(estimator._d))
+        print(f'Estimated modulus of {obj_name}:', E_object)
+        print('\n')
+
+        # Plot
+        plotting_color = random_shade_of_color(obj_to_color[obj_name])
+        sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
+        sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
+
+    fig1.legend()
+    fig1.set_figwidth(10)
+    fig1.set_figheight(10)
+    fig2.legend()
+    fig2.set_figwidth(10)
+    fig2.set_figheight(10)
+    plt.show()
