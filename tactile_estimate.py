@@ -189,11 +189,6 @@ class EstimateModulus():
             mask = depth <= -self.mean_depths().mean()
         return mask
 
-    # Fit to continuous function and down sample to smooth measurements
-    def smooth_gripper_widths(self, plot_smoothing=False, poly_order=SMOOTHING_POLY_ORDER):
-        self.grasp_data.gripper_width.smooth_gripper_widths(plot_smoothing=plot_smoothing, poly_order=poly_order)
-        return
-
     # Fit linear equation with least squares
     def linear_coeff_fit(self, x, y):
         # Solve for best A given data and equation of form y = A*x
@@ -256,14 +251,7 @@ class EstimateModulus():
 
         return [radius, C[0], C[1], C[2]] # [ radius, center_x, center_y, center_z ]
     
-    # Compute radius of contact from sphere fit
-    def estimate_contact_radius(self, sphere):
-        return np.sqrt(max(sphere[0]**2 - sphere[3]**2, 0))
-
-    # Compute depth of contact from sphere fit
-    def estimate_contact_depth(self, sphere):
-        return sphere[0] + sphere[3]
-    
+    # Use Hertzian contact models and MDR to compute modulus
     def fit_modulus_MDR(self):
         # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
 
@@ -285,12 +273,13 @@ class EstimateModulus():
 
         for i in range(self.depth_images().shape[0]):
             F_i = abs(self.forces()[i])
-            contact_area = (0.001 / PX_TO_MM)**2 * np.sum(self.depth_images()[i] > 1e-10)
-            a_i = np.sqrt(contact_area / np.pi)
+            
+            mask = self.flipped_total_mean_threshold_contact_mask(self.depth_images()[i])
+            contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
+            a_i = np.sqrt(contact_area_i / np.pi)
 
             # Take mean of 5x5 neighborhood around maximum depth
-            max_index = np.unravel_index(np.argmax(self.depth_images()[i]), self.depth_images()[i].shape)
-            d_i = np.mean(self.depth_images()[i][max_index[0]-2:max_index[0]+3, max_index[1]-2:max_index[1]+3])
+            d_i = self.mean_max_depths()[i]
 
             if F_i > 0 and a_i >= 0.003 and d_i > self.depth_threshold:
                 p_0 = (1/np.pi) * (6*F_i/(R**2))**(1/3) # times E_star^2/3
@@ -331,21 +320,17 @@ class EstimateModulus():
         for i in range(len(self.depth_images())):
             depth_i = self.depth_images()[i]
 
-            if use_mean:
-                # d_i = depth_i.mean()
-                # contact_area_i = (0.001 / PX_TO_MM)**2 * (depth_i.shape[0]) * (depth_i.shape[1])
-
-                mask = self.flipped_total_mean_threshold_contact_mask(depth_i)
-                d_i = np.sum(depth_i * mask) / np.sum(mask)
-                contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
-            else:
-                d_i = self.top_percentile_depths()[i] # depth_i.max()
-                contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(depth_i >= self.depth_threshold)
-
+            mask = self.flipped_total_mean_threshold_contact_mask(depth_i)
+            contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
             a_i = np.sqrt(contact_area_i / np.pi)
 
+            if use_mean:
+                d_i = np.sum(depth_i * mask) / np.sum(mask)
+            else:
+                d_i = self.top_percentile_depths()[i]
+
             dL = -(self.gripper_widths()[i] - L0 + 2*(d_i - d0))
-            if dL >= 0: # and contact_area_i >= 1e-5:
+            if dL >= 0 and contact_area_i >= 1e-5:
                 x_data.append(dL/L0) # Strain
                 y_data.append(abs(self.forces()[i]) / contact_area_i) # Stress
                 contact_areas.append(contact_area_i)
@@ -360,7 +345,7 @@ class EstimateModulus():
         self._d = d
 
         # Fit to modulus
-        E = self.linear_coeff_fit(x_data, y_data)
+        E = self.linear_coeff_fit(x_data, y_data) # np.polyfit(x_data, y_data, 1)
         # E = (1/E_agg - 1/self.E_gel)**(-1)
 
         return E
@@ -382,7 +367,8 @@ class EstimateModulus():
             depth_i = self.depth_images()[i]
             d_i = L0 - self.gripper_widths()[i]
             
-            contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(depth_i >= self.depth_threshold)
+            mask = self.flipped_total_mean_threshold_contact_mask(depth_i)
+            contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
 
             a_i = np.sqrt(contact_area_i / np.pi)
 
@@ -529,15 +515,15 @@ if __name__ == "__main__":
     # GET ESTIMATED MODULUS (E) FOR SET OF TEST DATA #
     ##################################################
 
-    # fig1 = plt.figure(1)
-    # sp1 = fig1.add_subplot(211)
-    # sp1.set_xlabel('Measured Sensor Deformation (d) [m]')
-    # sp1.set_ylabel('Force [N]')
+    fig1 = plt.figure(1)
+    sp1 = fig1.add_subplot(211)
+    sp1.set_xlabel('Measured Sensor Deformation (d) [m]')
+    sp1.set_ylabel('Force [N]')
     
-    # fig2 = plt.figure(2)
-    # sp2 = fig2.add_subplot(211)
-    # sp2.set_xlabel('dL / L')
-    # sp2.set_ylabel('F / A')
+    fig2 = plt.figure(2)
+    sp2 = fig2.add_subplot(211)
+    sp2.set_xlabel('dL / L')
+    sp2.set_ylabel('F / A')
 
     wedge_video    = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
     contact_force  = ContactForce()
@@ -582,8 +568,6 @@ if __name__ == "__main__":
         # print(file_name, ", center_depth:", estimator.depth_images()[-1][100, 150], ", mean_depth:", estimator.depth_images()[-1].mean(), ", max_depth:", estimator.depth_images()[-1].max(), ", min_depth:", estimator.depth_images()[-1].min())
 
 
-        # # Smooth gripper width measurements?
-        # estimator.smooth_gripper_widths()
 
         # # Fit using our MDR estimator
         # E_star = estimator.fit_modulus()
@@ -600,15 +584,18 @@ if __name__ == "__main__":
         print(f'Estimated modulus of {obj_name}:', E_object)
         print('\n')
 
-    #     # Plot
-    #     plotting_color = random_shade_of_color(obj_to_color[obj_name])
-    #     sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
-    #     sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
+        # Plot
+        plotting_color = random_shade_of_color(obj_to_color[obj_name])
+        sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
+        sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
 
-    # fig1.legend()
-    # fig1.set_figwidth(10)
-    # fig1.set_figheight(10)
-    # fig2.legend()
-    # fig2.set_figwidth(10)
-    # fig2.set_figheight(10)
-    # plt.show()
+        # Plot naive fit
+        sp2.plot(estimator._x_data, E_object*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
+
+    fig1.legend()
+    fig1.set_figwidth(10)
+    fig1.set_figheight(10)
+    fig2.legend()
+    fig2.set_figwidth(10)
+    fig2.set_figheight(10)
+    plt.show()
