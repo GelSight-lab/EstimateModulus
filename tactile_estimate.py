@@ -573,28 +573,25 @@ if __name__ == "__main__":
 
         # print(file_name, ", center_depth:", estimator.depth_images()[-1][100, 150], ", mean_depth:", estimator.depth_images()[-1].mean(), ", max_depth:", estimator.depth_images()[-1].max(), ", min_depth:", estimator.depth_images()[-1].min())
 
-        print(file_name, len(estimator.depth_images()))
-        estimator.plot_grasp_data()
+        # Fit using our MDR estimator
+        E_star = estimator.fit_modulus_MDR()
+        E_object, v_object = estimator.Estar_to_E(E_star)
 
-        # # Fit using our MDR estimator
-        # E_star = estimator.fit_modulus_MDR()
-        # E_object, v_object = estimator.Estar_to_E(E_star)
+        # E_object = estimator.fit_modulus_naive()
 
-        # # E_object = estimator.fit_modulus_naive()
+        # print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
+        # print(f'Maximum force of {obj_name}:', np.max(estimator.forces()))
+        # print(f'Strain range of {obj_name}:', min(estimator._x_data), 'to', max(estimator._x_data))
+        # print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
+        # print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))
+        # print(f'Depth range of {obj_name}:', min(estimator._d), 'to', max(estimator._d))
+        print(f'Estimated modulus of {obj_name}:', E_object)
+        print('\n')
 
-        # # print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
-        # # print(f'Maximum force of {obj_name}:', np.max(estimator.forces()))
-        # # print(f'Strain range of {obj_name}:', min(estimator._x_data), 'to', max(estimator._x_data))
-        # # print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
-        # # print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))
-        # # print(f'Depth range of {obj_name}:', min(estimator._d), 'to', max(estimator._d))
-        # print(f'Estimated modulus of {obj_name}:', E_object)
-        # print('\n')
-
-        # # Plot
-        # plotting_color = random_shade_of_color(obj_to_color[obj_name])
-        # sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
-        # sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
+        # Plot
+        plotting_color = random_shade_of_color(obj_to_color[obj_name])
+        sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
+        sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
 
         # # Plot naive fit
         # sp2.plot(estimator._x_data, E_object*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
