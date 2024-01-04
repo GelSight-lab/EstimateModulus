@@ -69,6 +69,7 @@ class EstimateModulus():
         self._F = []                 # Contact forces for fitting
         self._d = []                 # Contact depth for fitting
         self._a = []                 # Contact radius for fitting
+        self._R = []                 # Estimated radius of object
         self._contact_areas = []     # Contact areas for fitting
         self._x_data = []            # Save fitting data for plotting
         self._y_data = []            # Save fitting data for plotting
@@ -79,6 +80,7 @@ class EstimateModulus():
         self._F = []
         self._d = []
         self._a = []
+        self._R = []
         self._contact_areas = []
         self._x_data = []
         self._y_data = []
@@ -266,10 +268,10 @@ class EstimateModulus():
         # self.filter_depths(concave_mask=False)
 
         x_data, y_data = [], []
-        d, a, F = [], [], []
+        d, a, F, R = [], [], [], []
 
         # TODO: Generalize this radius
-        R = 0.025 # [m], measured for elastic balls
+        # R = 0.025 # [m], measured for elastic balls
 
         for i in range(self.depth_images().shape[0]):
             F_i = abs(self.forces()[i])
@@ -281,19 +283,24 @@ class EstimateModulus():
             # Take mean of 5x5 neighborhood around maximum depth
             d_i = self.mean_max_depths()[i]
 
-            if F_i > 0 and a_i >= 0.003 and d_i > self.depth_threshold:
-                p_0 = (1/np.pi) * (6*F_i/(R**2))**(1/3) # times E_star^2/3
+            # Compute estimated radius based on depth (d) and contact radius (a)
+            R_i = d_i + (a_i**2 - d_i**2)/(2*d_i)
+
+            if F_i > 0 and contact_area_i >= 1e-5 and d_i > self.depth_threshold:
+                p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3
                 q_1D_0 = p_0 * np.pi * a_i / 2
                 w_1D_0 = (1 - self.nu_gel**2) * q_1D_0 / self.E_gel
                 F.append(F_i)
                 d.append(d_i)
                 a.append(a_i)
+                R.append(R_i)
                 x_data.append(w_1D_0)
                 y_data.append(d_i)
 
         self._d = np.array(d)
         self._a = np.array(a)
         self._F = np.array(F)
+        self._R = np.array(R)
         self.x_data = np.array(x_data)
         self.y_data = np.array(y_data)
 
@@ -551,7 +558,7 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        # if obj_name.count('foam') == 0: continue
+        # if obj_name.count('ball') == 0: continue
         print('Object:', obj_name)
 
         # Load data and clip
@@ -561,36 +568,36 @@ if __name__ == "__main__":
         estimator.clip_to_press()
         assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
 
-
         # estimator.plot_depth(estimator.depth_images()[-1])
         # estimator.plot_contact_mask(estimator.depth_images()[-1])
 
         # print(file_name, ", center_depth:", estimator.depth_images()[-1][100, 150], ", mean_depth:", estimator.depth_images()[-1].mean(), ", max_depth:", estimator.depth_images()[-1].max(), ", min_depth:", estimator.depth_images()[-1].min())
 
-
+        print(file_name, len(estimator.depth_images()))
+        estimator.plot_grasp_data()
 
         # # Fit using our MDR estimator
-        # E_star = estimator.fit_modulus()
+        # E_star = estimator.fit_modulus_MDR()
         # E_object, v_object = estimator.Estar_to_E(E_star)
 
-        E_object = estimator.fit_modulus_naive()
+        # # E_object = estimator.fit_modulus_naive()
 
-        # print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
-        # print(f'Maximum force of {obj_name}:', np.max(estimator.forces()))
-        # print(f'Strain range of {obj_name}:', min(estimator._x_data), 'to', max(estimator._x_data))
-        # print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
-        # print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))
-        # print(f'Depth range of {obj_name}:', min(estimator._d), 'to', max(estimator._d))
-        print(f'Estimated modulus of {obj_name}:', E_object)
-        print('\n')
+        # # print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
+        # # print(f'Maximum force of {obj_name}:', np.max(estimator.forces()))
+        # # print(f'Strain range of {obj_name}:', min(estimator._x_data), 'to', max(estimator._x_data))
+        # # print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
+        # # print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))
+        # # print(f'Depth range of {obj_name}:', min(estimator._d), 'to', max(estimator._d))
+        # print(f'Estimated modulus of {obj_name}:', E_object)
+        # print('\n')
 
-        # Plot
-        plotting_color = random_shade_of_color(obj_to_color[obj_name])
-        sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
-        sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
+        # # Plot
+        # plotting_color = random_shade_of_color(obj_to_color[obj_name])
+        # sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
+        # sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
 
-        # Plot naive fit
-        sp2.plot(estimator._x_data, E_object*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
+        # # Plot naive fit
+        # sp2.plot(estimator._x_data, E_object*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
 
     fig1.legend()
     fig1.set_figwidth(10)
@@ -599,3 +606,4 @@ if __name__ == "__main__":
     fig2.set_figwidth(10)
     fig2.set_figheight(10)
     plt.show()
+    
