@@ -24,35 +24,63 @@ PX_TO_MM = np.sqrt((WARPED_IMG_SIZE[0] / SENSOR_PAD_DIM_MM[0])**2 + (WARPED_IMG_
 MM_TO_PX = 1/PX_TO_MM
 
 # Fit an ellipse bounding the True space of a 2D binary array
-def fit_ellipse(binary_array):
+def fit_ellipse(binary_array, plot_result=False):
     # Find contours in the binary array
     binary_array_uint8 = binary_array.astype(np.uint8)
     contours, _ = cv2.findContours(binary_array_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-
-    # If contours are found
-    if contours:
-        # # Fit ellipse to the contours
-        # ellipse = cv2.fitEllipse(contours[0])
-        # return ellipse
-        
-        # Iterate through contours
-        max_ellipse_area = 0
-        for contour in contours:
-            # Fit ellipse to the contour
-            ellipse = cv2.fitEllipse(contour)
-
-            # Calculate the area of the fitted ellipse
-            ellipse_area = (np.pi * ellipse[1][0] * ellipse[1][1]) / 4
-
-            # Check if the ellipse area is above the minimum threshold
-            if ellipse_area > max_ellipse_area:
-                max_ellipse_area = ellipse_area
-                max_ellipse = ellipse
-
-        return max_ellipse
-    
-    else:
+    if not contours:
         return None
+
+    # Iterate through contours
+    max_ellipse_area = 0
+    for contour in contours:
+        # Fit ellipse to the contour
+        ellipse = cv2.fitEllipse(contour)
+
+        # Calculate the area of the fitted ellipse
+        ellipse_area = (np.pi * ellipse[1][0] * ellipse[1][1]) / 4
+
+        # Check if the ellipse area is above the minimum threshold
+        if ellipse_area > max_ellipse_area:
+            max_ellipse_area = ellipse_area
+            max_ellipse = ellipse
+
+    if plot_result:
+        # Draw the ellipse on a blank image for visualization
+        ellipse_image = np.zeros_like(binary_array, dtype=np.uint8)
+        cv2.ellipse(ellipse_image, max_ellipse, 255, 1)
+
+        # Display the results
+        cv2.imshow("Original Binary Array", (binary_array * 255).astype(np.uint8))
+        cv2.imshow("Ellipse Fitted", ellipse_image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    return max_ellipse
+
+# Fit an ellipse bounding the True space of a 2D non-binary array
+def fit_ellipse_float(float_array):
+    # Find contours in the array
+    binary_array_uint8 = (float_array * 255).astype(np.uint8)
+    contours, _ = cv2.findContours(binary_array_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    if not contours:
+        return None
+
+    # Iterate through contours
+    max_ellipse_area = 0
+    for contour in contours:
+        # Fit ellipse to the contour
+        ellipse = cv2.fitEllipse(contour)
+
+        # Calculate the area of the fitted ellipse
+        ellipse_area = (np.pi * ellipse[1][0] * ellipse[1][1]) / 4
+
+        # Check if the ellipse area is above the minimum threshold
+        if ellipse_area > max_ellipse_area:
+            max_ellipse_area = ellipse_area
+            max_ellipse = ellipse
+
+    return max_ellipse
 
 # Random shades for consistent plotting over multiple trials
 def random_shade_of_color(color_name):
@@ -330,27 +358,7 @@ class EstimateModulus():
             major_axis, minor_axis = ellipse[1]
             r_i = 0.5 * (0.001 / PX_TO_MM) * (major_axis + minor_axis)/2
             R_i = d_i + (r_i**2 - d_i**2)/(2*d_i)
-            # if ellipse is not None:
-            #     # Draw the ellipse on a blank image for visualization
-            #     ellipse_image = np.zeros_like(mask, dtype=np.uint8)
-            #     cv2.ellipse(ellipse_image, ellipse, 255, 1)
 
-            #     # Display the results
-            #     cv2.imshow("Original Binary Array", (mask * 255).astype(np.uint8))
-            #     cv2.imshow("Ellipse Fitted", ellipse_image)
-            #     cv2.waitKey(0)
-            #     cv2.destroyAllWindows()\
-
-            '''
-            # Use bounding box to compute radius
-            non_zero_indices = np.nonzero(mask)
-            if mask.max() == 0: continue
-            min_x, min_y = np.min(non_zero_indices, axis=1)
-            max_x, max_y = np.max(non_zero_indices, axis=1)
-            # r_i = 0.5 * (0.001 / PX_TO_MM) * ((max_x - min_x)**2 + (max_y - min_y)**2)**0.5
-            r_i = 0.5 * (0.001 / PX_TO_MM) * (abs(max_x - min_x) + abs(max_y - min_y))/2
-            R_i = d_i + (r_i**2 - d_i**2)/(2*d_i)   
-            '''
 
             if F_i > 0 and contact_area_i >= 5e-5 and d_i > self.depth_threshold:
                 p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3
