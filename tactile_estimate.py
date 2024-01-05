@@ -23,6 +23,20 @@ SENSOR_PAD_DIM_MM = (24, 33) # [mm]
 PX_TO_MM = np.sqrt((WARPED_IMG_SIZE[0] / SENSOR_PAD_DIM_MM[0])**2 + (WARPED_IMG_SIZE[1] / SENSOR_PAD_DIM_MM[1])**2)
 MM_TO_PX = 1/PX_TO_MM
 
+# Fit an ellipse bounding the True space of a 2D binary array
+def fit_ellipse(binary_array):
+    # Find contours in the binary array
+    binary_array_uint8 = binary_array.astype(np.uint8)
+    contours, _ = cv2.findContours(binary_array_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+    # If contours are found
+    if contours:
+        # Fit ellipse to the contours
+        ellipse = cv2.fitEllipse(contours[0])
+        return ellipse
+    else:
+        return None
+
 # Random shades for consistent plotting over multiple trials
 def random_shade_of_color(color_name):
     try:
@@ -187,7 +201,7 @@ class EstimateModulus():
     # Same as flipped, but use relative threshold
     def flipped_total_mean_threshold_contact_mask(self, depth):
         mask = depth >= self.mean_depths().mean()
-        if depth.mean() < 0:
+        if self.mean_depths().mean() < 0:
             mask = depth <= -self.mean_depths().mean()
         return mask
 
@@ -273,7 +287,9 @@ class EstimateModulus():
         # TODO: Generalize this radius
         # R = 0.025 # [m], measured for elastic balls
 
-        for i in range(self.depth_images().shape[0]):
+        mean_max_depths = self.mean_max_depths()
+
+        for i in range(len(self.depth_images())):
             F_i = abs(self.forces()[i])
             
             mask = self.flipped_total_mean_threshold_contact_mask(self.depth_images()[i])
@@ -281,12 +297,45 @@ class EstimateModulus():
             a_i = np.sqrt(contact_area_i / np.pi)
 
             # Take mean of 5x5 neighborhood around maximum depth
-            d_i = self.mean_max_depths()[i]
+            d_i = mean_max_depths[i]
 
             # Compute estimated radius based on depth (d) and contact radius (a)
             R_i = d_i + (a_i**2 - d_i**2)/(2*d_i)
 
-            if F_i > 0 and contact_area_i >= 1e-5 and d_i > self.depth_threshold:
+            '''
+            # Compute circle radius using ellipse fit
+            try:
+                ellipse = fit_ellipse(mask)
+            except:
+                continue
+            if ellipse is None: continue
+            major_axis, minor_axis = ellipse[1]
+            r_i = 0.5 * (0.001 / PX_TO_MM) * (major_axis + minor_axis)/2
+            R_i = d_i + (r_i**2 - d_i**2)/(2*d_i)
+            if ellipse is not None:
+                # Draw the ellipse on a blank image for visualization
+                ellipse_image = np.zeros_like(mask, dtype=np.uint8)
+                cv2.ellipse(ellipse_image, ellipse, 255, 1)
+
+                # Display the results
+                cv2.imshow("Original Binary Array", (mask * 255).astype(np.uint8))
+                cv2.imshow("Ellipse Fitted", ellipse_image)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+            '''
+
+            '''
+            # Use bounding box to compute radius
+            non_zero_indices = np.nonzero(mask)
+            if mask.max() == 0: continue
+            min_x, min_y = np.min(non_zero_indices, axis=1)
+            max_x, max_y = np.max(non_zero_indices, axis=1)
+            # r_i = 0.5 * (0.001 / PX_TO_MM) * ((max_x - min_x)**2 + (max_y - min_y)**2)**0.5
+            r_i = 0.5 * (0.001 / PX_TO_MM) * (abs(max_x - min_x) + abs(max_y - min_y))/2
+            R_i = d_i + (r_i**2 - d_i**2)/(2*d_i)   
+            '''
+
+            if F_i > 0 and contact_area_i >= 5e-5 and d_i > self.depth_threshold:
                 p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3
                 q_1D_0 = p_0 * np.pi * a_i / 2
                 w_1D_0 = (1 - self.nu_gel**2) * q_1D_0 / self.E_gel
@@ -558,7 +607,7 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        # if obj_name.count('ball') == 0: continue
+        if obj_name.count('foam') == 0: continue
         print('Object:', obj_name)
 
         # Load data and clip
@@ -585,6 +634,7 @@ if __name__ == "__main__":
         # print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
         # print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))
         # print(f'Depth range of {obj_name}:', min(estimator._d), 'to', max(estimator._d))
+        print(f'Mean radius of {obj_name}:', sum(estimator._R) / len(estimator._R))
         print(f'Estimated modulus of {obj_name}:', E_object)
         print('\n')
 
