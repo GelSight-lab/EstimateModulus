@@ -312,80 +312,6 @@ class EstimateModulus():
 
         return [radius, C[0], C[1], C[2]] # [ radius, center_x, center_y, center_z ]
     
-    # Use Hertzian contact models and MDR to compute modulus
-    def fit_modulus_MDR(self, use_ellipse_fitting=True):
-        # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
-
-        # p_0     = f(E*, F, a)
-        # p(r)    = p_0 sqrt(1 - r^2/a^2)
-        # q_1d(x) = 2 integral(r p(r) / sqrt(r^2 - x^2) dr)
-        # w_1d(x) = (1-v^2)/E_sensor * q_1d(x)
-        # w_1d(0) = max_depth
-
-        # TODO: Replace this
-        # # Filter depth images to mask and crop
-        # self.filter_depths(concave_mask=False)
-
-        x_data, y_data = [], []
-        d, a, F, R = [], [], [], []
-
-        # TODO: Generalize this radius
-        # R = 0.025 # [m], measured for elastic balls
-
-        mean_max_depths = self.mean_max_depths()
-
-        for i in range(len(self.depth_images())):
-            F_i = abs(self.forces()[i])
-            
-            mask = self.flipped_total_mean_threshold_contact_mask(self.depth_images()[i])
-            contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
-            a_i = np.sqrt(contact_area_i / np.pi)
-
-            # Take mean of 5x5 neighborhood around maximum depth
-            d_i = mean_max_depths[i]
-
-            if use_ellipse_fitting:
-                # Compute circle radius using ellipse fit
-                try:
-                    ellipse = fit_ellipse(mask)
-                except:
-                    continue
-                if ellipse is None: continue
-                major_axis, minor_axis = ellipse[1]
-                r_i = 0.5 * (0.001 / PX_TO_MM) * (major_axis + minor_axis)/2
-                R_i = d_i + (r_i**2 - d_i**2)/(2*d_i)
-            else:
-                # Compute estimated radius based on depth (d) and contact radius (a)
-                R_i = d_i + (a_i**2 - d_i**2)/(2*d_i)
-
-            if F_i > 0 and contact_area_i >= 5e-5 and d_i > self.depth_threshold:
-                p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3
-                q_1D_0 = p_0 * np.pi * a_i / 2
-                w_1D_0 = (1 - self.nu_gel**2) * q_1D_0 / self.E_gel
-                F.append(F_i)
-                d.append(d_i)
-                a.append(a_i)
-                R.append(R_i)
-                x_data.append(w_1D_0)
-                y_data.append(d_i)
-
-        self._d = np.array(d)
-        self._a = np.array(a)
-        self._F = np.array(F)
-        self._R = np.array(R)
-        self._x_data = np.array(x_data)
-        self._y_data = np.array(y_data)
-
-        # Fit for E_star
-        E_star = self.linear_coeff_fit(x_data, y_data)**(3/2)
-        return E_star
-    
-    def Estar_to_E(self, E_star):
-        # Compute compliance from E_star by assuming Poisson's ratio
-        nu = self.assumed_poisson_ratio
-        E = (1 - nu**2) / (1/E_star - (1 - self.nu_gel**2)/(self.E_gel))
-        return E, nu
-    
     # Naively estimate modulus based on gripper width change and aggregate modulus
     def fit_modulus_naive(self, use_mean=True):
         assert self.use_gripper_width
@@ -469,6 +395,80 @@ class EstimateModulus():
 
         return E
     
+    # Use Hertzian contact models and MDR to compute modulus
+    def fit_modulus_MDR(self, use_ellipse_fitting=True):
+        # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
+
+        # p_0     = f(E*, F, a)
+        # p(r)    = p_0 sqrt(1 - r^2/a^2)
+        # q_1d(x) = 2 integral(r p(r) / sqrt(r^2 - x^2) dr)
+        # w_1d(x) = (1-v^2)/E_sensor * q_1d(x)
+        # w_1d(0) = max_depth
+
+        # TODO: Replace this
+        # # Filter depth images to mask and crop
+        # self.filter_depths(concave_mask=False)
+
+        x_data, y_data = [], []
+        d, a, F, R = [], [], [], []
+
+        # TODO: Generalize this radius
+        # R = 0.025 # [m], measured for elastic balls
+
+        mean_max_depths = self.mean_max_depths()
+
+        for i in range(len(self.depth_images())):
+            F_i = abs(self.forces()[i])
+            
+            mask = self.flipped_total_mean_threshold_contact_mask(self.depth_images()[i])
+            contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
+            a_i = np.sqrt(contact_area_i / np.pi)
+
+            # Take mean of 5x5 neighborhood around maximum depth
+            d_i = mean_max_depths[i]
+
+            if use_ellipse_fitting:
+                # Compute circle radius using ellipse fit
+                try:
+                    ellipse = fit_ellipse(mask)
+                except:
+                    continue
+                if ellipse is None: continue
+                major_axis, minor_axis = ellipse[1]
+                r_i = 0.5 * (0.001 / PX_TO_MM) * (major_axis + minor_axis)/2
+                R_i = d_i + (r_i**2 - d_i**2)/(2*d_i)
+            else:
+                # Compute estimated radius based on depth (d) and contact radius (a)
+                R_i = d_i + (a_i**2 - d_i**2)/(2*d_i)
+
+            if F_i > 0 and contact_area_i >= 5e-5 and d_i > self.depth_threshold:
+                p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3
+                q_1D_0 = p_0 * np.pi * a_i / 2
+                w_1D_0 = (1 - self.nu_gel**2) * q_1D_0 / self.E_gel
+                F.append(F_i)
+                d.append(d_i)
+                a.append(a_i)
+                R.append(R_i)
+                x_data.append(w_1D_0)
+                y_data.append(d_i)
+
+        self._d = np.array(d)
+        self._a = np.array(a)
+        self._F = np.array(F)
+        self._R = np.array(R)
+        self._x_data = np.array(x_data)
+        self._y_data = np.array(y_data)
+
+        # Fit for E_star
+        E_star = self.linear_coeff_fit(x_data, y_data)**(3/2)
+        return E_star
+    
+    def Estar_to_E(self, E_star):
+        # Compute compliance from E_star by assuming Poisson's ratio
+        nu = self.assumed_poisson_ratio
+        E = (1 - nu**2) / (1/E_star - (1 - self.nu_gel**2)/(self.E_gel))
+        return E, nu
+
     # Display raw data from a depth image in 3D
     def plot_depth(self, depth):
         # Extract 3D data
@@ -599,10 +599,19 @@ if __name__ == "__main__":
     sp1.set_xlabel('Measured Sensor Deformation (d) [m]')
     sp1.set_ylabel('Force [N]')
     
+    '''
+    # Set up stress / strain axes for naive method
     fig2 = plt.figure(2)
     sp2 = fig2.add_subplot(211)
     sp2.set_xlabel('dL / L')
     sp2.set_ylabel('F / A')
+    '''
+    
+    # Set up axes for MDR method
+    fig2 = plt.figure(2)
+    sp2 = fig2.add_subplot(211)
+    sp2.set_xlabel('[Pa]^(-2/3)')
+    sp2.set_ylabel('Depth [m]')
 
     wedge_video    = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
     contact_force  = ContactForce()
@@ -630,7 +639,7 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        # if obj_name.count('orange') == 0: continue
+        # if obj_name.count('strawberry') == 0: continue
         print('Object:', obj_name)
 
         # Load data and clip
@@ -666,8 +675,8 @@ if __name__ == "__main__":
         sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
         sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
 
-        # Plot naive fit
-        sp2.plot(estimator._x_data, np.array(estimator._x_data)*(E_object**(2/3)), "-", label=obj_name, markersize=8, color=plotting_color)
+        # Plot MDR fit
+        sp2.plot(estimator._x_data, np.array(estimator._x_data)*(E_star**(2/3)), "-", label=obj_name, markersize=8, color=plotting_color)
 
         # # Plot naive fit
         # sp2.plot(estimator._x_data, E_object*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
@@ -679,4 +688,4 @@ if __name__ == "__main__":
     fig2.set_figwidth(10)
     fig2.set_figheight(10)
     plt.show()
-    
+    # print('here')
