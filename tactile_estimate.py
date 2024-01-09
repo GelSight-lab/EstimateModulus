@@ -313,7 +313,7 @@ class EstimateModulus():
         return [radius, C[0], C[1], C[2]] # [ radius, center_x, center_y, center_z ]
     
     # Naively estimate modulus based on gripper width change and aggregate modulus
-    def fit_modulus_naive(self, use_mean=True):
+    def fit_modulus_naive(self, use_mean=True, use_ellipse_fitting=True):
         assert self.use_gripper_width
 
         # Find initial length of first contact
@@ -326,13 +326,26 @@ class EstimateModulus():
             depth_i = self.depth_images()[i]
 
             mask = self.flipped_total_mean_threshold_contact_mask(depth_i)
-            contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
-            a_i = np.sqrt(contact_area_i / np.pi)
 
             if use_mean:
                 d_i = np.sum(depth_i * mask) / np.sum(mask)
             else:
                 d_i = self.top_percentile_depths()[i]
+
+            if use_ellipse_fitting:
+                # Compute contact area using ellipse fit
+                try:
+                    ellipse = fit_ellipse(mask)
+                except:
+                    continue
+                if ellipse is None: continue
+                major_axis, minor_axis = ellipse[1]
+                contact_area_i = np.pi * major_axis * minor_axis
+                a_i = (major_axis + minor_axis) / 2
+            else:
+                # Use mask for contact area
+                contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
+                a_i = np.sqrt(contact_area_i / np.pi)
 
             dL = -(self.gripper_widths()[i] - L0 + 2*(d_i - d0))
             if dL >= 0 and contact_area_i >= 2.5e-5:
@@ -356,7 +369,7 @@ class EstimateModulus():
         return E
     
     # Fit to Hertizan model with apparent deformation
-    def fit_modulus_hertz(self):
+    def fit_modulus_hertz(self, use_ellipse_fitting=True):
         # Calculate apparent deformation using gripper width
         # Pretend that the contact geometry is cylindrical
         # This gives the relation...
@@ -373,9 +386,21 @@ class EstimateModulus():
             d_i = L0 - self.gripper_widths()[i]
             
             mask = self.flipped_total_mean_threshold_contact_mask(depth_i)
-            contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
 
-            a_i = np.sqrt(contact_area_i / np.pi)
+            if use_ellipse_fitting:
+                # Compute contact area using ellipse fit
+                try:
+                    ellipse = fit_ellipse(mask)
+                except:
+                    continue
+                if ellipse is None: continue
+                major_axis, minor_axis = ellipse[1]
+                contact_area_i = np.pi * major_axis * minor_axis
+                a_i = (major_axis + minor_axis) / 2
+            else:
+                # Use mask for contact area
+                contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
+                a_i = np.sqrt(contact_area_i / np.pi)
 
             if contact_area_i >= 2.5e-5 and d_i > 0:
                 x_data.append(2*d_i*a_i)
@@ -594,24 +619,28 @@ if __name__ == "__main__":
     # GET ESTIMATED MODULUS (E) FOR SET OF TEST DATA #
     ##################################################
 
+    # Choose which mechanical model to use
+    use_method = "naive"
+    assert use_method in ["naive", "hertz", "MDR"]
+
     fig1 = plt.figure(1)
     sp1 = fig1.add_subplot(211)
     sp1.set_xlabel('Measured Sensor Deformation (d) [m]')
     sp1.set_ylabel('Force [N]')
     
-    '''
-    # Set up stress / strain axes for naive method
-    fig2 = plt.figure(2)
-    sp2 = fig2.add_subplot(211)
-    sp2.set_xlabel('dL / L')
-    sp2.set_ylabel('F / A')
-    '''
-    
-    # Set up axes for MDR method
-    fig2 = plt.figure(2)
-    sp2 = fig2.add_subplot(211)
-    sp2.set_xlabel('[Pa]^(-2/3)')
-    sp2.set_ylabel('Depth [m]')
+    if use_method == "naive":
+        # Set up stress / strain axes for naive method
+        fig2 = plt.figure(2)
+        sp2 = fig2.add_subplot(211)
+        sp2.set_xlabel('dL / L')
+        sp2.set_ylabel('F / A')
+
+    elif use_method == "MDR":
+        # Set up axes for MDR method
+        fig2 = plt.figure(2)
+        sp2 = fig2.add_subplot(211)
+        sp2.set_xlabel('[Pa]^(-2/3)')
+        sp2.set_ylabel('Depth [m]')
 
     wedge_video    = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
     contact_force  = ContactForce()
@@ -639,7 +668,7 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        # if obj_name.count('strawberry') == 0: continue
+        if obj_name.count('strawberry') == 0: continue
         print('Object:', obj_name)
 
         # Load data and clip
@@ -652,13 +681,14 @@ if __name__ == "__main__":
         # estimator.plot_depth(estimator.depth_images()[-1])
         # estimator.plot_contact_mask(estimator.depth_images()[-1])
 
-        # print(file_name, ", center_depth:", estimator.depth_images()[-1][100, 150], ", mean_depth:", estimator.depth_images()[-1].mean(), ", max_depth:", estimator.depth_images()[-1].max(), ", min_depth:", estimator.depth_images()[-1].min())
+        if use_method == "naive":
+            # Fit using naive estimator
+            E_object = estimator.fit_modulus_naive(use_ellipse_fitting=True)
 
-        # Fit using our MDR estimator
-        E_star = estimator.fit_modulus_MDR()
-        E_object, v_object = estimator.Estar_to_E(E_star)
-
-        # E_object = estimator.fit_modulus_naive()
+        elif use_method == "MDR":
+            # Fit using our MDR estimator
+            E_star = estimator.fit_modulus_MDR(use_ellipse_fitting=True)
+            E_object, v_object = estimator.Estar_to_E(E_star)
 
         # print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
         # print(f'Maximum force of {obj_name}:', np.max(estimator.forces()))
@@ -675,11 +705,13 @@ if __name__ == "__main__":
         sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
         sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
 
-        # Plot MDR fit
-        sp2.plot(estimator._x_data, np.array(estimator._x_data)*(E_star**(2/3)), "-", label=obj_name, markersize=8, color=plotting_color)
-
-        # # Plot naive fit
-        # sp2.plot(estimator._x_data, E_object*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
+        if use_method == "naive":
+            # Plot naive fit
+            sp2.plot(estimator._x_data, E_object*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
+            
+        elif use_method == "MDR":
+            # Plot MDR fit
+            sp2.plot(estimator._x_data, np.array(estimator._x_data)*(E_star**(2/3)), "-", label=obj_name, markersize=8, color=plotting_color)
 
     fig1.legend()
     fig1.set_figwidth(10)
@@ -688,4 +720,4 @@ if __name__ == "__main__":
     fig2.set_figwidth(10)
     fig2.set_figheight(10)
     plt.show()
-    # print('here')
+    print('here')
