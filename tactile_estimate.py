@@ -335,7 +335,7 @@ class EstimateModulus():
                 d_i = self.top_percentile_depths()[i]
 
             dL = -(self.gripper_widths()[i] - L0 + 2*(d_i - d0))
-            if dL >= 0 and contact_area_i >= 1e-5:
+            if dL >= 0 and contact_area_i >= 2.5e-5:
                 x_data.append(dL/L0) # Strain
                 y_data.append(abs(self.forces()[i]) / contact_area_i) # Stress
                 contact_areas.append(contact_area_i)
@@ -377,7 +377,7 @@ class EstimateModulus():
 
             a_i = np.sqrt(contact_area_i / np.pi)
 
-            if contact_area_i >= 1e-5 and d_i > 0:
+            if contact_area_i >= 2.5e-5 and d_i > 0:
                 x_data.append(2*d_i*a_i)
                 y_data.append(self.forces()[i])
                 contact_areas.append(contact_area_i)
@@ -441,7 +441,7 @@ class EstimateModulus():
                 # Compute estimated radius based on depth (d) and contact radius (a)
                 R_i = d_i + (a_i**2 - d_i**2)/(2*d_i)
 
-            if F_i > 0 and contact_area_i >= 5e-5 and d_i > self.depth_threshold:
+            if F_i > 0 and contact_area_i >= 2.5e-5 and d_i > self.depth_threshold:
                 p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3
                 q_1D_0 = p_0 * np.pi * a_i / 2
                 w_1D_0 = (1 - self.nu_gel**2) * q_1D_0 / self.E_gel
