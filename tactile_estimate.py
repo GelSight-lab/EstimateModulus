@@ -29,7 +29,7 @@ def fit_ellipse(binary_array, plot_result=False):
     binary_array_uint8 = binary_array.astype(np.uint8)
     contours, _ = cv2.findContours(binary_array_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     if not contours:
-        return None
+        raise ValueError('No ellipse found!')
 
     # Iterate through contours
     max_ellipse_area = 0
@@ -59,16 +59,22 @@ def fit_ellipse(binary_array, plot_result=False):
     return max_ellipse
 
 # Fit an ellipse bounding the True space of a 2D non-binary array
-def fit_ellipse_float(float_array):
+def fit_ellipse_float(float_array, plot_result=False):
+    # Normalize array
+    float_array_normalized = (float_array - float_array.min()) / (float_array.max() - float_array.min())
+
+    # Threshold into binary array based on range
+    binary_array = (255 * (float_array_normalized >= 0.5)).astype(np.uint8)
+
     # Find contours in the array
-    binary_array_uint8 = (float_array * 255).astype(np.uint8)
-    contours, _ = cv2.findContours(binary_array_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    contours, _ = cv2.findContours(binary_array, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     if not contours:
-        return None
+        raise ValueError('No ellipse found!')
 
     # Iterate through contours
     max_ellipse_area = 0
     for contour in contours:
+        if contour.shape[0] < 5: continue
         # Fit ellipse to the contour
         ellipse = cv2.fitEllipse(contour)
 
@@ -79,6 +85,18 @@ def fit_ellipse_float(float_array):
         if ellipse_area > max_ellipse_area:
             max_ellipse_area = ellipse_area
             max_ellipse = ellipse
+
+    if plot_result:
+        # Draw the ellipse on a blank image for visualization
+        ellipse_image = np.zeros_like(float_array, dtype=np.uint8)
+        cv2.ellipse(ellipse_image, max_ellipse, 255, 1)
+
+        # Display the results
+        cv2.imshow("Normalized Array", float_array_normalized)
+        cv2.imshow("Binary Array", binary_array)
+        cv2.imshow("Ellipse Fitted", ellipse_image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
     return max_ellipse
 
@@ -249,6 +267,10 @@ class EstimateModulus():
         if self.mean_depths().mean() < 0:
             mask = depth <= -self.mean_depths().mean()
         return mask
+    
+    # Wrap the chosen contact mask function into one place
+    def contact_mask(self, depth):
+        return self.flipped_total_mean_threshold_contact_mask(depth)
 
     # Fit linear equation with least squares
     def linear_coeff_fit(self, x, y):
@@ -325,7 +347,7 @@ class EstimateModulus():
         for i in range(len(self.depth_images())):
             depth_i = self.depth_images()[i]
 
-            mask = self.flipped_total_mean_threshold_contact_mask(depth_i)
+            mask = self.contact_mask(depth_i)
 
             if use_mean:
                 d_i = np.sum(depth_i * mask) / np.sum(mask)
@@ -385,7 +407,7 @@ class EstimateModulus():
             depth_i = self.depth_images()[i]
             d_i = L0 - self.gripper_widths()[i]
             
-            mask = self.flipped_total_mean_threshold_contact_mask(depth_i)
+            mask = self.contact_mask(depth_i)
 
             if use_ellipse_fitting:
                 # Compute contact area using ellipse fit
@@ -445,7 +467,7 @@ class EstimateModulus():
         for i in range(len(self.depth_images())):
             F_i = abs(self.forces()[i])
             
-            mask = self.flipped_total_mean_threshold_contact_mask(self.depth_images()[i])
+            mask = self.contact_mask(self.depth_images()[i])
             contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
             a_i = np.sqrt(contact_area_i / np.pi)
 
@@ -539,7 +561,7 @@ class EstimateModulus():
     # Display computed contact mask for a given depth image
     def plot_contact_mask(self, depth):
         plt.figure()
-        plt.imshow(self.flipped_total_mean_threshold_contact_mask(depth), cmap=plt.cm.gray)
+        plt.imshow(self.contact_mask(depth), cmap=plt.cm.gray)
         plt.title(f'Contact Mask')
         plt.xlabel('Y')
         plt.ylabel('X')
@@ -554,9 +576,9 @@ class EstimateModulus():
         ax.set_title(f'Contact Mask')
         ax.set_xlabel('Y')
         ax.set_ylabel('X')
-        im = ax.imshow(self.depth_images()[0], cmap=plt.cm.gray)
+        im = ax.imshow(self.contact_mask(self.depth_images()[0]), cmap=plt.cm.gray)
         for i in range(len(self.depth_images())):
-            im.set_array(self.flipped_total_mean_threshold_contact_mask(self.depth_images()[i]))
+            im.set_array(self.contact_mask(self.depth_images()[i]))
             plt.draw()
             plt.pause(0.5)
         plt.ioff()
@@ -668,7 +690,7 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        if obj_name.count('strawberry') == 0: continue
+        if obj_name.count('foam') == 0: continue
         print('Object:', obj_name)
 
         # Load data and clip
@@ -678,8 +700,52 @@ if __name__ == "__main__":
         estimator.clip_to_press()
         assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
 
-        # estimator.plot_depth(estimator.depth_images()[-1])
-        # estimator.plot_contact_mask(estimator.depth_images()[-1])
+
+
+        # fit_ellipse(estimator.contact_mask(estimator.depth_images()[-1]), plot_result=True)
+        # fit_ellipse_float(estimator.depth_images()[-1], plot_result=True)
+
+
+        ellipse_mask = []
+        binary_array = []
+        for i in range(len(estimator.depth_images())):
+
+            # Normalize array
+            float_array = estimator.depth_images()[i]
+            float_array_normalized = (float_array - float_array.min()) / (float_array.max() - float_array.min())
+
+            # Threshold into binary array based on range
+            binary_array.append((255 * (float_array_normalized >= 0.5)).astype(np.uint8))
+
+            max_ellipse = fit_ellipse_float(estimator.depth_images()[i])
+            ellipse_image = np.zeros_like(estimator.depth_images()[i], dtype=np.uint8)
+            cv2.ellipse(ellipse_image, max_ellipse, 255, -1)
+            ellipse_mask.append(ellipse_image)
+
+        plt.ion()
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        for ax, title in zip(axes, ['Depth', 'Binary Thresholding', 'Ellipse Mask']):
+            ax.set_title(title)
+            ax.set_xlabel('Y')
+            ax.set_ylabel('X')
+
+        im1 = axes[0].imshow(estimator.depth_images()[0], cmap="winter")
+        im2 = axes[1].imshow(binary_array[0], cmap=plt.cm.gray)
+        im3 = axes[2].imshow(ellipse_mask[0], cmap=plt.cm.gray)
+
+        plt.tight_layout()
+
+        for i in range(len(estimator.depth_images())):
+            im1.set_array(estimator.depth_images()[i])
+            im2.set_array(binary_array[i])
+            im3.set_array(ellipse_mask[i])
+            
+            plt.draw()
+            plt.pause(0.5)
+
+        plt.ioff()
+        plt.show()
+
 
         if use_method == "naive":
             # Fit using naive estimator
