@@ -362,7 +362,7 @@ class EstimateModulus():
                     continue
                 if ellipse is None: continue
                 major_axis, minor_axis = ellipse[1]
-                contact_area_i = np.pi * major_axis * minor_axis
+                contact_area_i = (0.001 / PX_TO_MM)**2 * np.pi * major_axis * minor_axis
                 a_i = (major_axis + minor_axis) / 2
             else:
                 # Use mask for contact area
@@ -417,7 +417,7 @@ class EstimateModulus():
                     continue
                 if ellipse is None: continue
                 major_axis, minor_axis = ellipse[1]
-                contact_area_i = np.pi * major_axis * minor_axis
+                contact_area_i = (0.001 / PX_TO_MM)**2 * np.pi * major_axis * minor_axis
                 a_i = (major_axis + minor_axis) / 2
             else:
                 # Use mask for contact area
