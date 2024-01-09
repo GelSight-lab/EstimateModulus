@@ -313,7 +313,7 @@ class EstimateModulus():
         return [radius, C[0], C[1], C[2]] # [ radius, center_x, center_y, center_z ]
     
     # Use Hertzian contact models and MDR to compute modulus
-    def fit_modulus_MDR(self):
+    def fit_modulus_MDR(self, use_ellipse_fitting=True):
         # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
 
         # p_0     = f(E*, F, a)
@@ -344,21 +344,19 @@ class EstimateModulus():
             # Take mean of 5x5 neighborhood around maximum depth
             d_i = mean_max_depths[i]
 
-            '''
-            # Compute estimated radius based on depth (d) and contact radius (a)
-            R_i = d_i + (a_i**2 - d_i**2)/(2*d_i)
-            '''
-
-            # Compute circle radius using ellipse fit
-            try:
-                ellipse = fit_ellipse(mask)
-            except:
-                continue
-            if ellipse is None: continue
-            major_axis, minor_axis = ellipse[1]
-            r_i = 0.5 * (0.001 / PX_TO_MM) * (major_axis + minor_axis)/2
-            R_i = d_i + (r_i**2 - d_i**2)/(2*d_i)
-
+            if use_ellipse_fitting:
+                # Compute circle radius using ellipse fit
+                try:
+                    ellipse = fit_ellipse(mask)
+                except:
+                    continue
+                if ellipse is None: continue
+                major_axis, minor_axis = ellipse[1]
+                r_i = 0.5 * (0.001 / PX_TO_MM) * (major_axis + minor_axis)/2
+                R_i = d_i + (r_i**2 - d_i**2)/(2*d_i)
+            else:
+                # Compute estimated radius based on depth (d) and contact radius (a)
+                R_i = d_i + (a_i**2 - d_i**2)/(2*d_i)
 
             if F_i > 0 and contact_area_i >= 5e-5 and d_i > self.depth_threshold:
                 p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3
@@ -375,8 +373,8 @@ class EstimateModulus():
         self._a = np.array(a)
         self._F = np.array(F)
         self._R = np.array(R)
-        self.x_data = np.array(x_data)
-        self.y_data = np.array(y_data)
+        self._x_data = np.array(x_data)
+        self._y_data = np.array(y_data)
 
         # Fit for E_star
         E_star = self.linear_coeff_fit(x_data, y_data)**(3/2)
@@ -667,6 +665,9 @@ if __name__ == "__main__":
         plotting_color = random_shade_of_color(obj_to_color[obj_name])
         sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=obj_name, markersize=8, color=plotting_color)
         sp2.plot(estimator._x_data, estimator._y_data, ".", label=obj_name, markersize=8, color=plotting_color)
+
+        # Plot naive fit
+        sp2.plot(estimator._x_data, np.array(estimator._x_data)*(E_object**(2/3)), "-", label=obj_name, markersize=8, color=plotting_color)
 
         # # Plot naive fit
         # sp2.plot(estimator._x_data, E_object*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
