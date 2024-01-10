@@ -35,7 +35,7 @@ def close_gripper(_franka_arm): {
     )
 }
 
-def collect_data_for_object(object_name, object_modulus, num_trials, folder_name=None, plot_collected_data=False):
+def collect_data_for_object(object_name, num_trials, folder_name=None, plot_collected_data=False):
     # Define streaming addresses
     wedge_video         =   GelsightWedgeVideo(IP="172.16.0.100", config_csv="./config_100.csv")
     # other_wedge_video   =   GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_200.csv")
@@ -134,7 +134,7 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
             plt.show()
 
         # Save
-        grasp_data.save(f'./example_data/{folder_name}/{object_name}__E={str(object_modulus)}__t={str(i)}')
+        grasp_data.save(f'./example_data/{folder_name}/{object_name}__t={str(i)}')
 
         print('Max depth in mm:', grasp_data.max_depths().max())
         print('Max force of N:', grasp_data.forces().max())
@@ -156,10 +156,8 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
 if __name__ == "__main__":
     # Record grasp data for the given object
     OBJECT_NAME     = "bolt"
-    OBJECT_MODULUS  = 0.0
     NUM_TRIALS      = 3
     collect_data_for_object(
         OBJECT_NAME, \
-        OBJECT_MODULUS, \
         NUM_TRIALS \
     )

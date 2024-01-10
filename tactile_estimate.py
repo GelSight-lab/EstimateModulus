@@ -673,6 +673,8 @@ if __name__ == "__main__":
         "purple_ball_hardest"       : "indigo",
         "rigid_strawberry"          : "purple",
         "golf_ball"                 : "gray",
+        "bolt"                      : "black",
+        "rose_eraser"               : "brown",
     }
 
     # Unload data from folder
@@ -684,7 +686,7 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        if obj_name.count('strawberry') == 0: continue
+        # if obj_name.count('strawberry') == 0: continue
         print('Object:', obj_name)
 
         # Load data and clip
