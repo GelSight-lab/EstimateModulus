@@ -388,8 +388,6 @@ class EstimateModulus():
         #       F_N  =  2 E* d a
         #       [From (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov]
 
-        raise NotImplementedError()
-
         # Find initial length of first contact
         L0 = self.gripper_widths()[0]
 
@@ -424,7 +422,7 @@ class EstimateModulus():
         self._d = d
 
         E_agg = self.linear_coeff_fit(x_data, y_data)
-        E = (1/E_agg - 1/self.E_gel)**(-1)  
+        E = (1/E_agg - 1/self.E_gel)**(-1)
 
         return E
     
@@ -462,7 +460,7 @@ class EstimateModulus():
             else:
                 # Compute mask using traditional thresholding alone
                 mask = self.contact_mask(self.depth_images()[i])
-                
+
             # Use mask to compute contact area
             contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
             a_i = np.sqrt(contact_area_i / np.pi)
@@ -643,8 +641,15 @@ if __name__ == "__main__":
         # Set up stress / strain axes for naive method
         fig2 = plt.figure(2)
         sp2 = fig2.add_subplot(211)
-        sp2.set_xlabel('dL / L')
-        sp2.set_ylabel('F / A')
+        sp2.set_xlabel('Strain (dL/L) [/]')
+        sp2.set_ylabel('Stress (F/A) [Pa]')
+    
+    elif use_method == "hertz":
+        # Set up stress / strain axes for naive method
+        fig2 = plt.figure(2)
+        sp2 = fig2.add_subplot(211)
+        sp2.set_xlabel('Area [m^2]')
+        sp2.set_ylabel('Force [N]')
 
     elif use_method == "MDR":
         # Set up axes for MDR method
@@ -735,6 +740,10 @@ if __name__ == "__main__":
             # Fit using naive estimator
             E_object = estimator.fit_modulus_naive(use_ellipse_fitting=True)
 
+        elif use_method == "hertz":
+            # Fit using simple Hertzian estimator
+            E_object = estimator.fit_modulus_hertz(use_ellipse_fitting=True)
+
         elif use_method == "MDR":
             # Fit using our MDR estimator
             E_star = estimator.fit_modulus_MDR(use_ellipse_fitting=True)
@@ -758,10 +767,15 @@ if __name__ == "__main__":
         if use_method == "naive":
             # Plot naive fit
             sp2.plot(estimator._x_data, E_object*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
+
+        elif use_method == "hertz":
+            # Plot simple Hertzian fit
+            E_agg = (1/E_object + 1/estimator.E_gel)**(-1)
+            sp2.plot(estimator._x_data, E_agg*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
             
         elif use_method == "MDR":
             # Plot MDR fit
-            sp2.plot(estimator._x_data, np.array(estimator._x_data)*(E_star**(2/3)), "-", label=obj_name, markersize=8, color=plotting_color)
+            sp2.plot(estimator._x_data, (E_star**(2/3))*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
 
     fig1.legend()
     fig1.set_figwidth(10)
