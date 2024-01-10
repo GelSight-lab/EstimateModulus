@@ -24,7 +24,7 @@ PX_TO_MM = np.sqrt((WARPED_IMG_SIZE[0] / SENSOR_PAD_DIM_MM[0])**2 + (WARPED_IMG_
 MM_TO_PX = 1/PX_TO_MM
 
 # Fit an ellipse bounding the True space of a 2D binary array
-def fit_ellipse(binary_array, plot_result=False):
+def fit_ellipse_from_binary(binary_array, plot_result=False):
     # Find contours in the binary array
     binary_array_uint8 = binary_array.astype(np.uint8)
     contours, _ = cv2.findContours(binary_array_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -34,6 +34,7 @@ def fit_ellipse(binary_array, plot_result=False):
     # Iterate through contours
     max_ellipse_area = 0
     for contour in contours:
+        if contour.shape[0] < 5: continue
         # Fit ellipse to the contour
         ellipse = cv2.fitEllipse(contour)
 
@@ -59,32 +60,15 @@ def fit_ellipse(binary_array, plot_result=False):
     return max_ellipse
 
 # Fit an ellipse bounding the True space of a 2D non-binary array
-def fit_ellipse_float(float_array, plot_result=False):
+def fit_ellipse_from_float(float_array, plot_result=False):
     # Normalize array
     float_array_normalized = (float_array - float_array.min()) / (float_array.max() - float_array.min())
 
     # Threshold into binary array based on range
     binary_array = (255 * (float_array_normalized >= 0.5)).astype(np.uint8)
 
-    # Find contours in the array
-    contours, _ = cv2.findContours(binary_array, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    if not contours:
-        raise ValueError('No ellipse found!')
-
-    # Iterate through contours
-    max_ellipse_area = 0
-    for contour in contours:
-        if contour.shape[0] < 5: continue
-        # Fit ellipse to the contour
-        ellipse = cv2.fitEllipse(contour)
-
-        # Calculate the area of the fitted ellipse
-        ellipse_area = (np.pi * ellipse[1][0] * ellipse[1][1]) / 4
-
-        # Check if the ellipse area is above the minimum threshold
-        if ellipse_area > max_ellipse_area:
-            max_ellipse_area = ellipse_area
-            max_ellipse = ellipse
+    # Fit to ellipse
+    max_ellipse = fit_ellipse_from_binary(binary_array, plot_result=False)
 
     if plot_result:
         # Draw the ellipse on a blank image for visualization
@@ -248,10 +232,9 @@ class EstimateModulus():
     def total_mean_threshold_contact_mask(self, depth):
         return depth >= self.mean_depths().mean()
 
-    # Return mask of which pixels are in contact with object based on range of image
+    # Return mask of which pixels are in upper half of depth range
     def range_threshold_contact_mask(self, depth):
-        halfway = 0.5*(depth.max() - depth.min()) + depth.min()
-        return depth >= halfway
+        return (depth - depth.min()) / (depth.max() - depth.min()) >= 0.5
 
     # Return mask of which pixels are in contact with object using constant threshold
     # But, flip if the mean depth of the image is negative (...a bit hacky)
@@ -267,6 +250,13 @@ class EstimateModulus():
         if self.mean_depths().mean() < 0:
             mask = depth <= -self.mean_depths().mean()
         return mask
+    
+    # Threshold and fit depth to an ellipse
+    def ellipse_contact_mask(self, depth):
+        ellipse = fit_ellipse_from_float(depth)
+        ellipse_mask = np.zeros_like(depth, dtype=np.uint8)
+        cv2.ellipse(ellipse_mask, ellipse, 1, -1)
+        return ellipse_mask
     
     # Wrap the chosen contact mask function into one place
     def contact_mask(self, depth):
@@ -335,42 +325,42 @@ class EstimateModulus():
         return [radius, C[0], C[1], C[2]] # [ radius, center_x, center_y, center_z ]
     
     # Naively estimate modulus based on gripper width change and aggregate modulus
+    # (Notably requires both gripper width and tactile depth data)
     def fit_modulus_naive(self, use_mean=True, use_ellipse_fitting=True):
         assert self.use_gripper_width
 
         # Find initial length of first contact
         L0 = self.gripper_widths()[0]
         d0 = 0
+
+        # Precompute peak depths based on percentile
+        peak_depths = self.top_percentile_depths()
         
         contact_areas, a = [], []
         x_data, y_data, d = [], [], []
         for i in range(len(self.depth_images())):
             depth_i = self.depth_images()[i]
-
-            mask = self.contact_mask(depth_i)
+            
+            if use_ellipse_fitting:
+                # Compute mask using ellipse fit
+                mask = self.ellipse_contact_mask(depth_i)
+            else:
+                # Compute mask using traditional thresholding alone
+                mask = self.contact_mask(depth_i)
 
             if use_mean:
+                # Take average over masked contact area
                 d_i = np.sum(depth_i * mask) / np.sum(mask)
             else:
-                d_i = self.top_percentile_depths()[i]
-
-            if use_ellipse_fitting:
-                # Compute contact area using ellipse fit
-                try:
-                    ellipse = fit_ellipse(mask)
-                except:
-                    continue
-                if ellipse is None: continue
-                major_axis, minor_axis = ellipse[1]
-                contact_area_i = (0.001 / PX_TO_MM)**2 * np.pi * major_axis * minor_axis
-                a_i = (major_axis + minor_axis) / 2
-            else:
-                # Use mask for contact area
-                contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
-                a_i = np.sqrt(contact_area_i / np.pi)
+                # Take deepest point
+                d_i = peak_depths[i]
+                
+            # Use mask to compute contact area
+            contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
+            a_i = np.sqrt(contact_area_i / np.pi)
 
             dL = -(self.gripper_widths()[i] - L0 + 2*(d_i - d0))
-            if dL >= 0 and contact_area_i >= 2.5e-5:
+            if dL >= 0 and contact_area_i >= 1e-5:
                 x_data.append(dL/L0) # Strain
                 y_data.append(abs(self.forces()[i]) / contact_area_i) # Stress
                 contact_areas.append(contact_area_i)
@@ -385,18 +375,20 @@ class EstimateModulus():
         self._d = d
 
         # Fit to modulus
-        E = self.linear_coeff_fit(x_data, y_data) # np.polyfit(x_data, y_data, 1)
-        # E = (1/E_agg - 1/self.E_gel)**(-1)
+        E = self.linear_coeff_fit(x_data, y_data)
 
         return E
     
     # Fit to Hertizan model with apparent deformation
+    # (Notably only requires gripper width data, not tactile depth)
     def fit_modulus_hertz(self, use_ellipse_fitting=True):
         # Calculate apparent deformation using gripper width
         # Pretend that the contact geometry is cylindrical
         # This gives the relation...
         #       F_N  =  2 E* d a
         #       [From (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov]
+
+        raise NotImplementedError()
 
         # Find initial length of first contact
         L0 = self.gripper_widths()[0]
@@ -407,24 +399,18 @@ class EstimateModulus():
             depth_i = self.depth_images()[i]
             d_i = L0 - self.gripper_widths()[i]
             
-            mask = self.contact_mask(depth_i)
-
             if use_ellipse_fitting:
-                # Compute contact area using ellipse fit
-                try:
-                    ellipse = fit_ellipse(mask)
-                except:
-                    continue
-                if ellipse is None: continue
-                major_axis, minor_axis = ellipse[1]
-                contact_area_i = (0.001 / PX_TO_MM)**2 * np.pi * major_axis * minor_axis
-                a_i = (major_axis + minor_axis) / 2
+                # Compute mask using ellipse fit
+                mask = self.ellipse_contact_mask(depth_i)
             else:
-                # Use mask for contact area
-                contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
-                a_i = np.sqrt(contact_area_i / np.pi)
+                # Compute mask using traditional thresholding alone
+                mask = self.contact_mask(depth_i)
+                
+            # Use mask to compute contact area
+            contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
+            a_i = np.sqrt(contact_area_i / np.pi)
 
-            if contact_area_i >= 2.5e-5 and d_i > 0:
+            if contact_area_i >= 1e-5 and d_i > 0:
                 x_data.append(2*d_i*a_i)
                 y_data.append(self.forces()[i])
                 contact_areas.append(contact_area_i)
@@ -443,6 +429,7 @@ class EstimateModulus():
         return E
     
     # Use Hertzian contact models and MDR to compute modulus
+    # (Notably only requires tactile depth data, not gripper width)
     def fit_modulus_MDR(self, use_ellipse_fitting=True):
         # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
 
@@ -462,25 +449,27 @@ class EstimateModulus():
         # TODO: Generalize this radius
         # R = 0.025 # [m], measured for elastic balls
 
-        mean_max_depths = self.mean_max_depths()
+        # Precompute peak depths by taking the mean of 5x5 neighborhood around maximum depth
+        peak_depths = self.mean_max_depths()
 
         for i in range(len(self.depth_images())):
             F_i = abs(self.forces()[i])
-            
-            mask = self.contact_mask(self.depth_images()[i])
+            d_i = peak_depths[i]
+
+            if use_ellipse_fitting:
+                # Compute mask using ellipse fit
+                mask = self.ellipse_contact_mask(self.depth_images()[i])
+            else:
+                # Compute mask using traditional thresholding alone
+                mask = self.contact_mask(self.depth_images()[i])
+                
+            # Use mask to compute contact area
             contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
             a_i = np.sqrt(contact_area_i / np.pi)
 
-            # Take mean of 5x5 neighborhood around maximum depth
-            d_i = mean_max_depths[i]
-
             if use_ellipse_fitting:
                 # Compute circle radius using ellipse fit
-                try:
-                    ellipse = fit_ellipse(mask)
-                except:
-                    continue
-                if ellipse is None: continue
+                ellipse = fit_ellipse_from_float(self.depth_images()[i], plot_result=False)
                 major_axis, minor_axis = ellipse[1]
                 r_i = 0.5 * (0.001 / PX_TO_MM) * (major_axis + minor_axis)/2
                 R_i = d_i + (r_i**2 - d_i**2)/(2*d_i)
@@ -488,7 +477,7 @@ class EstimateModulus():
                 # Compute estimated radius based on depth (d) and contact radius (a)
                 R_i = d_i + (a_i**2 - d_i**2)/(2*d_i)
 
-            if F_i > 0 and contact_area_i >= 2.5e-5 and d_i > self.depth_threshold:
+            if F_i > 0 and contact_area_i >= 1e-5 and d_i > self.depth_threshold:
                 p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3
                 q_1D_0 = p_0 * np.pi * a_i / 2
                 w_1D_0 = (1 - self.nu_gel**2) * q_1D_0 / self.E_gel
@@ -642,7 +631,7 @@ if __name__ == "__main__":
     ##################################################
 
     # Choose which mechanical model to use
-    use_method = "naive"
+    use_method = "MDR"
     assert use_method in ["naive", "hertz", "MDR"]
 
     fig1 = plt.figure(1)
@@ -690,7 +679,7 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        if obj_name.count('foam') == 0: continue
+        if obj_name.count('strawberry') == 0: continue
         print('Object:', obj_name)
 
         # Load data and clip
@@ -700,12 +689,7 @@ if __name__ == "__main__":
         estimator.clip_to_press()
         assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
 
-
-
-        # fit_ellipse(estimator.contact_mask(estimator.depth_images()[-1]), plot_result=True)
-        # fit_ellipse_float(estimator.depth_images()[-1], plot_result=True)
-
-
+        '''
         ellipse_mask = []
         binary_array = []
         for i in range(len(estimator.depth_images())):
@@ -717,7 +701,7 @@ if __name__ == "__main__":
             # Threshold into binary array based on range
             binary_array.append((255 * (float_array_normalized >= 0.5)).astype(np.uint8))
 
-            max_ellipse = fit_ellipse_float(estimator.depth_images()[i])
+            max_ellipse = fit_ellipse_from_float(estimator.depth_images()[i])
             ellipse_image = np.zeros_like(estimator.depth_images()[i], dtype=np.uint8)
             cv2.ellipse(ellipse_image, max_ellipse, 255, -1)
             ellipse_mask.append(ellipse_image)
@@ -745,7 +729,7 @@ if __name__ == "__main__":
 
         plt.ioff()
         plt.show()
-
+        '''
 
         if use_method == "naive":
             # Fit using naive estimator
