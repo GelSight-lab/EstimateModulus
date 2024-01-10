@@ -18,7 +18,7 @@ franka_arm = FrankaArm()
 def open_gripper(_franka_arm): {
     _franka_arm.goto_gripper(
         0.08, # Maximum width in meters [m]
-        speed=0.04, # Desired operation speed in [m/s]
+        speed=0.05, # Desired operation speed in [m/s]
         block=True,
         skill_desc="OpenGripper"
     )
@@ -28,18 +28,18 @@ def close_gripper(_franka_arm): {
     _franka_arm.goto_gripper(
         0.0, # Minimum width in meters [m]
         force=50, # Maximum force in Newtons [N]
-        speed=0.0175, # Desired operation speed in [m/s]
+        speed=0.02, # Desired operation speed in [m/s]
         grasp=True,     
         block=True,
         skill_desc="CloseGripper"
     )
 }
 
-def collect_data_for_object(object_name, object_modulus, num_trials, folder_name=None, plot_collected_data=True):
+def collect_data_for_object(object_name, object_modulus, num_trials, folder_name=None, plot_collected_data=False):
     # Define streaming addresses
     wedge_video         =   GelsightWedgeVideo(IP="172.16.0.100", config_csv="./config_100.csv")
     # other_wedge_video   =   GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_200.csv")
-    contact_force       =   ContactForce(IP="172.16.0.50", port=8888)
+    contact_force       =   ContactForce(IP="172.16.0.69", port=8888)
     gripper_width       =   GripperWidth(franka_arm=franka_arm)
     # grasp_data       =   GraspData(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width)
     grasp_data       =   GraspData(wedge_video=wedge_video, contact_force=contact_force, gripper_width=gripper_width)
@@ -155,7 +155,7 @@ def collect_data_for_object(object_name, object_modulus, num_trials, folder_name
 
 if __name__ == "__main__":
     # Record grasp data for the given object
-    OBJECT_NAME     = "rigid_strawberry"
+    OBJECT_NAME     = "bolt"
     OBJECT_MODULUS  = 0.0
     NUM_TRIALS      = 3
     collect_data_for_object(

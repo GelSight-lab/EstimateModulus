@@ -13,7 +13,7 @@ def cleanAndExit():
     sys.exit()
 
 # Define the IP address and port of the receiving device
-server_ip = "172.16.0.50"  # Replace with the IP address of the receiving device
+server_ip = "172.16.0.69"  # Replace with the IP address of the receiving device
 server_port = 8888   # Replace with the port number you want to use
 
 def send_data():

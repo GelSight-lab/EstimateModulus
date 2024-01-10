@@ -169,7 +169,7 @@ class ContactForce():
 
 if __name__ == "__main__":
     # Read data from source
-    contact_force = ContactForce(IP="172.16.0.50")
+    contact_force = ContactForce(IP="172.16.0.69") # IP="172.16.0.50")
     contact_force.start_stream(verbose=True)
     print('If measurements not being received, ssh directly into the pi.')
     time.sleep(10)
