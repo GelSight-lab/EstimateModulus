@@ -379,7 +379,7 @@ class EstimateModulus():
 
         return E
     
-    # Fit to Hertizan model with apparent deformation
+    # Fit data to Hertizan model with apparent deformation
     # (Notably only requires gripper width data, not tactile depth)
     def fit_modulus_hertz(self, use_ellipse_fitting=True):
         # Calculate apparent deformation using gripper width
@@ -426,7 +426,11 @@ class EstimateModulus():
 
         return E
     
-    # Use Hertzian contact models and MDR to compute modulus
+    # Use simple elastic models pixel-wise to compute the modulus of unknown object
+    def fit_modulus_stochastic(self):
+        pass
+    
+    # Use Hertzian contact models and MDR to compute the modulus of unknown object
     # (Notably only requires tactile depth data, not gripper width)
     def fit_modulus_MDR(self, use_ellipse_fitting=True):
         # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
@@ -629,7 +633,7 @@ if __name__ == "__main__":
     ##################################################
 
     # Choose which mechanical model to use
-    use_method = "MDR"
+    use_method = "hertz"
     assert use_method in ["naive", "hertz", "MDR"]
 
     fig1 = plt.figure(1)
@@ -678,7 +682,7 @@ if __name__ == "__main__":
     }
 
     # Unload data from folder
-    data_folder = "./example_data/2023-12-16"
+    data_folder = "./example_data/2024-01-10"
     data_files = os.listdir(data_folder)
     for i in range(len(data_files)):
         file_name = data_files[i]
@@ -686,7 +690,7 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        # if obj_name.count('strawberry') == 0: continue
+        # if obj_name.count('rose') == 0: continue
         print('Object:', obj_name)
 
         # Load data and clip
@@ -696,7 +700,7 @@ if __name__ == "__main__":
         estimator.clip_to_press()
         assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
 
-        '''
+        """
         ellipse_mask = []
         binary_array = []
         for i in range(len(estimator.depth_images())):
@@ -736,11 +740,11 @@ if __name__ == "__main__":
 
         plt.ioff()
         plt.show()
-        '''
+        """
 
         if use_method == "naive":
             # Fit using naive estimator
-            E_object = estimator.fit_modulus_naive(use_ellipse_fitting=True)
+            E_object = estimator.fit_modulus_naive(use_mean=False, use_ellipse_fitting=True)
 
         elif use_method == "hertz":
             # Fit using simple Hertzian estimator
@@ -751,8 +755,8 @@ if __name__ == "__main__":
             E_star = estimator.fit_modulus_MDR(use_ellipse_fitting=True)
             E_object, v_object = estimator.Estar_to_E(E_star)
 
-        # print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
-        # print(f'Maximum force of {obj_name}:', np.max(estimator.forces()))
+        print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
+        print(f'Maximum force of {obj_name}:', np.max(estimator.forces()))
         # print(f'Strain range of {obj_name}:', min(estimator._x_data), 'to', max(estimator._x_data))
         # print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
         # print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))

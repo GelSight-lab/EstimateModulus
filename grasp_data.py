@@ -151,7 +151,7 @@ class GraspData():
     
     # Clip data between frame indices
     def clip(self, i_start, i_end):
-        assert 0 <= i_start < i_end < len(self.wedge_video._raw_rgb_frames)
+        assert 0 <= i_start < i_end <= len(self.wedge_video._raw_rgb_frames)
         self.wedge_video.clip(i_start, i_end)
         if self._wedge_video_count > 1:
             self.other_wedge_video.clip(i_start, i_end)
