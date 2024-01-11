@@ -428,7 +428,70 @@ class EstimateModulus():
     
     # Use simple elastic models pixel-wise to compute the modulus of unknown object
     def fit_modulus_stochastic(self):
-        pass
+
+        # Preprocess depth by taking mean over kernels
+        kernel_size = 10
+        depth_image_shape = self.depth_images().shape
+        assert depth_image_shape[1] % kernel_size == depth_image_shape[2] % kernel_size == 0
+        reduced_depth_images = []
+        for i in range(depth_image_shape[0]):
+            reshaped_depth_image = self.depth_images()[i].reshape(depth_image_shape[1] // kernel_size, kernel_size, depth_image_shape[2] // kernel_size, kernel_size)
+            reduced_depth_images.append(reshaped_depth_image.mean(axis=(1, 3)))
+        reduced_depth_images = np.array(reduced_depth_images)
+
+        # Find initial length of first contact for each pixel in reduced array
+        L0 = np.zeros_like(reduced_depth_images[0,:,:])
+        for r in range(reduced_depth_images.shape[1]):
+            for c in range(reduced_depth_images.shape[2]):
+                for i in range(reduced_depth_images.shape[0]-2):
+                    if reduced_depth_images[i][r][c] > self.depth_threshold and \
+                        reduced_depth_images[i+1][r][c] > self.depth_threshold and \
+                        reduced_depth_images[i+2][r][c] > self.depth_threshold:
+                        L0[r][c] = self.gripper_widths()[i] + 2*reduced_depth_images[i][r][c]
+
+        # # Show image reconstruction
+        # plt.figure()
+        # plt.imshow(L0)
+        # plt.show()
+
+        # Create dynamics points
+        x_data, y_data = [], []
+        d, contact_areas, a = [], [], []
+        for i in range(reduced_depth_images.shape[0]):
+
+            # TODO: Check what this looks like
+            mask = L0 > self.gripper_widths()[i]
+            contact_area_i = (0.001 / PX_TO_MM)**2 * (kernel_size)**2 * np.sum(mask)
+            a_i = np.sqrt(contact_area_i / np.pi)
+            if contact_area_i < 1e-5: continue
+
+            # Calculate mean strain based on aggregation of each point
+            L_i = self.gripper_widths()[i] + 2*reduced_depth_images[i]
+            strains = []
+            for r in range(mask.shape[0]):
+                for c in range(mask.shape[1]):
+                    if mask[r][c] > 0:
+                        strains.append((L_i[r][c] - L0[r][c]) / L0[r][c])
+            strain = sum(strains) / len(strains)
+
+            if contact_area_i >= 1e-5 and strain >= 0:
+                x_data.append(strain)
+                y_data.append(self.forces()[i] / contact_area_i)
+                contact_areas.append(contact_area_i)
+                d.append(reduced_depth_images[i].max())
+                a.append(a_i)
+
+        # TODO: Implement this function
+
+        self._x_data = x_data
+        self._y_data = y_data
+        self._contact_areas = contact_areas
+        self._a = a
+        self._d = d
+
+        E = self.linear_coeff_fit(x_data, y_data)
+
+        return E
     
     # Use Hertzian contact models and MDR to compute the modulus of unknown object
     # (Notably only requires tactile depth data, not gripper width)
@@ -633,8 +696,8 @@ if __name__ == "__main__":
     ##################################################
 
     # Choose which mechanical model to use
-    use_method = "hertz"
-    assert use_method in ["naive", "hertz", "MDR"]
+    use_method = "stochastic"
+    assert use_method in ["naive", "hertz", "stochastic", "MDR"]
 
     fig1 = plt.figure(1)
     sp1 = fig1.add_subplot(211)
@@ -654,6 +717,13 @@ if __name__ == "__main__":
         sp2 = fig2.add_subplot(211)
         sp2.set_xlabel('Area [m^2]')
         sp2.set_ylabel('Force [N]')
+
+    elif use_method == "stochastic":
+        # Set up stress / strain axes for stochastic method
+        fig2 = plt.figure(2)
+        sp2 = fig2.add_subplot(211)
+        sp2.set_xlabel('Strain (dL/L) [/]')
+        sp2.set_ylabel('Stress (F/A) [Pa]')
 
     elif use_method == "MDR":
         # Set up axes for MDR method
@@ -694,7 +764,7 @@ if __name__ == "__main__":
         print('Object:', obj_name)
 
         # Load data and clip
-        estimator = EstimateModulus(use_gripper_width=True)
+        estimator = EstimateModulus(use_gripper_width=True, depth_threshold=5e-5)
         estimator.load_from_file(data_folder + "/" + os.path.splitext(file_name)[0], auto_clip=True)
         
         estimator.clip_to_press()
@@ -750,6 +820,10 @@ if __name__ == "__main__":
             # Fit using simple Hertzian estimator
             E_object = estimator.fit_modulus_hertz(use_ellipse_fitting=True)
 
+        elif use_method == "stochastic":
+            # Fit using stochastic estimator
+            E_object = estimator.fit_modulus_stochastic()
+
         elif use_method == "MDR":
             # Fit using our MDR estimator
             E_star = estimator.fit_modulus_MDR(use_ellipse_fitting=True)
@@ -778,6 +852,10 @@ if __name__ == "__main__":
             # Plot simple Hertzian fit
             E_agg = (1/E_object + 1/estimator.E_gel)**(-1)
             sp2.plot(estimator._x_data, E_agg*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
+
+        elif use_method == "naive":
+            # Plot stochastic fit
+            sp2.plot(estimator._x_data, E_object*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
             
         elif use_method == "MDR":
             # Plot MDR fit
