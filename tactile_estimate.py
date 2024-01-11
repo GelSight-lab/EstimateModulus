@@ -853,7 +853,7 @@ if __name__ == "__main__":
             E_agg = (1/E_object + 1/estimator.E_gel)**(-1)
             sp2.plot(estimator._x_data, E_agg*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
 
-        elif use_method == "naive":
+        elif use_method == "stochastic":
             # Plot stochastic fit
             sp2.plot(estimator._x_data, E_object*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
             
