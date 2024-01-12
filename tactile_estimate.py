@@ -430,7 +430,7 @@ class EstimateModulus():
     def fit_modulus_stochastic(self):
 
         # Preprocess depth by taking mean over kernels
-        kernel_size = 10
+        kernel_size = 5
         depth_image_shape = self.depth_images().shape
         assert depth_image_shape[1] % kernel_size == depth_image_shape[2] % kernel_size == 0
         reduced_depth_images = []
@@ -439,19 +439,48 @@ class EstimateModulus():
             reduced_depth_images.append(reshaped_depth_image.mean(axis=(1, 3)))
         reduced_depth_images = np.array(reduced_depth_images)
 
+        # Linearly interpolate gripper widths wherever measurement is equal
+        interpolated_gripper_widths = self.gripper_widths()
+        i = 0
+        while i < len(interpolated_gripper_widths)-1:
+            if self.gripper_widths()[i] == self.gripper_widths()[i+1]:
+                interpolate = False
+                for k in range(i, len(interpolated_gripper_widths)):
+                    if self.gripper_widths()[i] != self.gripper_widths()[k]:
+                        interpolate = True
+                        break
+                if interpolate:
+                    for j in range(i+1, k):
+                        interpolated_gripper_widths[j] = self.gripper_widths()[i] + (self.gripper_widths()[k] - self.gripper_widths()[i]) * (j-i) / (k-i)
+                    i = k
+                else:
+                    break
+            else:
+                i += 1
+
         # Find initial length of first contact for each pixel in reduced array
         L0 = np.zeros_like(reduced_depth_images[0,:,:])
         for r in range(reduced_depth_images.shape[1]):
             for c in range(reduced_depth_images.shape[2]):
                 for i in range(reduced_depth_images.shape[0]-2):
-                    if reduced_depth_images[i][r][c] > self.depth_threshold and \
-                        reduced_depth_images[i+1][r][c] > self.depth_threshold and \
-                        reduced_depth_images[i+2][r][c] > self.depth_threshold:
-                        L0[r][c] = self.gripper_widths()[i] + 2*reduced_depth_images[i][r][c]
+                    if reduced_depth_images[i,r,c] >= self.depth_threshold and \
+                        reduced_depth_images[i+1,r,c] >= self.depth_threshold and \
+                        reduced_depth_images[i+2,r,c] >= self.depth_threshold:
+                        # L0[r,c] = self.gripper_widths()[i] + 2*reduced_depth_images[i,r,c]
+                        L0[r,c] = interpolated_gripper_widths[i] + 2*reduced_depth_images[i,r,c]
+                        break
 
         # # Show image reconstruction
         # plt.figure()
         # plt.imshow(L0)
+        # plt.show()
+                        
+        # fig = plt.figure()
+        # sp = fig.add_subplot(211)
+        # for r in range(reduced_depth_images.shape[1]):
+        #     for c in range(reduced_depth_images.shape[2]):
+        #         if L0[r][c] == 0: continue
+        #         sp.plot(reduced_depth_images[:,r,c])
         # plt.show()
 
         # Create dynamics points
@@ -459,19 +488,20 @@ class EstimateModulus():
         d, contact_areas, a = [], [], []
         for i in range(reduced_depth_images.shape[0]):
 
+            L_i = interpolated_gripper_widths[i] + 2*reduced_depth_images[i]
+
             # TODO: Check what this looks like
-            mask = L0 > self.gripper_widths()[i]
+            mask = L0 > interpolated_gripper_widths[i]
             contact_area_i = (0.001 / PX_TO_MM)**2 * (kernel_size)**2 * np.sum(mask)
             a_i = np.sqrt(contact_area_i / np.pi)
-            if contact_area_i < 1e-5: continue
+            if contact_area_i < 1e-5 or np.sum(mask) == 0: continue
 
             # Calculate mean strain based on aggregation of each point
-            L_i = self.gripper_widths()[i] + 2*reduced_depth_images[i]
             strains = []
             for r in range(mask.shape[0]):
                 for c in range(mask.shape[1]):
                     if mask[r][c] > 0:
-                        strains.append((L_i[r][c] - L0[r][c]) / L0[r][c])
+                        strains.append((L0[r,c] - L_i[r,c]) / L0[r,c])
             strain = sum(strains) / len(strains)
 
             if contact_area_i >= 1e-5 and strain >= 0:
@@ -480,9 +510,7 @@ class EstimateModulus():
                 contact_areas.append(contact_area_i)
                 d.append(reduced_depth_images[i].max())
                 a.append(a_i)
-
-        # TODO: Implement this function
-
+                
         self._x_data = x_data
         self._y_data = y_data
         self._contact_areas = contact_areas
@@ -836,6 +864,9 @@ if __name__ == "__main__":
         # print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))
         # print(f'Depth range of {obj_name}:', min(estimator._d), 'to', max(estimator._d))
         # print(f'Mean radius of {obj_name}:', sum(estimator._R) / len(estimator._R))
+        print(f'Contact radii of {obj_name}:', estimator._a)
+        print(f'Stress data of {obj_name}:', estimator._y_data)
+        print(f'Strain data of {obj_name}:', estimator._x_data)
         print(f'Estimated modulus of {obj_name}:', E_object)
         print('\n')
 
