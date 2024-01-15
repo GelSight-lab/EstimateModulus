@@ -19,7 +19,7 @@ WARPED_PX_TO_MM = (11, 11)
 RAW_PX_TO_MM = (12.5, 11)
 
 # Use sensor size and warped data to choose conversion
-SENSOR_PAD_DIM_MM = (24, 33) # [mm]
+SENSOR_PAD_DIM_MM = (35, 25.5) # [mm]
 PX_TO_MM = np.sqrt((WARPED_IMG_SIZE[0] / SENSOR_PAD_DIM_MM[0])**2 + (WARPED_IMG_SIZE[1] / SENSOR_PAD_DIM_MM[1])**2)
 MM_TO_PX = 1/PX_TO_MM
 
@@ -219,6 +219,15 @@ class EstimateModulus():
             # Clip from start to peak depth
             self.grasp_data.clip(i_start, i_end+1)
         return
+    
+    # Return the gripper width at first contact, assuming already clipped to press
+    def length_of_first_contact(self):
+        top_percentile_depths = self.top_percentile_depths()
+        if top_percentile_depths.max() < self.depth_threshold:
+            return self.gripper_widths()[0]
+        else:
+            i_contact = np.argmax(top_percentile_depths >= self.depth_threshold)
+            return self.gripper_widths()[i_contact]
 
     # Return mask of which pixels are in contact with object based on constant threshold
     def constant_threshold_contact_mask(self, depth):
@@ -430,7 +439,7 @@ class EstimateModulus():
     def fit_modulus_stochastic(self):
 
         # Preprocess depth by taking mean over kernels
-        kernel_size = 5
+        kernel_size = 10
         depth_image_shape = self.depth_images().shape
         assert depth_image_shape[1] % kernel_size == depth_image_shape[2] % kernel_size == 0
         reduced_depth_images = []
@@ -498,11 +507,18 @@ class EstimateModulus():
 
             # Calculate mean strain based on aggregation of each point
             strains = []
+            strain_img = np.zeros_like(L0)
             for r in range(mask.shape[0]):
                 for c in range(mask.shape[1]):
                     if mask[r][c] > 0:
-                        strains.append((L0[r,c] - L_i[r,c]) / L0[r,c])
+                        eps = (L0[r,c] - L_i[r,c]) / L0[r,c]
+                        strains.append(eps)
+                        strain_img[r,c] = eps
             strain = sum(strains) / len(strains)
+
+            # plt.figure()
+            # plt.imshow(strain_img)
+            # plt.show()
 
             if contact_area_i >= 1e-5 and strain >= 0:
                 x_data.append(strain)
@@ -788,7 +804,7 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        # if obj_name.count('rose') == 0: continue
+        if obj_name.count('rose') == 0: continue
         print('Object:', obj_name)
 
         # Load data and clip
