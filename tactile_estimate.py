@@ -223,11 +223,11 @@ class EstimateModulus():
     # Return the gripper width at first contact, assuming already clipped to press
     def length_of_first_contact(self):
         top_percentile_depths = self.top_percentile_depths()
-        if top_percentile_depths.max() < self.depth_threshold:
+        if self.mean_depths().max() < self.depth_threshold:
             return self.gripper_widths()[0]
         else:
             i_contact = np.argmax(top_percentile_depths >= self.depth_threshold)
-            return self.gripper_widths()[i_contact]
+            return self.gripper_widths()[i_contact] + 2*top_percentile_depths[i_contact]
 
     # Return mask of which pixels are in contact with object based on constant threshold
     def constant_threshold_contact_mask(self, depth):
@@ -343,8 +343,7 @@ class EstimateModulus():
         assert self.use_gripper_width
 
         # Find initial length of first contact
-        L0 = self.gripper_widths()[0]
-        d0 = 0
+        L0 = self.length_of_first_contact()
 
         # Precompute peak depths based on percentile
         peak_depths = self.top_percentile_depths()
@@ -372,7 +371,7 @@ class EstimateModulus():
             contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
             a_i = np.sqrt(contact_area_i / np.pi)
 
-            dL = -(self.gripper_widths()[i] - L0 + 2*(d_i - d0))
+            dL = -(self.gripper_widths()[i] + 2*d_i - L0)
             if dL >= 0 and contact_area_i >= 1e-5:
                 x_data.append(dL/L0) # Strain
                 y_data.append(abs(self.forces()[i]) / contact_area_i) # Stress
@@ -402,7 +401,7 @@ class EstimateModulus():
         #       [From (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov]
 
         # Find initial length of first contact
-        L0 = self.gripper_widths()[0]
+        L0 = self.length_of_first_contact()
 
         x_data, y_data = [], []
         d, contact_areas, a = [], [], []
@@ -479,7 +478,7 @@ class EstimateModulus():
         for r in range(reduced_depth_images.shape[1]):
             for c in range(reduced_depth_images.shape[2]):
                 for i in range(reduced_depth_images.shape[0]-2):
-                    if mean_depths[-1] > self.depth_threshold:
+                    if mean_depths.max() > self.depth_threshold:
                         # Use absolute thresholding
                         if reduced_depth_images[i,r,c] >= self.depth_threshold and \
                             reduced_depth_images[i+1,r,c] >= self.depth_threshold and \
@@ -756,7 +755,7 @@ if __name__ == "__main__":
     ##################################################
 
     # Choose which mechanical model to use
-    use_method = "stochastic"
+    use_method = "naive"
     assert use_method in ["naive", "hertz", "stochastic", "MDR"]
 
     fig1 = plt.figure(1)
@@ -812,7 +811,7 @@ if __name__ == "__main__":
     }
 
     # Unload data from folder
-    data_folder = "./example_data/2024-01-10"
+    data_folder = "./example_data/2023-12-16"
     data_files = os.listdir(data_folder)
     for i in range(len(data_files)):
         file_name = data_files[i]
@@ -899,6 +898,7 @@ if __name__ == "__main__":
 
         print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
         print(f'Mean depth at peak of {obj_name}:', np.mean(estimator.depth_images()[-1]))
+        print(f'Maximum mean depth of {obj_name}:', estimator.mean_depths().max())
         print(f'Maximum force of {obj_name}:', np.max(estimator.forces()))
         # print(f'Strain range of {obj_name}:', min(estimator._x_data), 'to', max(estimator._x_data))
         # print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
