@@ -467,23 +467,36 @@ class EstimateModulus():
             else:
                 i += 1
 
+        mean_depths = self.mean_depths()
+
         # Find initial length of first contact for each pixel in reduced array
         L0 = np.zeros_like(reduced_depth_images[0,:,:])
+        i0 = np.zeros_like(reduced_depth_images[0,:,:])
         for r in range(reduced_depth_images.shape[1]):
             for c in range(reduced_depth_images.shape[2]):
                 for i in range(reduced_depth_images.shape[0]-2):
-                    if reduced_depth_images[i,r,c] >= self.depth_threshold and \
-                        reduced_depth_images[i+1,r,c] >= self.depth_threshold and \
-                        reduced_depth_images[i+2,r,c] >= self.depth_threshold:
-                        # L0[r,c] = self.gripper_widths()[i] + 2*reduced_depth_images[i,r,c]
-                        L0[r,c] = interpolated_gripper_widths[i] + 2*reduced_depth_images[i,r,c]
-                        break
+                    if mean_depths[-1] > self.depth_threshold:
+                        # Use absolute thresholding
+                        if reduced_depth_images[i,r,c] >= self.depth_threshold and \
+                            reduced_depth_images[i+1,r,c] >= self.depth_threshold and \
+                            reduced_depth_images[i+2,r,c] >= self.depth_threshold:
+                            L0[r,c] = interpolated_gripper_widths[i] + 2*reduced_depth_images[i,r,c]
+                            i0[r,c] = i
+                            break
+                    else:
+                        # Use mean relative thresholding
+                        if reduced_depth_images[i,r,c] >= mean_depths[i] and \
+                            reduced_depth_images[i+1,r,c] >= mean_depths[i] and \
+                            reduced_depth_images[i+2,r,c] >= mean_depths[i]:
+                            L0[r,c] = interpolated_gripper_widths[i] + 2*reduced_depth_images[i,r,c]
+                            i0[r,c] = i
+                            break
 
         # # Show image reconstruction
         # plt.figure()
         # plt.imshow(L0)
         # plt.show()
-                        
+        
         # fig = plt.figure()
         # sp = fig.add_subplot(211)
         # for r in range(reduced_depth_images.shape[1]):
@@ -497,9 +510,8 @@ class EstimateModulus():
         d, contact_areas, a = [], [], []
         for i in range(reduced_depth_images.shape[0]):
 
-            L_i = interpolated_gripper_widths[i] + 2*reduced_depth_images[i]
+            L_i = interpolated_gripper_widths[i] + 2*reduced_depth_images[i,:,:]
 
-            # TODO: Check what this looks like
             mask = L0 > interpolated_gripper_widths[i]
             contact_area_i = (0.001 / PX_TO_MM)**2 * (kernel_size)**2 * np.sum(mask)
             a_i = np.sqrt(contact_area_i / np.pi)
@@ -511,7 +523,7 @@ class EstimateModulus():
             for r in range(mask.shape[0]):
                 for c in range(mask.shape[1]):
                     if mask[r][c] > 0:
-                        eps = (L0[r,c] - L_i[r,c]) / L0[r,c]
+                        eps = (L0[r,c] - L_i[r,c]) / L0[r,c] # / 10
                         strains.append(eps)
                         strain_img[r,c] = eps
             strain = sum(strains) / len(strains)
@@ -796,7 +808,7 @@ if __name__ == "__main__":
     }
 
     # Unload data from folder
-    data_folder = "./example_data/2024-01-10"
+    data_folder = "./example_data/2023-12-16"
     data_files = os.listdir(data_folder)
     for i in range(len(data_files)):
         file_name = data_files[i]
@@ -804,7 +816,7 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        if obj_name.count('rose') == 0: continue
+        # if obj_name.count('foam') == 0: continue
         print('Object:', obj_name)
 
         # Load data and clip
@@ -874,17 +886,24 @@ if __name__ == "__main__":
             E_object, v_object = estimator.Estar_to_E(E_star)
 
         print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
+        print(f'Mean depth at peak of {obj_name}:', np.mean(estimator.depth_images()[-1]))
         print(f'Maximum force of {obj_name}:', np.max(estimator.forces()))
         # print(f'Strain range of {obj_name}:', min(estimator._x_data), 'to', max(estimator._x_data))
         # print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
         # print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))
         # print(f'Depth range of {obj_name}:', min(estimator._d), 'to', max(estimator._d))
         # print(f'Mean radius of {obj_name}:', sum(estimator._R) / len(estimator._R))
-        print(f'Contact radii of {obj_name}:', estimator._a)
-        print(f'Stress data of {obj_name}:', estimator._y_data)
-        print(f'Strain data of {obj_name}:', estimator._x_data)
         print(f'Estimated modulus of {obj_name}:', E_object)
         print('\n')
+
+        # plt.figure()
+        # plt.plot(estimator.gripper_widths() + 2*estimator.max_depths(), label="Object Width")
+        # plt.plot(estimator.gripper_widths(), label="Gripper Width")
+        # plt.plot(estimator.max_depths(), label="Max Depths")
+        # plt.legend()
+        # plt.title(file_name)
+        # plt.show()
+        # plt.close()
 
         # Plot
         plotting_color = random_shade_of_color(obj_to_color[obj_name])
