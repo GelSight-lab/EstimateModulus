@@ -245,6 +245,10 @@ class EstimateModulus():
     def range_threshold_contact_mask(self, depth):
         return (depth - depth.min()) / (depth.max() - depth.min()) >= 0.5
 
+    # Return mask of which pixels are in upper half of depth range
+    def std_above_mean_contact_mask(self, depth):
+        return depth >= depth.mean() + np.std(depth)
+
     # Return mask of which pixels are in contact with object using constant threshold
     # But, flip if the mean depth of the image is negative (...a bit hacky)
     def flipped_threshold_contact_mask(self, depth):
@@ -486,8 +490,8 @@ class EstimateModulus():
                     else:
                         # Use mean relative thresholding
                         if reduced_depth_images[i,r,c] >= mean_depths[i] and \
-                            reduced_depth_images[i+1,r,c] >= mean_depths[i] and \
-                            reduced_depth_images[i+2,r,c] >= mean_depths[i]:
+                            reduced_depth_images[i+1,r,c] >= mean_depths[i+1] and \
+                            reduced_depth_images[i+2,r,c] >= mean_depths[i+2]:
                             L0[r,c] = interpolated_gripper_widths[i] + 2*reduced_depth_images[i,r,c]
                             i0[r,c] = i
                             break
@@ -808,7 +812,7 @@ if __name__ == "__main__":
     }
 
     # Unload data from folder
-    data_folder = "./example_data/2023-12-16"
+    data_folder = "./example_data/2024-01-10"
     data_files = os.listdir(data_folder)
     for i in range(len(data_files)):
         file_name = data_files[i]
@@ -867,6 +871,14 @@ if __name__ == "__main__":
         plt.ioff()
         plt.show()
         """
+
+        # std = np.std(estimator.depth_images()[-1])
+        # mean = np.mean(estimator.depth_images()[-1])
+        # plt.figure()
+        # plt.imshow(estimator.depth_images()[-1] > mean + std)
+        # plt.figure()
+        # plt.imshow(estimator.depth_images()[-1])
+        # plt.show()
 
         if use_method == "naive":
             # Fit using naive estimator
