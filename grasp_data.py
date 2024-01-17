@@ -214,7 +214,7 @@ class GraspData():
     def load(self, path_to_file):
         self.wedge_video.load(path_to_file + '.avi')
         if self._wedge_video_count > 1:
-            self.wedge_video.load(path_to_file + '_other_finger.avi')
+            self.wedge_video.load(path_to_file + '_other.avi')
         self.contact_force.load(path_to_file + '_forces.pkl')
         if self.use_gripper_width:
             self.gripper_width.load(path_to_file + '_widths.pkl')
@@ -224,7 +224,7 @@ class GraspData():
     def save(self, path_to_file):
         self.wedge_video.save(path_to_file + '.avi')
         if self._wedge_video_count > 1:
-            self.other_wedge_video.save(path_to_file + '_other_finger.avi')
+            self.other_wedge_video.save(path_to_file + '_other.avi')
         self.contact_force.save(path_to_file + '_forces.pkl')
         if self.use_gripper_width:
             self.gripper_width.save(path_to_file + '_widths.pkl')

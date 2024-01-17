@@ -27,22 +27,24 @@ def open_gripper(_franka_arm): {
 def close_gripper(_franka_arm): {
     _franka_arm.goto_gripper(
         0.0, # Minimum width in meters [m]
-        force=50, # Maximum force in Newtons [N]
+        force=80, # Maximum force in Newtons [N]
         speed=0.02, # Desired operation speed in [m/s]
+        epsilon_inner=0.0015, # Maximum tolerated deviation [m]
+        epsilon_outer=0.0015, # Maximum tolerated deviation [m]
         grasp=True,     
         block=True,
         skill_desc="CloseGripper"
     )
 }
 
-def collect_data_for_object(object_name, num_trials, folder_name=None, plot_collected_data=False):
+def collect_data_for_object(object_name, num_trials, folder_name=None, plot_collected_data=True):
     # Define streaming addresses
     wedge_video         =   GelsightWedgeVideo(IP="172.16.0.100", config_csv="./config_100.csv")
-    # other_wedge_video   =   GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_200.csv")
+    other_wedge_video   =   GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_200.csv")
     contact_force       =   ContactForce(IP="172.16.0.69", port=8888)
     gripper_width       =   GripperWidth(franka_arm=franka_arm)
-    # grasp_data       =   GraspData(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width)
-    grasp_data       =   GraspData(wedge_video=wedge_video, contact_force=contact_force, gripper_width=gripper_width)
+    grasp_data          =   GraspData(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width)
+    # grasp_data        =   GraspData(wedge_video=wedge_video, contact_force=contact_force, gripper_width=gripper_width)
 
     if folder_name == None:
         # Choose folder name as YYYY-MM-DD by default
@@ -124,12 +126,16 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
         grasp_data.end_stream(_close_socket=_close_socket)
         print('Done streaming.')
 
+        print(grasp_data.wedge_video.max_depth())
+        print(grasp_data.other_wedge_video.max_depth())
+
         grasp_data.auto_clip()
 
         if plot_collected_data:
             plt.plot(abs(grasp_data.forces()) / abs(grasp_data.forces()).max(), label="Forces")
             plt.plot(grasp_data.gripper_widths() / grasp_data.gripper_widths().max(), label="Gripper Widths")
             plt.plot(grasp_data.max_depths() / grasp_data.max_depths().max(), label="Max Depths")
+            plt.plot(grasp_data.max_depths(other_finger=True) / grasp_data.max_depths(other_finger=True).max(), label="Other Max Depths")
             plt.legend()
             plt.show()
 
@@ -155,8 +161,8 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
 
 if __name__ == "__main__":
     # Record grasp data for the given object
-    OBJECT_NAME     = "bolt"
-    NUM_TRIALS      = 3
+    OBJECT_NAME     = "test"
+    NUM_TRIALS      = 1
     collect_data_for_object(
         OBJECT_NAME, \
         NUM_TRIALS \

@@ -46,7 +46,7 @@ class GripperWidth():
     # Function to facilitate continuous reading of values from stream
     def _stream(self, read_only=False, verbose=False):
         while self._stream_active:
-            if verbose: print('Streaming force measurements...')
+            if verbose: print('Streaming gripper width...')
             self._read_value()
             if not read_only:
                 self._request_value()
