@@ -169,66 +169,34 @@ class EstimateModulus():
         return 0.001 * self.grasp_data.depth_images()
     
     # Return maximum value from each depth image (in meters)
-    def max_depths(self):
-        return 0.001 * self.grasp_data.max_depths()
+    def max_depths(self, depth_images=None):
+        if depth_images == None: depth_images = self.depth_images()
+        return np.max(depth_images, axis=(1,2))
     
     # Return mean value from each depth image (in meters)
-    def mean_depths(self):
-        return 0.001 * self.grasp_data.mean_depths()
+    def mean_depths(self, depth_images=None):
+        if depth_images == None: depth_images = self.depth_images()
+        return np.mean(depth_images, axis=(1,2))
     
     # Return mean of neighborhood around max value from each depth image (in meters)
-    def mean_max_depths(self, kernel_radius=5):
+    def mean_max_depths(self, depth_images=None, kernel_radius=5):
+        if depth_images == None: depth_images = self.depth_images()
         mean_max_depths = []
-        for i in range(len(self.depth_images())):
-            depth_image = self.depth_images()[i]
-            max_index = np.argmax(depth_image)
-            r, c = np.unravel_index(max_index, depth_image.shape)
-            mean_max_depth = depth_image[r-kernel_radius:r+kernel_radius, c-kernel_radius:c+kernel_radius].mean()
+        for i in range(len(depth_images)):
+            max_index = np.argmax(depth_images[i])
+            r, c = np.unravel_index(max_index, depth_images[i].shape)
+            mean_max_depth = depth_images[i, r-kernel_radius:r+kernel_radius, c-kernel_radius:c+kernel_radius].mean()
             mean_max_depths.append(mean_max_depth)
         return np.array(mean_max_depths)
     
     # Return highest percentile of depth population (in meters)
-    def top_percentile_depths(self, percentile=97):
+    def top_percentile_depths(self, depth_images=None, percentile=97):
+        if depth_images == None: depth_images = self.depth_images()
         top_percentile_depths = []
-        for i in range(len(self.depth_images())):
-            top_percentile_depths.append(np.percentile(self.depth_images()[i], percentile))
+        for i in range(len(depth_images)):
+            top_percentile_depths.append(np.percentile(depth_images[i,:,:], percentile))
         return np.array(top_percentile_depths)
     
-    # Clip a press sequence to only the loading sequence (positive force)
-    def clip_to_press(self, use_force=True):
-        # Find maximum depth over press
-        if use_force:
-            i_start = np.argmax(self.forces() >= self.force_threshold)
-            i_peak = np.argmax(self.forces())
-
-            # Grab index before below 97.5% of peak
-            i_end = i_peak
-            for i in range(len(self.forces())):
-                if i > i_peak and self.forces()[i] <= 0.975*self.forces()[i_peak]:
-                    i_end = i-1
-                    break
-        else:
-            # Find peak and start over depth values
-            i_start = np.argmax(self.max_depths() >= self.depth_threshold)
-            i_peak = np.argmax(self.max_depths())
-            i_end = i_peak
-
-        if i_start >= i_end:
-            warnings.warn("No press detected! Cannot clip.", Warning)
-        else:
-            # Clip from start to peak depth
-            self.grasp_data.clip(i_start, i_end+1)
-        return
-    
-    # Return the gripper width at first contact, assuming already clipped to press
-    def length_of_first_contact(self):
-        top_percentile_depths = self.top_percentile_depths()
-        if self.mean_depths().max() < self.depth_threshold:
-            return self.gripper_widths()[0]
-        else:
-            i_contact = np.argmax(top_percentile_depths >= self.depth_threshold)
-            return self.gripper_widths()[i_contact] + 2*top_percentile_depths[i_contact]
-
     # Return mask of which pixels are in contact with object based on constant threshold
     def constant_threshold_contact_mask(self, depth):
         return depth >= self.depth_threshold
@@ -280,7 +248,42 @@ class EstimateModulus():
         # Solve for best A given data and equation of form y = A*x
         return np.dot(x, y) / np.dot(x, x)
     
-        # Linearly interpolate gripper widths wherever measurements are equal
+    # Clip a press sequence to only the loading sequence (positive force)
+    def clip_to_press(self, use_force=True):
+        # Find maximum depth over press
+        if use_force:
+            i_start = np.argmax(self.forces() >= self.force_threshold)
+            i_peak = np.argmax(self.forces())
+
+            # Grab index before below 97.5% of peak
+            i_end = i_peak
+            for i in range(len(self.forces())):
+                if i > i_peak and self.forces()[i] <= 0.975*self.forces()[i_peak]:
+                    i_end = i-1
+                    break
+        else:
+            # Find peak and start over depth values
+            i_start = np.argmax(self.max_depths() >= self.depth_threshold)
+            i_peak = np.argmax(self.max_depths())
+            i_end = i_peak
+
+        if i_start >= i_end:
+            warnings.warn("No press detected! Cannot clip.", Warning)
+        else:
+            # Clip from start to peak depth
+            self.grasp_data.clip(i_start, i_end+1)
+        return
+    
+    # Return the gripper width at first contact, assuming already clipped to press
+    def length_of_first_contact(self):
+        top_percentile_depths = self.top_percentile_depths()
+        if self.mean_depths().max() < self.depth_threshold:
+            return self.gripper_widths()[0]
+        else:
+            i_contact = np.argmax(top_percentile_depths >= self.depth_threshold)
+            return self.gripper_widths()[i_contact] + 2*top_percentile_depths[i_contact]
+
+    # Linearly interpolate gripper widths wherever measurements are equal
     def interpolate_gripper_widths(self, plot_result=False):
         interpolated_gripper_widths = self.gripper_widths()
         i = 0
@@ -308,6 +311,20 @@ class EstimateModulus():
         # Adjust the wrapped grasp_data object
         self.grasp_data.gripper_width._widths = interpolated_gripper_widths
         return
+    
+    # Preprocess depth by taking mean over square kernels
+    def lower_resolution_depth(self, kernel_size=10):
+        assert self.depth_images().shape[1] % kernel_size == self.depth_images().shape[2] % kernel_size == 0
+        blurred_depth_images = []
+        for i in range(self.depth_images().shape[0]):
+            reshaped_depth_image = self.depth_images()[i].reshape(self.depth_images().shape[1] // kernel_size, kernel_size, \
+                                                                  self.depth_images().shape[2] // kernel_size, kernel_size)
+            blurred_depth_images.append(reshaped_depth_image.mean(axis=(1, 3)))
+
+        # Extend such that the array becomes the same size again
+        blurred_depth_images = np.kron(np.array(blurred_depth_images), np.ones((kernel_size, kernel_size)))
+
+        return blurred_depth_images
     
     # Convert depth image to 3D data
     def depth_to_XYZ(self, depth, remove_zeros=True, remove_outliers=True):
@@ -368,19 +385,24 @@ class EstimateModulus():
     
     # Naively estimate modulus based on gripper width change and aggregate modulus
     # (Notably requires both gripper width and tactile depth data)
-    def fit_modulus_naive(self, use_mean=True, use_ellipse_fitting=True):
+    def fit_modulus_naive(self, use_mean=True, use_ellipse_fitting=True, use_lower_resolution_depth=True):
         assert self.use_gripper_width
 
         # Find initial length of first contact
         L0 = self.length_of_first_contact()
 
+        if use_lower_resolution_depth:
+            depth_images = self.lower_resolution_depth()
+        else:
+            depth_images = self.depth_images()
+
         # Precompute peak depths based on percentile
-        peak_depths = self.top_percentile_depths()
+        peak_depths = self.top_percentile_depths(depth_images=depth_images)
         
         contact_areas, a = [], []
         x_data, y_data, d = [], [], []
-        for i in range(len(self.depth_images())):
-            depth_i = self.depth_images()[i]
+        for i in range(len(depth_images)):
+            depth_i = depth_images[i]
             
             if use_ellipse_fitting:
                 # Compute mask using ellipse fit
@@ -471,37 +493,31 @@ class EstimateModulus():
     def fit_modulus_stochastic(self):
 
         # Preprocess depth by taking mean over kernels
-        kernel_size = 10
-        depth_image_shape = self.depth_images().shape
-        assert depth_image_shape[1] % kernel_size == depth_image_shape[2] % kernel_size == 0
-        reduced_depth_images = []
-        for i in range(depth_image_shape[0]):
-            reshaped_depth_image = self.depth_images()[i].reshape(depth_image_shape[1] // kernel_size, kernel_size, depth_image_shape[2] // kernel_size, kernel_size)
-            reduced_depth_images.append(reshaped_depth_image.mean(axis=(1, 3)))
-        reduced_depth_images = np.array(reduced_depth_images)
+        blurred_depth_images = self.lower_resolution_depth(kernel_size=10)
 
-        mean_depths = self.mean_depths()
+        # Precompute mean depths
+        mean_depths = self.mean_depths(depth_images=blurred_depth_images)
 
         # Find initial length of first contact for each pixel in reduced array
-        L0 = np.zeros_like(reduced_depth_images[0,:,:])
-        i0 = np.zeros_like(reduced_depth_images[0,:,:])
-        for r in range(reduced_depth_images.shape[1]):
-            for c in range(reduced_depth_images.shape[2]):
-                for i in range(reduced_depth_images.shape[0]-2):
+        L0 = np.zeros_like(blurred_depth_images[0,:,:])
+        i0 = np.zeros_like(blurred_depth_images[0,:,:])
+        for r in range(blurred_depth_images.shape[1]):
+            for c in range(blurred_depth_images.shape[2]):
+                for i in range(blurred_depth_images.shape[0]-2):
                     if mean_depths.max() > self.depth_threshold:
                         # Use absolute thresholding
-                        if reduced_depth_images[i,r,c] >= self.depth_threshold and \
-                            reduced_depth_images[i+1,r,c] >= self.depth_threshold and \
-                            reduced_depth_images[i+2,r,c] >= self.depth_threshold:
-                            L0[r,c] = self.gripper_widths()[i] + 2*reduced_depth_images[i,r,c]
+                        if blurred_depth_images[i,r,c] >= self.depth_threshold and \
+                            blurred_depth_images[i+1,r,c] >= self.depth_threshold and \
+                            blurred_depth_images[i+2,r,c] >= self.depth_threshold:
+                            L0[r,c] = self.gripper_widths()[i] + 2*blurred_depth_images[i,r,c]
                             i0[r,c] = i
                             break
                     else:
                         # Use mean relative thresholding
-                        if reduced_depth_images[i,r,c] >= mean_depths[i] and \
-                            reduced_depth_images[i+1,r,c] >= mean_depths[i+1] and \
-                            reduced_depth_images[i+2,r,c] >= mean_depths[i+2]:
-                            L0[r,c] = self.gripper_widths()[i] + 2*reduced_depth_images[i,r,c]
+                        if blurred_depth_images[i,r,c] >= mean_depths[i] and \
+                            blurred_depth_images[i+1,r,c] >= mean_depths[i+1] and \
+                            blurred_depth_images[i+2,r,c] >= mean_depths[i+2]:
+                            L0[r,c] = self.gripper_widths()[i] + 2*blurred_depth_images[i,r,c]
                             i0[r,c] = i
                             break
 
@@ -512,21 +528,21 @@ class EstimateModulus():
         
         # fig = plt.figure()
         # sp = fig.add_subplot(211)
-        # for r in range(reduced_depth_images.shape[1]):
-        #     for c in range(reduced_depth_images.shape[2]):
+        # for r in range(blurred_depth_images.shape[1]):
+        #     for c in range(blurred_depth_images.shape[2]):
         #         if L0[r][c] == 0: continue
-        #         sp.plot(reduced_depth_images[:,r,c])
+        #         sp.plot(blurred_depth_images[:,r,c])
         # plt.show()
 
         # Create dynamics points
         x_data, y_data = [], []
         d, contact_areas, a = [], [], []
-        for i in range(reduced_depth_images.shape[0]):
+        for i in range(blurred_depth_images.shape[0]):
 
-            L_i = self.gripper_widths()[i] + 2*reduced_depth_images[i,:,:]
+            L_i = self.gripper_widths()[i] + 2*blurred_depth_images[i,:,:]
 
             mask = L0 > self.gripper_widths()[i]
-            contact_area_i = (0.001 / PX_TO_MM)**2 * (kernel_size)**2 * np.sum(mask)
+            contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
             a_i = np.sqrt(contact_area_i / np.pi)
             if contact_area_i < 1e-5 or np.sum(mask) == 0: continue
 
@@ -549,7 +565,7 @@ class EstimateModulus():
                 x_data.append(strain)
                 y_data.append(self.forces()[i] / contact_area_i)
                 contact_areas.append(contact_area_i)
-                d.append(reduced_depth_images[i].max())
+                d.append(blurred_depth_images[i].max())
                 a.append(a_i)
                 
         self._x_data = x_data
@@ -829,7 +845,8 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        if obj_name.count('foam') == 0: continue
+        # if obj_name.count('foam') == 0: continue
+        if obj_name.count('foam') == 1: continue
         print('Object:', obj_name)
 
         # Load data into modulus estimator
@@ -842,6 +859,29 @@ if __name__ == "__main__":
 
         # Remove stagnant gripper values across measurement frames
         estimator.interpolate_gripper_widths()
+
+
+
+
+        # blurred_depth_images = estimator.lower_resolution_depth()
+        # plt.figure()
+        # plt.imshow(estimator.depth_images()[0])
+        # plt.title('Init Depth')
+        # plt.colorbar()
+        # plt.figure()
+        # plt.imshow(blurred_depth_images[0])
+        # plt.title('Reduced Init Depth')
+        # plt.colorbar()
+        # plt.figure()
+        # plt.imshow(estimator.depth_images()[-1])
+        # plt.title('Peak Depth')
+        # plt.colorbar()
+        # plt.figure()
+        # plt.imshow(blurred_depth_images[-1])
+        # plt.title('Reduced Peak Depth')
+        # plt.colorbar()
+        # plt.show()
+
 
         """
         ellipse_mask = []
@@ -895,21 +935,6 @@ if __name__ == "__main__":
 
         # estimator.grasp_data.wedge_video.watch(plot_depth=True)
 
-        print(estimator.forces())
-        plt.figure()
-        plt.imshow(estimator.depth_images()[0], cmap="winter", vmin=-estimator.depth_threshold, vmax=estimator.depth_threshold*5)
-        plt.title(f'Depth')
-        plt.xlabel('Y')
-        plt.ylabel('X')
-        plt.colorbar()
-        plt.figure()
-        plt.imshow(estimator.depth_images()[-1], cmap="winter", vmin=-estimator.depth_threshold, vmax=estimator.depth_threshold*5)
-        plt.title(f'Depth')
-        plt.xlabel('Y')
-        plt.ylabel('X')
-        plt.colorbar()
-        plt.show()
-
         if use_method == "naive":
             # Fit using naive estimator
             E_object = estimator.fit_modulus_naive(use_mean=False, use_ellipse_fitting=True)
@@ -928,8 +953,6 @@ if __name__ == "__main__":
             E_object, v_object = estimator.Estar_to_E(E_star)
 
         print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
-        print(f'Mean depth at peak of {obj_name}:', np.mean(estimator.depth_images()[-1]))
-        print(f'Maximum mean depth of {obj_name}:', estimator.mean_depths().max())
         print(f'Maximum force of {obj_name}:', np.max(estimator.forces()))
         # print(f'Strain range of {obj_name}:', min(estimator._x_data), 'to', max(estimator._x_data))
         # print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
