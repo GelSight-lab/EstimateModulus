@@ -239,9 +239,19 @@ class EstimateModulus():
         cv2.ellipse(ellipse_mask, ellipse, 1, -1)
         return ellipse_mask
     
+    # Use regular threshold unless mean depth of peak is small
+    def conditional_contact_mask(self, depth):
+        if self.depth_images()[-1].mean() > self.depth_threshold:
+            mask = self.constant_threshold_contact_mask(depth)
+        else:
+            # mask = np.ones_like(depth)
+            mask = self.total_mean_threshold_contact_mask(depth)
+        return mask
+    
     # Wrap the chosen contact mask function into one place
     def contact_mask(self, depth):
-        return self.flipped_total_mean_threshold_contact_mask(depth)
+        # return self.flipped_total_mean_threshold_contact_mask(depth)
+        return self.conditional_contact_mask(depth)
 
     # Fit linear equation with least squares
     def linear_coeff_fit(self, x, y):
@@ -786,7 +796,7 @@ if __name__ == "__main__":
     ##################################################
 
     # Choose which mechanical model to use
-    use_method = "MDR"
+    use_method = "naive"
     assert use_method in ["naive", "hertz", "stochastic", "MDR"]
 
     fig1 = plt.figure(1)
@@ -1005,4 +1015,3 @@ if __name__ == "__main__":
     fig2.set_figwidth(10)
     fig2.set_figheight(10)
     plt.show()
-    print('here')
