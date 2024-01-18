@@ -280,6 +280,35 @@ class EstimateModulus():
         # Solve for best A given data and equation of form y = A*x
         return np.dot(x, y) / np.dot(x, x)
     
+        # Linearly interpolate gripper widths wherever measurements are equal
+    def interpolate_gripper_widths(self, plot_result=False):
+        interpolated_gripper_widths = self.gripper_widths()
+        i = 0
+        while i < len(interpolated_gripper_widths)-1:
+            if self.gripper_widths()[i] == self.gripper_widths()[-1]: break
+            if self.gripper_widths()[i] == self.gripper_widths()[i+1]:
+                for k in range(i, len(interpolated_gripper_widths)):
+                    if self.gripper_widths()[i] != self.gripper_widths()[k]:
+                        break
+                slope = (self.gripper_widths()[k] - self.gripper_widths()[i]) / (k-i)
+                for j in range(i+1, k):
+                    interpolated_gripper_widths[j] = self.gripper_widths()[i] + slope*(j-i)
+                i = k
+            else:
+                i += 1
+
+        if plot_result:
+            plt.figure()
+            plt.plot(self.gripper_widths(), '.')
+            plt.plot(interpolated_gripper_widths, '-')
+            plt.xlabel('Index [/]')
+            plt.ylabel('Gripper Width [m]')
+            plt.show()
+
+        # Adjust the wrapped grasp_data object
+        self.grasp_data.gripper_width._widths = interpolated_gripper_widths
+        return
+    
     # Convert depth image to 3D data
     def depth_to_XYZ(self, depth, remove_zeros=True, remove_outliers=True):
         # Extract data
@@ -451,25 +480,6 @@ class EstimateModulus():
             reduced_depth_images.append(reshaped_depth_image.mean(axis=(1, 3)))
         reduced_depth_images = np.array(reduced_depth_images)
 
-        # Linearly interpolate gripper widths wherever measurement is equal
-        interpolated_gripper_widths = self.gripper_widths()
-        i = 0
-        while i < len(interpolated_gripper_widths)-1:
-            if self.gripper_widths()[i] == self.gripper_widths()[i+1]:
-                interpolate = False
-                for k in range(i, len(interpolated_gripper_widths)):
-                    if self.gripper_widths()[i] != self.gripper_widths()[k]:
-                        interpolate = True
-                        break
-                if interpolate:
-                    for j in range(i+1, k):
-                        interpolated_gripper_widths[j] = self.gripper_widths()[i] + (self.gripper_widths()[k] - self.gripper_widths()[i]) * (j-i) / (k-i)
-                    i = k
-                else:
-                    break
-            else:
-                i += 1
-
         mean_depths = self.mean_depths()
 
         # Find initial length of first contact for each pixel in reduced array
@@ -483,7 +493,7 @@ class EstimateModulus():
                         if reduced_depth_images[i,r,c] >= self.depth_threshold and \
                             reduced_depth_images[i+1,r,c] >= self.depth_threshold and \
                             reduced_depth_images[i+2,r,c] >= self.depth_threshold:
-                            L0[r,c] = interpolated_gripper_widths[i] + 2*reduced_depth_images[i,r,c]
+                            L0[r,c] = self.gripper_widths()[i] + 2*reduced_depth_images[i,r,c]
                             i0[r,c] = i
                             break
                     else:
@@ -491,7 +501,7 @@ class EstimateModulus():
                         if reduced_depth_images[i,r,c] >= mean_depths[i] and \
                             reduced_depth_images[i+1,r,c] >= mean_depths[i+1] and \
                             reduced_depth_images[i+2,r,c] >= mean_depths[i+2]:
-                            L0[r,c] = interpolated_gripper_widths[i] + 2*reduced_depth_images[i,r,c]
+                            L0[r,c] = self.gripper_widths()[i] + 2*reduced_depth_images[i,r,c]
                             i0[r,c] = i
                             break
 
@@ -513,9 +523,9 @@ class EstimateModulus():
         d, contact_areas, a = [], [], []
         for i in range(reduced_depth_images.shape[0]):
 
-            L_i = interpolated_gripper_widths[i] + 2*reduced_depth_images[i,:,:]
+            L_i = self.gripper_widths()[i] + 2*reduced_depth_images[i,:,:]
 
-            mask = L0 > interpolated_gripper_widths[i]
+            mask = L0 > self.gripper_widths()[i]
             contact_area_i = (0.001 / PX_TO_MM)**2 * (kernel_size)**2 * np.sum(mask)
             a_i = np.sqrt(contact_area_i / np.pi)
             if contact_area_i < 1e-5 or np.sum(mask) == 0: continue
@@ -819,15 +829,19 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        # if obj_name.count('foam') == 0: continue
+        if obj_name.count('foam') == 0: continue
         print('Object:', obj_name)
 
-        # Load data and clip
+        # Load data into modulus estimator
         estimator = EstimateModulus(use_gripper_width=True, depth_threshold=5e-5)
         estimator.load_from_file(data_folder + "/" + os.path.splitext(file_name)[0], auto_clip=True)
         
+        # Clip to loading sequence
         estimator.clip_to_press()
         assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
+
+        # Remove stagnant gripper values across measurement frames
+        estimator.interpolate_gripper_widths()
 
         """
         ellipse_mask = []
@@ -878,6 +892,23 @@ if __name__ == "__main__":
         # plt.figure()
         # plt.imshow(estimator.depth_images()[-1])
         # plt.show()
+
+        # estimator.grasp_data.wedge_video.watch(plot_depth=True)
+
+        print(estimator.forces())
+        plt.figure()
+        plt.imshow(estimator.depth_images()[0], cmap="winter", vmin=-estimator.depth_threshold, vmax=estimator.depth_threshold*5)
+        plt.title(f'Depth')
+        plt.xlabel('Y')
+        plt.ylabel('X')
+        plt.colorbar()
+        plt.figure()
+        plt.imshow(estimator.depth_images()[-1], cmap="winter", vmin=-estimator.depth_threshold, vmax=estimator.depth_threshold*5)
+        plt.title(f'Depth')
+        plt.xlabel('Y')
+        plt.ylabel('X')
+        plt.colorbar()
+        plt.show()
 
         if use_method == "naive":
             # Fit using naive estimator
