@@ -46,7 +46,7 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
     grasp_data          =   GraspData(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width)
     # grasp_data        =   GraspData(wedge_video=wedge_video, contact_force=contact_force, gripper_width=gripper_width)
 
-    if folder_name == None:
+    if folder_name is None:
         # Choose folder name as YYYY-MM-DD by default
         folder_name = datetime.now().strftime('%Y-%m-%d')
 

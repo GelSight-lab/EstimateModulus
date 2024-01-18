@@ -170,17 +170,17 @@ class EstimateModulus():
     
     # Return maximum value from each depth image (in meters)
     def max_depths(self, depth_images=None):
-        if depth_images == None: depth_images = self.depth_images()
+        if depth_images is None: depth_images = self.depth_images()
         return np.max(depth_images, axis=(1,2))
     
     # Return mean value from each depth image (in meters)
     def mean_depths(self, depth_images=None):
-        if depth_images == None: depth_images = self.depth_images()
+        if depth_images is None: depth_images = self.depth_images()
         return np.mean(depth_images, axis=(1,2))
     
     # Return mean of neighborhood around max value from each depth image (in meters)
     def mean_max_depths(self, depth_images=None, kernel_radius=5):
-        if depth_images == None: depth_images = self.depth_images()
+        if depth_images is None: depth_images = self.depth_images()
         mean_max_depths = []
         for i in range(len(depth_images)):
             max_index = np.argmax(depth_images[i])
@@ -191,7 +191,7 @@ class EstimateModulus():
     
     # Return highest percentile of depth population (in meters)
     def top_percentile_depths(self, depth_images=None, percentile=97):
-        if depth_images == None: depth_images = self.depth_images()
+        if depth_images is None: depth_images = self.depth_images()
         top_percentile_depths = []
         for i in range(len(depth_images)):
             top_percentile_depths.append(np.percentile(depth_images[i,:,:], percentile))
@@ -385,14 +385,14 @@ class EstimateModulus():
     
     # Naively estimate modulus based on gripper width change and aggregate modulus
     # (Notably requires both gripper width and tactile depth data)
-    def fit_modulus_naive(self, use_mean=True, use_ellipse_fitting=True, use_lower_resolution_depth=True):
+    def fit_modulus_naive(self, use_mean=True, use_ellipse_fitting=True, use_lower_resolution_depth=False):
         assert self.use_gripper_width
 
         # Find initial length of first contact
         L0 = self.length_of_first_contact()
 
         if use_lower_resolution_depth:
-            depth_images = self.lower_resolution_depth()
+            depth_images = self.lower_resolution_depth(kernel_size=5)
         else:
             depth_images = self.depth_images()
 
@@ -444,7 +444,7 @@ class EstimateModulus():
     
     # Fit data to Hertizan model with apparent deformation
     # (Notably only requires gripper width data, not tactile depth)
-    def fit_modulus_hertz(self, use_ellipse_fitting=True):
+    def fit_modulus_hertz(self, use_ellipse_fitting=True, use_lower_resolution_depth=False):
         # Calculate apparent deformation using gripper width
         # Pretend that the contact geometry is cylindrical
         # This gives the relation...
@@ -454,10 +454,15 @@ class EstimateModulus():
         # Find initial length of first contact
         L0 = self.length_of_first_contact()
 
+        if use_lower_resolution_depth:
+            depth_images = self.lower_resolution_depth(kernel_size=5)
+        else:
+            depth_images = self.depth_images()
+
         x_data, y_data = [], []
         d, contact_areas, a = [], [], []
-        for i in range(len(self.depth_images())):
-            depth_i = self.depth_images()[i]
+        for i in range(len(depth_images)):
+            depth_i = depth_images[i]
             d_i = L0 - self.gripper_widths()[i]
             
             if use_ellipse_fitting:
@@ -580,7 +585,7 @@ class EstimateModulus():
     
     # Use Hertzian contact models and MDR to compute the modulus of unknown object
     # (Notably only requires tactile depth data, not gripper width)
-    def fit_modulus_MDR(self, use_ellipse_fitting=True):
+    def fit_modulus_MDR(self, use_ellipse_fitting=True, use_lower_resolution_depth=False):
         # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
 
         # p_0     = f(E*, F, a)
@@ -589,29 +594,29 @@ class EstimateModulus():
         # w_1d(x) = (1-v^2)/E_sensor * q_1d(x)
         # w_1d(0) = max_depth
 
-        # TODO: Replace this
-        # # Filter depth images to mask and crop
-        # self.filter_depths(concave_mask=False)
-
         x_data, y_data = [], []
         d, a, F, R = [], [], [], []
 
-        # TODO: Generalize this radius
         # R = 0.025 # [m], measured for elastic balls
 
-        # Precompute peak depths by taking the mean of 5x5 neighborhood around maximum depth
-        peak_depths = self.mean_max_depths()
+        if use_lower_resolution_depth:
+            depth_images = self.lower_resolution_depth(kernel_size=5)
+        else:
+            depth_images = self.depth_images()
 
-        for i in range(len(self.depth_images())):
+        # Precompute peak depths by taking the mean of 5x5 neighborhood around maximum depth
+        peak_depths = self.mean_max_depths(depth_images=depth_images)
+
+        for i in range(len(depth_images)):
             F_i = abs(self.forces()[i])
             d_i = peak_depths[i]
 
             if use_ellipse_fitting:
                 # Compute mask using ellipse fit
-                mask = self.ellipse_contact_mask(self.depth_images()[i])
+                mask = self.ellipse_contact_mask(depth_images[i])
             else:
                 # Compute mask using traditional thresholding alone
-                mask = self.contact_mask(self.depth_images()[i])
+                mask = self.contact_mask(depth_images[i])
 
             # Use mask to compute contact area
             contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
@@ -619,7 +624,7 @@ class EstimateModulus():
 
             if use_ellipse_fitting:
                 # Compute circle radius using ellipse fit
-                ellipse = fit_ellipse_from_float(self.depth_images()[i], plot_result=False)
+                ellipse = fit_ellipse_from_float(depth_images[i], plot_result=False)
                 major_axis, minor_axis = ellipse[1]
                 r_i = 0.5 * (0.001 / PX_TO_MM) * (major_axis + minor_axis)/2
                 R_i = d_i + (r_i**2 - d_i**2)/(2*d_i)
@@ -781,7 +786,7 @@ if __name__ == "__main__":
     ##################################################
 
     # Choose which mechanical model to use
-    use_method = "naive"
+    use_method = "MDR"
     assert use_method in ["naive", "hertz", "stochastic", "MDR"]
 
     fig1 = plt.figure(1)
@@ -846,7 +851,7 @@ if __name__ == "__main__":
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
         # if obj_name.count('foam') == 0: continue
-        if obj_name.count('foam') == 1: continue
+        # if obj_name.count('foam') == 1: continue
         print('Object:', obj_name)
 
         # Load data into modulus estimator
@@ -937,7 +942,7 @@ if __name__ == "__main__":
 
         if use_method == "naive":
             # Fit using naive estimator
-            E_object = estimator.fit_modulus_naive(use_mean=False, use_ellipse_fitting=True)
+            E_object = estimator.fit_modulus_naive(use_mean=False, use_ellipse_fitting=True, use_lower_resolution_depth=True)
 
         elif use_method == "hertz":
             # Fit using simple Hertzian estimator
@@ -949,7 +954,7 @@ if __name__ == "__main__":
 
         elif use_method == "MDR":
             # Fit using our MDR estimator
-            E_star = estimator.fit_modulus_MDR(use_ellipse_fitting=True)
+            E_star = estimator.fit_modulus_MDR(use_ellipse_fitting=True, use_lower_resolution_depth=False)
             E_object, v_object = estimator.Estar_to_E(E_star)
 
         print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
