@@ -606,6 +606,9 @@ class EstimateModulus():
 
         x_data, y_data = [], []
         d, a, F, R = [], [], [], []
+        
+        # Find initial length of first contact
+        L0 = self.length_of_first_contact()
 
         # R = 0.025 # [m], measured for elastic balls
 
@@ -619,7 +622,8 @@ class EstimateModulus():
 
         for i in range(len(depth_images)):
             F_i = abs(self.forces()[i])
-            d_i = peak_depths[i]
+            d_i = peak_depths[i] # Depth
+            apparent_d_i = (L0 - self.gripper_widths()[i]) / 2
 
             if use_ellipse_fitting:
                 # Compute mask using ellipse fit
@@ -642,11 +646,13 @@ class EstimateModulus():
                 # Compute estimated radius based on depth (d) and contact radius (a)
                 R_i = d_i + (a_i**2 - d_i**2)/(2*d_i)
 
+            # # Use apparent deformation and contact area to compute object radius
+            # R_i = a_i**2 / apparent_d_i
+
             if F_i > 0 and contact_area_i >= 1e-5 and d_i > self.depth_threshold:
-                p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3
+                p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3        # From Wiki
                 q_1D_0 = p_0 * np.pi * a_i / 2
                 w_1D_0 = (1 - self.nu_gel**2) * q_1D_0 / self.E_gel
-                F.append(F_i)
                 d.append(d_i)
                 a.append(a_i)
                 R.append(R_i)
@@ -662,6 +668,7 @@ class EstimateModulus():
 
         # Fit for E_star
         E_star = self.linear_coeff_fit(x_data, y_data)**(3/2)
+
         return E_star
     
     def Estar_to_E(self, E_star):
@@ -796,7 +803,7 @@ if __name__ == "__main__":
     ##################################################
 
     # Choose which mechanical model to use
-    use_method = "naive"
+    use_method = "MDR"
     assert use_method in ["naive", "hertz", "stochastic", "MDR"]
 
     fig1 = plt.figure(1)
@@ -973,7 +980,7 @@ if __name__ == "__main__":
         # print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
         # print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))
         # print(f'Depth range of {obj_name}:', min(estimator._d), 'to', max(estimator._d))
-        # print(f'Mean radius of {obj_name}:', sum(estimator._R) / len(estimator._R))
+        print(f'Mean radius of {obj_name}:', estimator._R.mean())
         print(f'Estimated modulus of {obj_name}:', E_object)
         print('\n')
 
@@ -1015,3 +1022,4 @@ if __name__ == "__main__":
     fig2.set_figwidth(10)
     fig2.set_figheight(10)
     plt.show()
+    print('Done.')
