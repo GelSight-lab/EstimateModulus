@@ -251,7 +251,8 @@ class EstimateModulus():
     # Wrap the chosen contact mask function into one place
     def contact_mask(self, depth):
         # return self.flipped_total_mean_threshold_contact_mask(depth)
-        return self.conditional_contact_mask(depth)
+        # return self.conditional_contact_mask(depth)
+        return self.constant_threshold_contact_mask(depth)
 
     # Fit linear equation with least squares
     def linear_coeff_fit(self, x, y):
@@ -595,7 +596,7 @@ class EstimateModulus():
     
     # Use Hertzian contact models and MDR to compute the modulus of unknown object
     # (Notably only requires tactile depth data, not gripper width)
-    def fit_modulus_MDR(self, use_ellipse_fitting=True, use_lower_resolution_depth=False):
+    def fit_modulus_MDR_old(self, use_ellipse_fitting=True, use_lower_resolution_depth=False):
         # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
 
         # p_0     = f(E*, F, a)
@@ -609,8 +610,6 @@ class EstimateModulus():
         
         # Find initial length of first contact
         L0 = self.length_of_first_contact()
-
-        # R = 0.025 # [m], measured for elastic balls
 
         if use_lower_resolution_depth:
             depth_images = self.lower_resolution_depth(kernel_size=5)
@@ -636,7 +635,91 @@ class EstimateModulus():
             contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
             a_i = np.sqrt(contact_area_i / np.pi)
 
+            # if use_ellipse_fitting:
+            #     # Compute circle radius using ellipse fit
+            #     ellipse = fit_ellipse_from_float(depth_images[i], plot_result=False)
+            #     major_axis, minor_axis = ellipse[1]
+            #     r_i = 0.5 * (0.001 / PX_TO_MM) * (major_axis + minor_axis)/2
+            #     R_i = d_i + (r_i**2 - d_i**2)/(2*d_i)
+            # else:
+            #     # Compute estimated radius based on depth (d) and contact radius (a)
+            #     R_i = d_i + (a_i**2 - d_i**2)/(2*d_i)
+
+            # Use apparent deformation and contact area to compute object radius
+            R_i = a_i**2 / apparent_d_i
+
+            if F_i > 0 and contact_area_i >= 1e-5 and d_i > self.depth_threshold:
+                p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3        # From Wiki
+                q_1D_0 = p_0 * np.pi * a_i / 2
+                w_1D_0 = (1 - self.nu_gel**2) * q_1D_0 / self.E_gel
+                d.append(d_i)
+                a.append(a_i)
+                R.append(R_i)
+                x_data.append(w_1D_0)
+                y_data.append(d_i)
+
+        self._d = np.array(d)
+        self._a = np.array(a)
+        self._F = np.array(F)
+        self._R = np.array(R)
+        self._x_data = np.array(x_data)
+        self._y_data = np.array(y_data)
+
+        # Fit for E_star
+        E_star = self.linear_coeff_fit(x_data, y_data)**(3/2)
+
+        return E_star
+    
+    # Use Hertzian contact models and MDR to compute the modulus of unknown object
+    # (Notably only requires tactile depth data, not gripper width)
+    def fit_modulus_MDR(self, use_ellipse_fitting=True, use_apparent_deformation=True, use_lower_resolution_depth=False):
+        # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
+
+        # p_0     = f(E*, F, a)
+        # p(r)    = p_0 sqrt(1 - r^2/a^2)
+        # q_1d(x) = 2 integral(r p(r) / sqrt(r^2 - x^2) dr)
+        # w_1d(x) = (1-v^2)/E_sensor * q_1d(x)
+        # w_1d(0) = max_depth
+
+        x_data, y_data = [], []
+        d, a, F, R = [], [], [], []
+        
+        # Find initial length of first contact
+        L0 = self.length_of_first_contact()
+
+        if use_lower_resolution_depth:
+            depth_images = self.lower_resolution_depth(kernel_size=5)
+        else:
+            depth_images = self.depth_images()
+
+        # Precompute peak depths by taking the mean of 5x5 neighborhood around maximum depth
+        peak_depths = self.mean_max_depths(depth_images=depth_images)
+
+        for i in range(len(depth_images)):
+            F_i = abs(self.forces()[i])
+            d_i = peak_depths[i] # Depth
+            apparent_d_i = (L0 - self.gripper_widths()[i]) / 2
+
+            # Compute mask using traditional thresholding alone
+            mask = self.contact_mask(depth_images[i])
+            if mask.max() == 0: continue
+        
             if use_ellipse_fitting:
+                # Fit mask to an ellipse and take contact radius
+                ellipse = fit_ellipse_from_binary(mask, plot_result=False)
+                major_axis, minor_axis = ellipse[1]
+                contact_area_i = np.pi * (0.001 / PX_TO_MM)**2 * major_axis * minor_axis
+                a_i = np.sqrt(contact_area_i / np.pi)
+            else:
+                # Use mask to directly compute contact area
+                contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
+                a_i = np.sqrt(contact_area_i / np.pi)
+
+            if use_apparent_deformation:
+                # Use apparent deformation and contact area to compute object radius
+                R_i = a_i**2 / apparent_d_i
+                if apparent_d_i <= 1e-4: continue
+            elif use_ellipse_fitting:
                 # Compute circle radius using ellipse fit
                 ellipse = fit_ellipse_from_float(depth_images[i], plot_result=False)
                 major_axis, minor_axis = ellipse[1]
@@ -645,9 +728,6 @@ class EstimateModulus():
             else:
                 # Compute estimated radius based on depth (d) and contact radius (a)
                 R_i = d_i + (a_i**2 - d_i**2)/(2*d_i)
-
-            # # Use apparent deformation and contact area to compute object radius
-            # R_i = a_i**2 / apparent_d_i
 
             if F_i > 0 and contact_area_i >= 1e-5 and d_i > self.depth_threshold:
                 p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3        # From Wiki
@@ -839,6 +919,12 @@ if __name__ == "__main__":
         sp2.set_xlabel('[Pa]^(-2/3)')
         sp2.set_ylabel('Depth [m]')
 
+        # Set up axes for checking radius estimates
+        fig3 = plt.figure(3)
+        sp3 = fig3.add_subplot(211)
+        sp3.set_xlabel('Radius [m]')
+        sp3.set_ylabel('Index [/]')
+
     wedge_video    = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
     contact_force  = ContactForce()
     gripper_width  = GripperWidth()
@@ -867,12 +953,12 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        # if obj_name.count('foam') == 0: continue
+        # if obj_name.count('ball') == 0: continue
         # if obj_name.count('foam') == 1: continue
         print('Object:', obj_name)
 
         # Load data into modulus estimator
-        estimator = EstimateModulus(use_gripper_width=True, depth_threshold=5e-5)
+        estimator = EstimateModulus(use_gripper_width=True) # , depth_threshold=5e-5)
         estimator.load_from_file(data_folder + "/" + os.path.splitext(file_name)[0], auto_clip=True)
         
         # Clip to loading sequence
@@ -881,81 +967,6 @@ if __name__ == "__main__":
 
         # Remove stagnant gripper values across measurement frames
         estimator.interpolate_gripper_widths()
-
-
-
-
-        # blurred_depth_images = estimator.lower_resolution_depth()
-        # plt.figure()
-        # plt.imshow(estimator.depth_images()[0])
-        # plt.title('Init Depth')
-        # plt.colorbar()
-        # plt.figure()
-        # plt.imshow(blurred_depth_images[0])
-        # plt.title('Reduced Init Depth')
-        # plt.colorbar()
-        # plt.figure()
-        # plt.imshow(estimator.depth_images()[-1])
-        # plt.title('Peak Depth')
-        # plt.colorbar()
-        # plt.figure()
-        # plt.imshow(blurred_depth_images[-1])
-        # plt.title('Reduced Peak Depth')
-        # plt.colorbar()
-        # plt.show()
-
-
-        """
-        ellipse_mask = []
-        binary_array = []
-        for i in range(len(estimator.depth_images())):
-
-            # Normalize array
-            float_array = estimator.depth_images()[i]
-            float_array_normalized = (float_array - float_array.min()) / (float_array.max() - float_array.min())
-
-            # Threshold into binary array based on range
-            binary_array.append((255 * (float_array_normalized >= 0.5)).astype(np.uint8))
-
-            max_ellipse = fit_ellipse_from_float(estimator.depth_images()[i])
-            ellipse_image = np.zeros_like(estimator.depth_images()[i], dtype=np.uint8)
-            cv2.ellipse(ellipse_image, max_ellipse, 255, -1)
-            ellipse_mask.append(ellipse_image)
-
-        plt.ion()
-        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-        for ax, title in zip(axes, ['Depth', 'Binary Thresholding', 'Ellipse Mask']):
-            ax.set_title(title)
-            ax.set_xlabel('Y')
-            ax.set_ylabel('X')
-
-        im1 = axes[0].imshow(estimator.depth_images()[0], cmap="winter")
-        im2 = axes[1].imshow(binary_array[0], cmap=plt.cm.gray)
-        im3 = axes[2].imshow(ellipse_mask[0], cmap=plt.cm.gray)
-
-        plt.tight_layout()
-
-        for i in range(len(estimator.depth_images())):
-            im1.set_array(estimator.depth_images()[i])
-            im2.set_array(binary_array[i])
-            im3.set_array(ellipse_mask[i])
-            
-            plt.draw()
-            plt.pause(0.5)
-
-        plt.ioff()
-        plt.show()
-        """
-
-        # std = np.std(estimator.depth_images()[-1])
-        # mean = np.mean(estimator.depth_images()[-1])
-        # plt.figure()
-        # plt.imshow(estimator.depth_images()[-1] > mean + std)
-        # plt.figure()
-        # plt.imshow(estimator.depth_images()[-1])
-        # plt.show()
-
-        # estimator.grasp_data.wedge_video.watch(plot_depth=True)
 
         if use_method == "naive":
             # Fit using naive estimator
@@ -981,6 +992,7 @@ if __name__ == "__main__":
         # print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))
         # print(f'Depth range of {obj_name}:', min(estimator._d), 'to', max(estimator._d))
         print(f'Mean radius of {obj_name}:', estimator._R.mean())
+        print(f'Radius estimations of {obj_name}:', estimator._R)
         print(f'Estimated modulus of {obj_name}:', E_object)
         print('\n')
 
@@ -1014,6 +1026,8 @@ if __name__ == "__main__":
         elif use_method == "MDR":
             # Plot MDR fit
             sp2.plot(estimator._x_data, (E_star**(2/3))*np.array(estimator._x_data), "-", label=obj_name, markersize=8, color=plotting_color)
+            
+            sp3.plot(estimator._R[3:], ".", label=obj_name, markersize=8, color=plotting_color)
 
     fig1.legend()
     fig1.set_figwidth(10)
@@ -1021,5 +1035,8 @@ if __name__ == "__main__":
     fig2.legend()
     fig2.set_figwidth(10)
     fig2.set_figheight(10)
+    fig3.legend()
+    fig3.set_figwidth(10)
+    fig3.set_figheight(10)
     plt.show()
     print('Done.')
