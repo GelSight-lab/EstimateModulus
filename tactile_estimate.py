@@ -210,27 +210,17 @@ class EstimateModulus():
         return depth >= self.mean_depths().mean()
 
     # Return mask of which pixels are in upper half of depth range
-    def range_threshold_contact_mask(self, depth):
+    def normalized_threshold_contact_mask(self, depth):
         return (depth - depth.min()) / (depth.max() - depth.min()) >= 0.5
+
+    # Return mask of which pixels are in upper half of depth range for whole video
+    def total_normalized_threshold_contact_mask(self, depth):
+        total_min_depth = np.min(self.depth_images(), axis=(1,2)).min()
+        return (depth - total_min_depth) / (self.max_depths().max() - total_min_depth) >= 0.5
 
     # Return mask of which pixels are in upper half of depth range
     def std_above_mean_contact_mask(self, depth):
         return depth >= depth.mean() + np.std(depth)
-
-    # Return mask of which pixels are in contact with object using constant threshold
-    # But, flip if the mean depth of the image is negative (...a bit hacky)
-    def flipped_threshold_contact_mask(self, depth):
-        mask = depth >= self.depth_threshold
-        if depth.mean() < 0:
-            mask = depth <= -self.depth_threshold
-        return mask
-    
-    # Same as flipped, but use relative threshold
-    def flipped_total_mean_threshold_contact_mask(self, depth):
-        mask = depth >= self.mean_depths().mean()
-        if self.mean_depths().mean() < 0:
-            mask = depth <= -self.mean_depths().mean()
-        return mask
     
     # Threshold and fit depth to an ellipse
     def ellipse_contact_mask(self, depth):
@@ -239,20 +229,25 @@ class EstimateModulus():
         cv2.ellipse(ellipse_mask, ellipse, 1, -1)
         return ellipse_mask
     
-    # Use regular threshold unless mean depth of peak is small
+    # Use regular threshold unless max depth is small
     def conditional_contact_mask(self, depth):
+        if depth.max() > self.depth_threshold:
+            mask = self.constant_threshold_contact_mask(depth)
+        else:
+            mask = self.normalized_threshold_contact_mask(depth)
+        return mask
+    
+    # Use regular threshold for whole video unless mean depth of peak is small
+    def total_conditional_contact_mask(self, depth):
         if self.depth_images()[-1].mean() > self.depth_threshold:
             mask = self.constant_threshold_contact_mask(depth)
         else:
-            # mask = np.ones_like(depth)
             mask = self.total_mean_threshold_contact_mask(depth)
         return mask
     
     # Wrap the chosen contact mask function into one place
     def contact_mask(self, depth):
-        # return self.flipped_total_mean_threshold_contact_mask(depth)
-        # return self.conditional_contact_mask(depth)
-        return self.constant_threshold_contact_mask(depth)
+        return self.conditional_contact_mask(depth)
 
     # Fit linear equation with least squares
     def linear_coeff_fit(self, x, y):
@@ -883,7 +878,7 @@ if __name__ == "__main__":
     ##################################################
 
     # Choose which mechanical model to use
-    use_method = "MDR"
+    use_method = "naive"
     assert use_method in ["naive", "hertz", "stochastic", "MDR"]
 
     fig1 = plt.figure(1)
@@ -958,7 +953,7 @@ if __name__ == "__main__":
         print('Object:', obj_name)
 
         # Load data into modulus estimator
-        estimator = EstimateModulus(use_gripper_width=True) # , depth_threshold=5e-5)
+        estimator = EstimateModulus(use_gripper_width=True)
         estimator.load_from_file(data_folder + "/" + os.path.splitext(file_name)[0], auto_clip=True)
         
         # Clip to loading sequence
