@@ -231,7 +231,7 @@ class EstimateModulus():
     
     # Use regular threshold unless max depth is small
     def conditional_contact_mask(self, depth):
-        if depth.max() > self.depth_threshold:
+        if np.sum(depth >= self.depth_threshold) >= 0.10*depth.size or self.depth_images()[-1].max() > 15*self.depth_threshold:
             mask = self.constant_threshold_contact_mask(depth)
         else:
             mask = self.normalized_threshold_contact_mask(depth)
@@ -239,7 +239,7 @@ class EstimateModulus():
     
     # Use regular threshold for whole video unless mean depth of peak is small
     def total_conditional_contact_mask(self, depth):
-        if self.depth_images()[-1].mean() > self.depth_threshold:
+        if self.depth_images()[-1].max() > 10*self.depth_threshold:
             mask = self.constant_threshold_contact_mask(depth)
         else:
             mask = self.total_mean_threshold_contact_mask(depth)
@@ -391,8 +391,9 @@ class EstimateModulus():
     
     # Naively estimate modulus based on gripper width change and aggregate modulus
     # (Notably requires both gripper width and tactile depth data)
-    def fit_modulus_naive(self, use_mean=True, use_ellipse_fitting=True, use_lower_resolution_depth=False):
+    def fit_modulus_naive(self, use_mean=True, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_lower_resolution_depth=False):
         assert self.use_gripper_width
+        assert not (use_ellipse_mask and fit_mask_to_ellipse)
 
         # Find initial length of first contact
         L0 = self.length_of_first_contact()
@@ -410,12 +411,18 @@ class EstimateModulus():
         for i in range(len(depth_images)):
             depth_i = depth_images[i]
             
-            if use_ellipse_fitting:
+            if use_ellipse_mask:
                 # Compute mask using ellipse fit
                 mask = self.ellipse_contact_mask(depth_i)
             else:
                 # Compute mask using traditional thresholding alone
                 mask = self.contact_mask(depth_i)
+
+                if fit_mask_to_ellipse:
+                    # Fit an ellipse to the mask and modify
+                    ellipse = fit_ellipse_from_binary(mask)
+                    mask = np.zeros_like(mask, dtype=np.uint8)
+                    cv2.ellipse(mask, ellipse, 1, -1)
 
             if use_mean:
                 # Take average over masked contact area
@@ -436,6 +443,9 @@ class EstimateModulus():
                 a.append(a_i)
                 d.append(d_i)
 
+                if abs(self.forces()[i]) / contact_area_i >= 5e5:
+                    print('STRESS IS HIGH!')
+
         # Save stuff for plotting
         self._x_data = x_data
         self._y_data = y_data
@@ -450,12 +460,13 @@ class EstimateModulus():
     
     # Fit data to Hertizan model with apparent deformation
     # (Notably only requires gripper width data, not tactile depth)
-    def fit_modulus_hertz(self, use_ellipse_fitting=True, use_lower_resolution_depth=False):
+    def fit_modulus_hertz(self, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_lower_resolution_depth=False):
         # Calculate apparent deformation using gripper width
         # Pretend that the contact geometry is cylindrical
         # This gives the relation...
         #       F_N  =  2 E* d a
         #       [From (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov]
+        assert not (use_ellipse_mask and fit_mask_to_ellipse)
 
         # Find initial length of first contact
         L0 = self.length_of_first_contact()
@@ -471,12 +482,18 @@ class EstimateModulus():
             depth_i = depth_images[i]
             d_i = L0 - self.gripper_widths()[i]
             
-            if use_ellipse_fitting:
+            if use_ellipse_mask:
                 # Compute mask using ellipse fit
                 mask = self.ellipse_contact_mask(depth_i)
             else:
                 # Compute mask using traditional thresholding alone
                 mask = self.contact_mask(depth_i)
+
+                if fit_mask_to_ellipse:
+                    # Fit an ellipse to the mask and modify
+                    ellipse = fit_ellipse_from_binary(mask)
+                    mask = np.zeros_like(mask, dtype=np.uint8)
+                    cv2.ellipse(mask, ellipse, 1, -1)
                 
             # Use mask to compute contact area
             contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
@@ -532,19 +549,6 @@ class EstimateModulus():
                             i0[r,c] = i
                             break
 
-        # # Show image reconstruction
-        # plt.figure()
-        # plt.imshow(L0)
-        # plt.show()
-        
-        # fig = plt.figure()
-        # sp = fig.add_subplot(211)
-        # for r in range(blurred_depth_images.shape[1]):
-        #     for c in range(blurred_depth_images.shape[2]):
-        #         if L0[r][c] == 0: continue
-        #         sp.plot(blurred_depth_images[:,r,c])
-        # plt.show()
-
         # Create dynamics points
         x_data, y_data = [], []
         d, contact_areas, a = [], [], []
@@ -567,10 +571,6 @@ class EstimateModulus():
                         strains.append(eps)
                         strain_img[r,c] = eps
             strain = sum(strains) / len(strains)
-
-            # plt.figure()
-            # plt.imshow(strain_img)
-            # plt.show()
 
             if contact_area_i >= 1e-5 and strain >= 0:
                 x_data.append(strain)
@@ -667,8 +667,10 @@ class EstimateModulus():
     
     # Use Hertzian contact models and MDR to compute the modulus of unknown object
     # (Notably only requires tactile depth data, not gripper width)
-    def fit_modulus_MDR(self, use_ellipse_fitting=True, use_apparent_deformation=True, use_lower_resolution_depth=False):
+    def fit_modulus_MDR(self, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_apparent_deformation=True, use_lower_resolution_depth=False):
         # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
+        if use_apparent_deformation:
+            assert self.use_gripper_width
 
         # p_0     = f(E*, F, a)
         # p(r)    = p_0 sqrt(1 - r^2/a^2)
@@ -695,11 +697,16 @@ class EstimateModulus():
             d_i = peak_depths[i] # Depth
             apparent_d_i = (L0 - self.gripper_widths()[i]) / 2
 
-            # Compute mask using traditional thresholding alone
-            mask = self.contact_mask(depth_images[i])
+            if use_ellipse_mask:
+                # Compute mask using ellipse fit
+                mask = self.ellipse_contact_mask(depth_images[i])
+            else:
+                # Compute mask using traditional thresholding alone
+                mask = self.contact_mask(depth_images[i])
+            
             if mask.max() == 0: continue
         
-            if use_ellipse_fitting:
+            if fit_mask_to_ellipse:
                 # Fit mask to an ellipse and take contact radius
                 ellipse = fit_ellipse_from_binary(mask, plot_result=False)
                 major_axis, minor_axis = ellipse[1]
@@ -714,7 +721,7 @@ class EstimateModulus():
                 # Use apparent deformation and contact area to compute object radius
                 R_i = a_i**2 / apparent_d_i
                 if apparent_d_i <= 1e-4: continue
-            elif use_ellipse_fitting:
+            elif use_ellipse_mask:
                 # Compute circle radius using ellipse fit
                 ellipse = fit_ellipse_from_float(depth_images[i], plot_result=False)
                 major_axis, minor_axis = ellipse[1]
@@ -948,7 +955,7 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        # if obj_name.count('ball') == 0: continue
+        # if obj_name.count('foam') == 0: continue
         # if obj_name.count('foam') == 1: continue
         print('Object:', obj_name)
 
@@ -965,11 +972,11 @@ if __name__ == "__main__":
 
         if use_method == "naive":
             # Fit using naive estimator
-            E_object = estimator.fit_modulus_naive(use_mean=False, use_ellipse_fitting=True, use_lower_resolution_depth=True)
+            E_object = estimator.fit_modulus_naive(use_mean=False, use_ellipse_mask=True, use_lower_resolution_depth=True)
 
         elif use_method == "hertz":
             # Fit using simple Hertzian estimator
-            E_object = estimator.fit_modulus_hertz(use_ellipse_fitting=True)
+            E_object = estimator.fit_modulus_hertz(use_ellipse_mask=True)
 
         elif use_method == "stochastic":
             # Fit using stochastic estimator
@@ -977,7 +984,7 @@ if __name__ == "__main__":
 
         elif use_method == "MDR":
             # Fit using our MDR estimator
-            E_star = estimator.fit_modulus_MDR(use_ellipse_fitting=True, use_lower_resolution_depth=False)
+            E_star = estimator.fit_modulus_MDR(use_ellipse_mask=False, fit_mask_to_ellipse=True, use_apparent_deformation=True, use_lower_resolution_depth=False)
             E_object, v_object = estimator.Estar_to_E(E_star)
 
         print(f'Maximum depth of {obj_name}:', np.max(estimator.max_depths()))
@@ -986,8 +993,8 @@ if __name__ == "__main__":
         # print(f'Stress range of {obj_name}:', min(estimator._y_data), 'to', max(estimator._y_data))
         # print(f'Contact radius range of {obj_name}:', min(estimator._a), 'to', max(estimator._a))
         # print(f'Depth range of {obj_name}:', min(estimator._d), 'to', max(estimator._d))
-        print(f'Mean radius of {obj_name}:', estimator._R.mean())
-        print(f'Radius estimations of {obj_name}:', estimator._R)
+        # print(f'Mean radius of {obj_name}:', estimator._R.mean())
+        # print(f'Radius estimations of {obj_name}:', estimator._R)
         print(f'Estimated modulus of {obj_name}:', E_object)
         print('\n')
 
@@ -1030,8 +1037,9 @@ if __name__ == "__main__":
     fig2.legend()
     fig2.set_figwidth(10)
     fig2.set_figheight(10)
-    fig3.legend()
-    fig3.set_figwidth(10)
-    fig3.set_figheight(10)
+    if use_method == "MDR":
+        fig3.legend()
+        fig3.set_figwidth(10)
+        fig3.set_figheight(10)
     plt.show()
     print('Done.')
