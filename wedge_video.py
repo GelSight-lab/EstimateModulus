@@ -163,7 +163,8 @@ class GelsightWedgeVideo():
         return dx, dy
     
     # Calculate depth based on image gradients
-    def grad2depth(self, dx, dy):
+    def grad2depth(self, diff_img, dx, dy):
+        dx, dy = demark(diff_img, dx, dy)
         zeros = np.zeros_like(dx)
         unitless_depth = poisson_reconstruct(dy, dx, zeros)
         depth_in_mm = DEPTH_TO_MM * unitless_depth # Derived from linear fit of ball calibration
@@ -172,7 +173,7 @@ class GelsightWedgeVideo():
     # Calculate depth from a cropped / warped difference image
     def img2depth(self, diff_img):
         dx, dy = self.img2grad(diff_img)
-        depth = self.grad2depth(dx, dy)
+        depth = self.grad2depth(diff_img, dx, dy)
         return depth
     
     # Convert IP addres to streaming url
