@@ -7,7 +7,7 @@ import warnings
 
 from gelsight_wedge.src.gelsight.util.processing import warp_perspective
 from gelsight_wedge.src.gelsight.util.fast_poisson import poisson_reconstruct
-from gelsight_wedge.src.gelsight.util.helper import demark
+from gelsight_wedge.src.gelsight.util.helper import find_marker, interpolate_grad
 from gelsight_wedge.src.gelsight.util.Vis3D import ClassVis3D
 
 from threading import Thread
@@ -153,6 +153,13 @@ class GelsightWedgeVideo():
     # Calculate difference image from reference frame
     def calc_diff_image(self, ref_img, img):
         return (img * 1.0 - cv2.GaussianBlur(ref_img, (11, 11), 0) * 1.0) / 255 + 0.5
+    
+    # Remove markers from image with mask
+    def demark_grad(self, diff_img, dx, dy):
+        mask = find_marker(diff_img)
+        dx = interpolate_grad(dx, mask)
+        dy = interpolate_grad(dy, mask)
+        return dx, dy
 
     # Calculate gradients from a cropped / warped difference image
     def img2grad(self, diff_img):
@@ -164,7 +171,7 @@ class GelsightWedgeVideo():
     
     # Calculate depth based on image gradients
     def grad2depth(self, diff_img, dx, dy):
-        dx, dy = demark(diff_img, dx, dy)
+        dx, dy = self.demark_grad(diff_img, dx, dy)
         zeros = np.zeros_like(dx)
         unitless_depth = poisson_reconstruct(dy, dx, zeros)
         depth_in_mm = DEPTH_TO_MM * unitless_depth # Derived from linear fit of ball calibration
@@ -244,7 +251,7 @@ class GelsightWedgeVideo():
             cv2.imshow('raw_RGB', self._curr_rgb_image)
 
             if plot_diff or plot_depth:
-                diff_img = self.calc_diff_image(self.warp_image(self._raw_rgb_frames[0]), self.warp_image(self._curr_rgb_image))
+                diff_img = self.calc_diff_image(self.crop_image(self.warp_image(self._raw_rgb_frames[0])), self.crop_image(self.warp_image(self._curr_rgb_image)))
 
             # Plot difference image
             if plot_diff:
@@ -372,8 +379,9 @@ class GelsightWedgeVideo():
 
 if __name__ == "__main__":
     # Typical video recording workflow might be...
-    wedge_video = GelsightWedgeVideo(IP="172.16.0.100", config_csv="./config_100.csv")
+    wedge_video = GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_100_markers.csv")
     wedge_video.start_stream(plot=True, plot_diff=True, plot_depth=True)
-    time.sleep(200)
+    time.sleep(20)
     wedge_video.end_stream()
     print(wedge_video.max_depth())
+    print('here')
