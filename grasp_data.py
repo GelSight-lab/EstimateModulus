@@ -16,7 +16,7 @@ class GraspData():
     '''
     def __init__(self, 
                  wedge_video=GelsightWedgeVideo(config_csv="./config_100.csv"),
-                 other_wedge_video=None, 
+                 other_wedge_video=None,
                  contact_force=ContactForce(), 
                  gripper_width=GripperWidth(), 
                  use_gripper_width=True

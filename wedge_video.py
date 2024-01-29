@@ -51,13 +51,16 @@ class GelsightWedgeVideo():
     '''
     Class to streamline processing of data from Gelsight Wedge's
     '''
-    def __init__(self, config_csv="./config.csv", IP=None, warped_size=WARPED_IMG_SIZE, edge_crop_margin=EDGE_CROP_MARGIN):
+    def __init__(self, config_csv="./config.csv", IP=None, markers=False, warped_size=WARPED_IMG_SIZE, edge_crop_margin=EDGE_CROP_MARGIN):
         self.corners = read_csv(config_csv)         # CSV with pixel coordinates of mirror corners in the order (topleft,topright,bottomleft,bottomright)
         self.image_size = ORIGINAL_IMG_SIZE         # The size of original image from camera
         self.warped_size = warped_size              # The size of the image to output from warping process
         self.edge_crop_margin = edge_crop_margin    # Number of pixels to crop off edge after warping
         self.FPS = STREAM_FPS                       # Default FPS from Raspberry Pi camera
         self.PX_TO_MM = PX_TO_MM                    # Conversion from pixels to mm
+
+        # If markers are being used, we will demark the image
+        self.markers = markers
 
         # Compute size of the image after warping and edges are cropped
         self.cropped_size = (warped_size[0] - 2*self.edge_crop_margin, \
@@ -171,7 +174,8 @@ class GelsightWedgeVideo():
     
     # Calculate depth based on image gradients
     def grad2depth(self, diff_img, dx, dy):
-        dx, dy = self.demark_grad(diff_img, dx, dy)
+        if self.markers:
+            dx, dy = self.demark_grad(diff_img, dx, dy)
         zeros = np.zeros_like(dx)
         unitless_depth = poisson_reconstruct(dy, dx, zeros)
         depth_in_mm = DEPTH_TO_MM * unitless_depth # Derived from linear fit of ball calibration

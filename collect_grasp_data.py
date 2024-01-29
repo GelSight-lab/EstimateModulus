@@ -1,5 +1,6 @@
 import time
 import cv2
+import os
 import matplotlib.pyplot as plt
 
 from datetime import datetime
@@ -27,20 +28,20 @@ def open_gripper(_franka_arm): {
 def close_gripper(_franka_arm): {
     _franka_arm.goto_gripper(
         0.0, # Minimum width in meters [m]
-        force=80, # Maximum force in Newtons [N]
-        speed=0.02, # Desired operation speed in [m/s]
-        epsilon_inner=0.0015, # Maximum tolerated deviation [m]
-        epsilon_outer=0.0015, # Maximum tolerated deviation [m]
+        force=120, # Maximum force in Newtons [N]
+        speed=0.0275, # Desired operation speed in [m/s]
+        epsilon_inner=0.001, # Maximum tolerated deviation [m]
+        epsilon_outer=0.001, # Maximum tolerated deviation [m]
         grasp=True,     
         block=True,
         skill_desc="CloseGripper"
     )
 }
 
-def collect_data_for_object(object_name, num_trials, folder_name=None, plot_collected_data=True):
+def collect_data_for_object(object_name, num_trials, folder_name=None, plot_collected_data=False):
     # Define streaming addresses
-    wedge_video         =   GelsightWedgeVideo(IP="172.16.0.100", config_csv="./config_100.csv")
-    other_wedge_video   =   GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_200.csv")
+    wedge_video         =   GelsightWedgeVideo(IP="172.16.0.100", config_csv="./config_100.csv", markers=False)
+    other_wedge_video   =   GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_200_markers.csv", markers=True)
     contact_force       =   ContactForce(IP="172.16.0.69", port=8888)
     gripper_width       =   GripperWidth(franka_arm=franka_arm)
     grasp_data          =   GraspData(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width)
@@ -49,6 +50,9 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
     if folder_name is None:
         # Choose folder name as YYYY-MM-DD by default
         folder_name = datetime.now().strftime('%Y-%m-%d')
+
+    if not os.path.exists(f'./data/{folder_name}'):
+        os.mkdir(f'./data/{folder_name}')
 
     # Use these variables to keep force reading socket open over multiple trials
     _open_socket = True
@@ -95,7 +99,8 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
         cv2.destroyAllWindows()
         return
 
-    # TODO: Do not stream / plot video while recording training data!
+    # NOTE: - Do not stream / plot video while recording training data!
+    #       - Uncomment below only for debugging purposes
 
     # _plot_stream = True
     # _stream_thread = Thread(target=plot_stream, kwargs={"grasp_data": grasp_data, "plot_diff": True, "plot_depth": True})
@@ -126,9 +131,6 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
         grasp_data.end_stream(_close_socket=_close_socket)
         print('Done streaming.')
 
-        print(grasp_data.wedge_video.max_depth())
-        print(grasp_data.other_wedge_video.max_depth())
-
         grasp_data.auto_clip()
 
         if plot_collected_data:
@@ -140,7 +142,7 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
             plt.show()
 
         # Save
-        grasp_data.save(f'./example_data/{folder_name}/{object_name}__t={str(i)}')
+        grasp_data.save(f'./data/{folder_name}/{object_name}__t={str(i)}')
 
         print('Max depth in mm:', grasp_data.max_depths().max())
         print('Max force of N:', grasp_data.forces().max())
@@ -148,10 +150,6 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
 
         # Reset data
         grasp_data._reset_data()
-
-        # # User confirmation to continue
-        # if i != num_trials-1:
-        #     input('Press Enter to continue collecting data...')
 
     _plot_stream = False
     # _stream_thread.join()
@@ -161,9 +159,10 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
 
 if __name__ == "__main__":
     # Record grasp data for the given object
-    OBJECT_NAME     = "test"
-    NUM_TRIALS      = 1
+    object_name     = "rubber_washer_stack"
+    num_trials      = 5
     collect_data_for_object(
-        OBJECT_NAME, \
-        NUM_TRIALS \
+        object_name, \
+        num_trials, \
+        folder_name=object_name
     )
