@@ -36,7 +36,8 @@ if __name__ == '__main__':
     for object_name in objects:
         plotting_color = random_hex_color()
 
-        # if object_name.count('bolt') == 0: continue
+        # if object_name.count('golf') == 0: continue
+        shifts = []
 
         data_files = sorted(os.listdir(f'./data/{object_name}'))
         for file_name in data_files:
@@ -52,6 +53,73 @@ if __name__ == '__main__':
 
             # estimator.watch_depth_2D()
 
+            # estimator.grasp_data.plot_grasp_data()
+
+            forces      = abs(estimator.grasp_data.forces())
+            widths      = estimator.grasp_data.gripper_widths()
+            max_depths  = estimator.grasp_data.max_depths()
+            other_max_depths = estimator.grasp_data.max_depths(other_finger=True)
+
+
+            # plt.ion()
+            # _, ax = plt.subplots(1,2)
+            # im = ax[0].imshow(estimator.grasp_data.wedge_video.diff_images()[0], cmap=plt.cm.winter)
+            # im1 = ax[1].imshow(estimator.grasp_data.other_wedge_video.diff_images()[0], cmap=plt.cm.winter)
+            # for i in range(len(estimator.grasp_data.other_wedge_video.diff_images())):
+            #     im.set_array(estimator.grasp_data.wedge_video.diff_images()[i])
+            #     im1.set_array(estimator.grasp_data.other_wedge_video.diff_images()[i])
+            #     plt.draw()
+            #     plt.pause(0.5)
+            # plt.ioff()
+            # plt.show()
+
+            plt.figure()
+            plt.plot(forces / forces.max(), label="Normalized Contact Forces")
+            plt.plot(widths / widths.max(), label="Normalized Gripper Widths")
+            plt.plot(max_depths / max_depths.max(), label="Normalized Max Depths")
+            plt.plot(other_max_depths / other_max_depths.max(), label="Other Normalized Max Depths")
+            plt.xlabel('Index [/]')
+            plt.title('Unshifted Grasp')
+            plt.legend()
+
+            plt.figure()
+            plt.plot(forces[8:] / forces.max(), label="Normalized Contact Forces")
+            plt.plot(widths[8:] / widths.max(), label="Normalized Gripper Widths")
+            plt.plot(max_depths[8:] / max_depths.max(), label="Normalized Max Depths")
+            plt.plot(other_max_depths / other_max_depths.max(), label="Other Normalized Max Depths")
+            plt.xlabel('Index [/]')
+            plt.title('Dumb Shifted Grasp')
+            plt.legend()
+
+            shift1 = np.argmax(np.correlate(max_depths / max_depths.max(), other_max_depths / other_max_depths.max(), mode="full")) - len(max_depths) + 1
+            other_shifted_depths = np.roll(other_max_depths, shift1)
+            print(shift1)
+            shifts.append(shift1)
+
+            plt.figure()
+            plt.plot(forces / forces.max(), label="Normalized Contact Forces")
+            plt.plot(widths / widths.max(), label="Normalized Gripper Widths")
+            plt.plot(max_depths / max_depths.max(), label="Normalized Max Depths")
+            plt.plot(other_shifted_depths / other_shifted_depths.max(), label="Other Normalized Max Depths")
+            plt.xlabel('Index [/]')
+            plt.title('Smart Shifted Grasp')
+            plt.legend()
+            plt.show()
+
+            # plt.ion()
+            # _, ax = plt.subplots(1,2)
+            # im = ax[0].imshow(estimator.grasp_data.wedge_video.diff_images()[0], cmap=plt.cm.winter)
+            # im1 = ax[1].imshow(estimator.grasp_data.other_wedge_video.diff_images()[0], cmap=plt.cm.winter)
+            # for i in range(len(estimator.grasp_data.other_wedge_video.diff_images())):
+            #     im.set_array(estimator.grasp_data.wedge_video.diff_images()[i])
+            #     im1.set_array(estimator.grasp_data.other_wedge_video.diff_images()[i - shift1])
+            #     plt.draw()
+            #     plt.pause(0.5)
+            # plt.ioff()
+            # plt.show()
+
+            print('here')
+            '''
             # Clip to loading sequence
             estimator.clip_to_press()
             assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
@@ -73,6 +141,7 @@ if __name__ == '__main__':
             # Plot naive fit
             sp2.plot(estimator._x_data, estimator._y_data, ".", label=plotting_label, markersize=8, color=plotting_color)
             sp2.plot(estimator._x_data, E_object*np.array(estimator._x_data), "-", label=plotting_label, markersize=8, color=plotting_color)
+            '''
 
     fig1.legend()
     fig1.set_figwidth(10)

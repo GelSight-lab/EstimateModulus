@@ -143,13 +143,19 @@ class GraspData():
         else:
             assert len(self.contact_force.forces()) == len(self.wedge_video._raw_rgb_frames)
 
-        # Adjust by 2 frames for HDMI latency
-        self.wedge_video.clip(2, len(self.wedge_video._raw_rgb_frames))
+        # Make sure depths are aligned, smart shift based on correlation
+        shift = 0
         if self._wedge_video_count > 1:
-            self.other_wedge_video.clip(2, len(self.wedge_video._raw_rgb_frames))
-        self.contact_force.clip(0, len(self.contact_force.forces())-2)
+            shift = np.argmax(np.correlate(self.max_depths() / self.max_depths().max(), self.max_depths(other_finger=True) / self.max_depths(other_finger=True), mode="full")) - len(self.max_depths()) + 1
+            assert shift <= 10 and shift >= 0 # Shift should not be too large
+
+        # Adjust by 2 frames for HDMI latency
+        self.wedge_video.clip(2+shift, len(self.wedge_video._raw_rgb_frames))
+        if self._wedge_video_count > 1:
+            self.other_wedge_video.clip(2, len(self.other_wedge_video._raw_rgb_frames)-shift)
+        self.contact_force.clip(shift, len(self.contact_force.forces())-2)
         if self.use_gripper_width:
-            self.gripper_width.clip(0, len(self.gripper_width.widths())-2)
+            self.gripper_width.clip(shift, len(self.gripper_width.widths())-2)
         return
     
     # Clip data between frame indices
@@ -196,9 +202,13 @@ class GraspData():
         forces      = abs(self.forces())
         widths      = self.gripper_widths()
         max_depths  = self.max_depths()
+        if self._wedge_video_count > 1:
+            other_max_depths = self.max_depths(other_finger=True)
         plt.plot(forces / forces.max(), label="Normalized Contact Forces")
         plt.plot(widths / widths.max(), label="Normalized Gripper Widths")
         plt.plot(max_depths / max_depths.max(), label="Normalized Max Depths")
+        if self._wedge_video_count > 1:
+            plt.plot(other_max_depths / other_max_depths.max(), label="Other Normalized Max Depths")
         plt.xlabel('Index [/]')
         plt.legend()
         plt.show()

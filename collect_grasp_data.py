@@ -9,8 +9,8 @@ from threading import Thread
 from gelsight_wedge.src.gelsight.util.Vis3D import ClassVis3D
 
 from frankapy import FrankaArm
-from wedge_video import GelsightWedgeVideo
-from contact_force import ContactForce
+from wedge_video import GelsightWedgeVideo, DEPTH_THRESHOLD
+from contact_force import ContactForce, FORCE_THRESHOLD
 from gripper_width import GripperWidth
 from grasp_data import GraspData
 
@@ -28,8 +28,8 @@ def open_gripper(_franka_arm): {
 def close_gripper(_franka_arm): {
     _franka_arm.goto_gripper(
         0.0, # Minimum width in meters [m]
-        force=120, # Maximum force in Newtons [N]
-        speed=0.0275, # Desired operation speed in [m/s]
+        force=90, # Maximum force in Newtons [N]
+        speed=0.02, # Desired operation speed in [m/s]
         epsilon_inner=0.001, # Maximum tolerated deviation [m]
         epsilon_outer=0.001, # Maximum tolerated deviation [m]
         grasp=True,     
@@ -38,7 +38,7 @@ def close_gripper(_franka_arm): {
     )
 }
 
-def collect_data_for_object(object_name, num_trials, folder_name=None, plot_collected_data=False):
+def collect_data_for_object(object_name, num_trials, folder_name=None, plot_collected_data=True):
     # Define streaming addresses
     wedge_video         =   GelsightWedgeVideo(IP="172.16.0.100", config_csv="./config_100.csv", markers=False)
     other_wedge_video   =   GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_200_markers.csv", markers=True)
@@ -131,6 +131,19 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
         grasp_data.end_stream(_close_socket=_close_socket)
         print('Done streaming.')
 
+        # Make some assertions to ensure data collection is okay
+        assert grasp_data.forces()[0] < FORCE_THRESHOLD and grasp_data.forces()[-1] < FORCE_THRESHOLD
+        assert grasp_data.forces().max() > FORCE_THRESHOLD
+        assert grasp_data.gripper_widths().max() >= grasp_data.gripper_widths().min() + 0.01
+
+        if plot_collected_data:
+            plt.plot(abs(grasp_data.forces()) / abs(grasp_data.forces()).max(), label="Forces")
+            plt.plot(grasp_data.gripper_widths() / grasp_data.gripper_widths().max(), label="Gripper Widths")
+            plt.plot(grasp_data.max_depths() / grasp_data.max_depths().max(), label="Max Depths")
+            plt.plot(grasp_data.max_depths(other_finger=True) / grasp_data.max_depths(other_finger=True).max(), label="Other Max Depths")
+            plt.legend()
+            plt.show()
+        
         grasp_data.auto_clip()
 
         if plot_collected_data:
@@ -140,6 +153,8 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
             plt.plot(grasp_data.max_depths(other_finger=True) / grasp_data.max_depths(other_finger=True).max(), label="Other Max Depths")
             plt.legend()
             plt.show()
+
+        assert grasp_data.max_depths().max() >= DEPTH_THRESHOLD # and grasp_data.max_depths(other_finger=True).max() >= DEPTH_THRESHOLD
 
         # Save
         grasp_data.save(f'./data/{folder_name}/{object_name}__t={str(i)}')
@@ -159,7 +174,7 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
 
 if __name__ == "__main__":
     # Record grasp data for the given object
-    object_name     = "rubber_washer_stack"
+    object_name     = "golf_ball"
     num_trials      = 5
     collect_data_for_object(
         object_name, \
