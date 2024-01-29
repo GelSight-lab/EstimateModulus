@@ -1,6 +1,7 @@
 import time
 import cv2
 import os
+import numpy as np
 import matplotlib.pyplot as plt
 
 from datetime import datetime
@@ -9,7 +10,7 @@ from threading import Thread
 from gelsight_wedge.src.gelsight.util.Vis3D import ClassVis3D
 
 from frankapy import FrankaArm
-from wedge_video import GelsightWedgeVideo, DEPTH_THRESHOLD
+from wedge_video import GelsightWedgeVideo, DEPTH_THRESHOLD, AUTO_CLIP_OFFSET
 from contact_force import ContactForce, FORCE_THRESHOLD
 from gripper_width import GripperWidth
 from grasp_data import GraspData
@@ -144,7 +145,7 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
             plt.legend()
             plt.show()
         
-        grasp_data.auto_clip()
+        grasp_data.auto_clip(clip_offset=AUTO_CLIP_OFFSET+10)
 
         if plot_collected_data:
             plt.plot(abs(grasp_data.forces()) / abs(grasp_data.forces()).max(), label="Forces")
@@ -155,6 +156,20 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
             plt.show()
 
         assert grasp_data.max_depths().max() >= DEPTH_THRESHOLD # and grasp_data.max_depths(other_finger=True).max() >= DEPTH_THRESHOLD
+
+        # Make sure depths are aligned, smart shift based on correlation
+        shift = np.argmax(
+                        np.correlate(
+                            grasp_data.max_depths() / grasp_data.max_depths().max(), \
+                            grasp_data.max_depths(other_finger=True) / grasp_data.max_depths(other_finger=True).max(),
+                            mode="full" \
+                        )
+                    ) - len(grasp_data.max_depths()) + 1
+        assert shift <= 10 and shift >= 0 # Shift should not be too large
+        grasp_data.wedge_video.clip(shift, len(grasp_data.wedge_video._raw_rgb_frames))
+        grasp_data.other_wedge_video.clip(0, len(grasp_data.other_wedge_video._raw_rgb_frames)-shift)
+        grasp_data.contact_force.clip(shift, len(grasp_data.contact_force.forces()))
+        grasp_data.gripper_width.clip(shift, len(grasp_data.gripper_width.widths()))
 
         # Save
         grasp_data.save(f'./data/{folder_name}/{object_name}__t={str(i)}')
