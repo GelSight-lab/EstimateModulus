@@ -591,83 +591,7 @@ class EstimateModulus():
     
     # Use Hertzian contact models and MDR to compute the modulus of unknown object
     # (Notably only requires tactile depth data, not gripper width)
-    def fit_modulus_MDR_old(self, use_ellipse_fitting=True, use_lower_resolution_depth=False):
-        # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
-
-        # p_0     = f(E*, F, a)
-        # p(r)    = p_0 sqrt(1 - r^2/a^2)
-        # q_1d(x) = 2 integral(r p(r) / sqrt(r^2 - x^2) dr)
-        # w_1d(x) = (1-v^2)/E_sensor * q_1d(x)
-        # w_1d(0) = max_depth
-
-        x_data, y_data = [], []
-        d, a, F, R = [], [], [], []
-        
-        # Find initial length of first contact
-        L0 = self.length_of_first_contact()
-
-        if use_lower_resolution_depth:
-            depth_images = self.lower_resolution_depth(kernel_size=5)
-        else:
-            depth_images = self.depth_images()
-
-        # Precompute peak depths by taking the mean of 5x5 neighborhood around maximum depth
-        peak_depths = self.mean_max_depths(depth_images=depth_images)
-
-        for i in range(len(depth_images)):
-            F_i = abs(self.forces()[i])
-            d_i = peak_depths[i] # Depth
-            apparent_d_i = (L0 - self.gripper_widths()[i]) / 2
-
-            if use_ellipse_fitting:
-                # Compute mask using ellipse fit
-                mask = self.ellipse_contact_mask(depth_images[i])
-            else:
-                # Compute mask using traditional thresholding alone
-                mask = self.contact_mask(depth_images[i])
-
-            # Use mask to compute contact area
-            contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
-            a_i = np.sqrt(contact_area_i / np.pi)
-
-            # if use_ellipse_fitting:
-            #     # Compute circle radius using ellipse fit
-            #     ellipse = fit_ellipse_from_float(depth_images[i], plot_result=False)
-            #     major_axis, minor_axis = ellipse[1]
-            #     r_i = 0.5 * (0.001 / PX_TO_MM) * (major_axis + minor_axis)/2
-            #     R_i = d_i + (r_i**2 - d_i**2)/(2*d_i)
-            # else:
-            #     # Compute estimated radius based on depth (d) and contact radius (a)
-            #     R_i = d_i + (a_i**2 - d_i**2)/(2*d_i)
-
-            # Use apparent deformation and contact area to compute object radius
-            R_i = a_i**2 / apparent_d_i
-
-            if F_i > 0 and contact_area_i >= 1e-5 and d_i > self.depth_threshold:
-                p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3        # From Wiki
-                q_1D_0 = p_0 * np.pi * a_i / 2
-                w_1D_0 = (1 - self.nu_gel**2) * q_1D_0 / self.E_gel
-                d.append(d_i)
-                a.append(a_i)
-                R.append(R_i)
-                x_data.append(w_1D_0)
-                y_data.append(d_i)
-
-        self._d = np.array(d)
-        self._a = np.array(a)
-        self._F = np.array(F)
-        self._R = np.array(R)
-        self._x_data = np.array(x_data)
-        self._y_data = np.array(y_data)
-
-        # Fit for E_star
-        E_star = self.linear_coeff_fit(x_data, y_data)**(3/2)
-
-        return E_star
-    
-    # Use Hertzian contact models and MDR to compute the modulus of unknown object
-    # (Notably only requires tactile depth data, not gripper width)
-    def fit_modulus_MDR(self, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_apparent_deformation=True, use_lower_resolution_depth=False):
+    def fit_modulus_MDR(self, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_apparent_deformation=True, use_lower_resolution_depth=False, use_mean_radius=False):
         # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
         if use_apparent_deformation:
             assert self.use_gripper_width
@@ -740,6 +664,11 @@ class EstimateModulus():
                 R.append(R_i)
                 x_data.append(w_1D_0)
                 y_data.append(d_i)
+
+        if use_mean_radius:
+            # Scale data to cancel radius value with mean radius
+            for i in range(len(x_data)):
+                x_data[i] = x_data[i] * R[i]**2 / (np.array(R).mean()**2)
 
         self._d = np.array(d)
         self._a = np.array(a)
@@ -885,7 +814,7 @@ if __name__ == "__main__":
     ##################################################
 
     # Choose which mechanical model to use
-    use_method = "naive"
+    use_method = "MDR"
     assert use_method in ["naive", "hertz", "stochastic", "MDR"]
 
     fig1 = plt.figure(1)
