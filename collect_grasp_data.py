@@ -147,14 +147,6 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
         
         grasp_data.auto_clip(clip_offset=AUTO_CLIP_OFFSET+10)
 
-        if plot_collected_data:
-            plt.plot(abs(grasp_data.forces()) / abs(grasp_data.forces()).max(), label="Forces")
-            plt.plot(grasp_data.gripper_widths() / grasp_data.gripper_widths().max(), label="Gripper Widths")
-            plt.plot(grasp_data.max_depths() / grasp_data.max_depths().max(), label="Max Depths")
-            plt.plot(grasp_data.max_depths(other_finger=True) / grasp_data.max_depths(other_finger=True).max(), label="Other Max Depths")
-            plt.legend()
-            plt.show()
-
         assert grasp_data.max_depths().max() >= DEPTH_THRESHOLD # and grasp_data.max_depths(other_finger=True).max() >= DEPTH_THRESHOLD
 
         # Make sure depths are aligned, smart shift based on correlation
@@ -170,6 +162,14 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
         grasp_data.other_wedge_video.clip(0, len(grasp_data.other_wedge_video._raw_rgb_frames)-shift)
         grasp_data.contact_force.clip(shift, len(grasp_data.contact_force.forces()))
         grasp_data.gripper_width.clip(shift, len(grasp_data.gripper_width.widths()))
+
+        if plot_collected_data:
+            plt.plot(abs(grasp_data.forces()) / abs(grasp_data.forces()).max(), label="Forces")
+            plt.plot(grasp_data.gripper_widths() / grasp_data.gripper_widths().max(), label="Gripper Widths")
+            plt.plot(grasp_data.max_depths() / grasp_data.max_depths().max(), label="Max Depths")
+            plt.plot(grasp_data.max_depths(other_finger=True) / grasp_data.max_depths(other_finger=True).max(), label="Other Max Depths")
+            plt.legend()
+            plt.show()
 
         # Save
         grasp_data.save(f'./data/{folder_name}/{object_name}__t={str(i)}')
