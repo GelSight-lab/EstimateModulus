@@ -136,18 +136,11 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
         assert grasp_data.forces()[0] < FORCE_THRESHOLD and grasp_data.forces()[-1] < FORCE_THRESHOLD
         assert grasp_data.forces().max() > FORCE_THRESHOLD
         assert grasp_data.gripper_widths().max() >= grasp_data.gripper_widths().min() + 0.01
-
-        if plot_collected_data:
-            plt.plot(abs(grasp_data.forces()) / abs(grasp_data.forces()).max(), label="Forces")
-            plt.plot(grasp_data.gripper_widths() / grasp_data.gripper_widths().max(), label="Gripper Widths")
-            plt.plot(grasp_data.max_depths() / grasp_data.max_depths().max(), label="Max Depths")
-            plt.plot(grasp_data.max_depths(other_finger=True) / grasp_data.max_depths(other_finger=True).max(), label="Other Max Depths")
-            plt.legend()
-            plt.show()
         
+        # Clip conservatively based on force threshold
         grasp_data.auto_clip(clip_offset=AUTO_CLIP_OFFSET+10)
 
-        assert grasp_data.max_depths().max() >= DEPTH_THRESHOLD # and grasp_data.max_depths(other_finger=True).max() >= DEPTH_THRESHOLD
+        assert grasp_data.max_depths().max() >= DEPTH_THRESHOLD and grasp_data.max_depths(other_finger=True).max() >= DEPTH_THRESHOLD
 
         # Make sure depths are aligned, smart shift based on correlation
         shift = np.argmax(
