@@ -105,8 +105,8 @@ def random_shade_of_color(color_name):
 
 class EstimateModulus():
     def __init__(
-            self, depth_threshold=0.001*DEPTH_THRESHOLD, force_threshold=FORCE_THRESHOLD, 
-            assumed_poissons_ratio=0.45, use_gripper_width=True
+            self, grasp_data=None, depth_threshold=0.001*DEPTH_THRESHOLD, force_threshold=FORCE_THRESHOLD, 
+            assumed_poissons_ratio=0.45, use_gripper_width=True, use_other_video=False
         ):
 
         self.assumed_poisson_ratio = assumed_poissons_ratio # [\]
@@ -114,7 +114,13 @@ class EstimateModulus():
         self.force_threshold = force_threshold # [N]
 
         self.use_gripper_width = use_gripper_width # Boolean of whether or not to include gripper width
-        self.grasp_data = GraspData(use_gripper_width=self.use_gripper_width)
+        self.use_other_video = use_other_video # Boolean of whether or not to use video recorded from the other finger
+
+        if grasp_data is None:
+            grasp_data = GraspData(use_gripper_width=self.use_gripper_width)
+        self.grasp_data = grasp_data
+        if self.use_other_video:
+            assert self.grasp_data.other_wedge_video is not None
 
         # Gel material: Silicone XP-565
         # Datasheet:
@@ -137,7 +143,7 @@ class EstimateModulus():
 
     # Clear out the data values
     def _reset_data(self):
-        self.grasp_data = GraspData(use_gripper_width=self.use_gripper_width)
+        self.grasp_data._reset_data()
         self._F = []
         self._d = []
         self._a = []
@@ -152,7 +158,7 @@ class EstimateModulus():
         self.grasp_data.load(path_to_file)
         if auto_clip: # Clip to the entire press
             self.grasp_data.auto_clip()
-        assert len(self.grasp_data.depth_images()) == len(self.grasp_data.forces())
+        assert len(self.grasp_data.depth_images(other_finger=self.use_other_video)) == len(self.grasp_data.forces())
         return
 
     # Return forces
@@ -166,7 +172,7 @@ class EstimateModulus():
     
     # Return depth images (in meters)
     def depth_images(self):
-        return 0.001 * self.grasp_data.depth_images()
+        return 0.001 * self.grasp_data.depth_images(other_finger=self.use_other_video)
     
     # Return maximum value from each depth image (in meters)
     def max_depths(self, depth_images=None):
@@ -417,6 +423,7 @@ class EstimateModulus():
             else:
                 # Compute mask using traditional thresholding alone
                 mask = self.contact_mask(depth_i)
+                if mask.max() == 0: continue
 
                 if fit_mask_to_ellipse:
                     # Fit an ellipse to the mask and modify
@@ -856,10 +863,11 @@ if __name__ == "__main__":
         sp3.set_xlabel('Radius [m]')
         sp3.set_ylabel('Index [/]')
 
-    wedge_video    = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
-    contact_force  = ContactForce()
-    gripper_width  = GripperWidth()
-    grasp_data     = GraspData(wedge_video=wedge_video, contact_force=contact_force, gripper_width=gripper_width, use_gripper_width=True)
+    wedge_video         = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
+    other_wedge_video   = GelsightWedgeVideo(config_csv="./config_200_markers.csv") # Non-sensing finger
+    contact_force       = ContactForce()
+    gripper_width       = GripperWidth()
+    grasp_data          = GraspData(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width, use_gripper_width=True)
 
     # For plotting
     obj_to_color = {
@@ -880,7 +888,7 @@ if __name__ == "__main__":
     data_files = os.listdir(data_folder)
     for i in range(len(data_files)):
         file_name = data_files[i]
-        if os.path.splitext(file_name)[1] != '.avi':
+        if os.path.splitext(file_name)[1] != '.avi' or file_name.count("_other") > 0:
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
@@ -889,7 +897,8 @@ if __name__ == "__main__":
         print('Object:', obj_name)
 
         # Load data into modulus estimator
-        estimator = EstimateModulus(use_gripper_width=True)
+        grasp_data._reset_data()
+        estimator = EstimateModulus(grasp_data=grasp_data, use_gripper_width=True)
         estimator.load_from_file(data_folder + "/" + os.path.splitext(file_name)[0], auto_clip=True)
         
         # Clip to loading sequence
