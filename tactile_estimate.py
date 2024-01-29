@@ -231,7 +231,7 @@ class EstimateModulus():
     
     # Use regular threshold unless max depth is small
     def conditional_contact_mask(self, depth):
-        if np.sum(depth >= self.depth_threshold) >= 0.10*depth.size or self.depth_images()[-1].max() > 15*self.depth_threshold:
+        if np.sum(depth >= self.depth_threshold) >= 0.25*depth.size or self.depth_images()[-1].max() > 10*self.depth_threshold:
             mask = self.constant_threshold_contact_mask(depth)
         else:
             mask = self.normalized_threshold_contact_mask(depth)
@@ -447,11 +447,11 @@ class EstimateModulus():
                     print('STRESS IS HIGH!')
 
         # Save stuff for plotting
-        self._x_data = x_data
-        self._y_data = y_data
-        self._contact_areas = contact_areas
-        self._a = a
-        self._d = d
+        self._x_data = np.array(x_data)
+        self._y_data = np.array(y_data)
+        self._contact_areas =  np.array(contact_areas)
+        self._a = np.array(a)
+        self._d = np.array(d)
 
         # Fit to modulus
         E = self.linear_coeff_fit(x_data, y_data)
@@ -506,11 +506,11 @@ class EstimateModulus():
                 d.append(d_i)
                 a.append(a_i)
 
-        self._x_data = x_data
-        self._y_data = y_data
-        self._contact_areas = contact_areas
-        self._a = a
-        self._d = d
+        self._x_data = np.array(x_data)
+        self._y_data = np.array(y_data)
+        self._contact_areas =  np.array(contact_areas)
+        self._a = np.array(a)
+        self._d = np.array(d)
 
         E_agg = self.linear_coeff_fit(x_data, y_data)
         E = (1/E_agg - 1/self.E_gel)**(-1)
@@ -578,12 +578,12 @@ class EstimateModulus():
                 contact_areas.append(contact_area_i)
                 d.append(blurred_depth_images[i].max())
                 a.append(a_i)
-                
-        self._x_data = x_data
-        self._y_data = y_data
-        self._contact_areas = contact_areas
-        self._a = a
-        self._d = d
+        
+        self._x_data = np.array(x_data)
+        self._y_data = np.array(y_data)
+        self._contact_areas =  np.array(contact_areas)
+        self._a = np.array(a)
+        self._d = np.array(d)
 
         E = self.linear_coeff_fit(x_data, y_data)
 
@@ -814,7 +814,7 @@ if __name__ == "__main__":
     ##################################################
 
     # Choose which mechanical model to use
-    use_method = "MDR"
+    use_method = "naive"
     assert use_method in ["naive", "hertz", "stochastic", "MDR"]
 
     fig1 = plt.figure(1)
@@ -884,7 +884,7 @@ if __name__ == "__main__":
             continue
         obj_name = os.path.splitext(file_name)[0].split('__')[0]
 
-        # if obj_name.count('foam') == 0: continue
+        # if obj_name.count('orange') == 0: continue
         # if obj_name.count('foam') == 1: continue
         print('Object:', obj_name)
 
@@ -896,12 +896,14 @@ if __name__ == "__main__":
         estimator.clip_to_press()
         assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
 
+        # estimator.watch_contact_mask()
+
         # Remove stagnant gripper values across measurement frames
         estimator.interpolate_gripper_widths()
 
         if use_method == "naive":
             # Fit using naive estimator
-            E_object = estimator.fit_modulus_naive(use_mean=False, use_ellipse_mask=True, use_lower_resolution_depth=True)
+            E_object = estimator.fit_modulus_naive(use_mean=False, use_ellipse_mask=False, fit_mask_to_ellipse=True, use_lower_resolution_depth=True)
 
         elif use_method == "hertz":
             # Fit using simple Hertzian estimator
