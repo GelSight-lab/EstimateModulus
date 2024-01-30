@@ -30,10 +30,10 @@ def open_gripper(_franka_arm): {
 def close_gripper(_franka_arm): {
     _franka_arm.goto_gripper(
         0.0, # Minimum width in meters [m]
-        force=60, # Maximum force in Newtons [N]
-        speed=0.03, # Desired operation speed in [m/s]
-        epsilon_inner=0.01, # Maximum tolerated deviation [m]
-        epsilon_outer=0.01, # Maximum tolerated deviation [m]
+        force=100, # Maximum force in Newtons [N]
+        speed=0.035, # Desired operation speed in [m/s]
+        epsilon_inner=0.005, # Maximum tolerated deviation [m]
+        epsilon_outer=0.005, # Maximum tolerated deviation [m]
         grasp=True,     
         block=True,
         skill_desc="CloseGripper"
@@ -191,7 +191,7 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
 
 if __name__ == "__main__":
     # Record grasp data for the given object
-    object_name     = "foam_banana"
+    object_name     = "wooden_rectangle"
     num_trials      = 5
     collect_data_for_object(
         object_name, \
