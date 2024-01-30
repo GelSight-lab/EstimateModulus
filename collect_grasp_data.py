@@ -1,6 +1,7 @@
 import time
 import cv2
 import os
+import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -29,24 +30,23 @@ def open_gripper(_franka_arm): {
 def close_gripper(_franka_arm): {
     _franka_arm.goto_gripper(
         0.0, # Minimum width in meters [m]
-        force=90, # Maximum force in Newtons [N]
-        speed=0.02, # Desired operation speed in [m/s]
-        epsilon_inner=0.001, # Maximum tolerated deviation [m]
-        epsilon_outer=0.001, # Maximum tolerated deviation [m]
+        force=60, # Maximum force in Newtons [N]
+        speed=0.03, # Desired operation speed in [m/s]
+        epsilon_inner=0.01, # Maximum tolerated deviation [m]
+        epsilon_outer=0.01, # Maximum tolerated deviation [m]
         grasp=True,     
         block=True,
         skill_desc="CloseGripper"
     )
 }
 
-def collect_data_for_object(object_name, num_trials, folder_name=None, plot_collected_data=True):
+def collect_data_for_object(object_name, num_trials, folder_name=None, plot_collected_data=False):
     # Define streaming addresses
     wedge_video         =   GelsightWedgeVideo(IP="172.16.0.100", config_csv="./config_100.csv", markers=False)
     other_wedge_video   =   GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_200_markers.csv", markers=True)
     contact_force       =   ContactForce(IP="172.16.0.69", port=8888)
     gripper_width       =   GripperWidth(franka_arm=franka_arm)
     grasp_data          =   GraspData(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width)
-    # grasp_data        =   GraspData(wedge_video=wedge_video, contact_force=contact_force, gripper_width=gripper_width)
 
     if folder_name is None:
         # Choose folder name as YYYY-MM-DD by default
@@ -110,6 +110,7 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
 
     # Execute number of data collection trials
     for i in range(num_trials):
+        print(f'Trial #{i}:')
 
         # Start with gripper in open position
         open_gripper(franka_arm)
@@ -140,7 +141,9 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
         # Clip conservatively based on force threshold
         grasp_data.auto_clip(clip_offset=AUTO_CLIP_OFFSET+10)
 
-        assert grasp_data.max_depths().max() >= DEPTH_THRESHOLD and grasp_data.max_depths(other_finger=True).max() >= DEPTH_THRESHOLD
+        ultimate_depth = max(grasp_data.max_depths().max(), grasp_data.max_depths(other_finger=True).max())
+        if ultimate_depth < DEPTH_THRESHOLD:
+            warnings.warn(f'The maximum recorded depth was {ultimate_depth}mm. This is lower than the currently defined depth threshold.')
 
         # Make sure depths are aligned, smart shift based on correlation
         shift = np.argmax(
@@ -150,13 +153,17 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
                             mode="full" \
                         )
                     ) - len(grasp_data.max_depths()) + 1
-        assert shift <= 10 and shift >= 0 # Shift should not be too large
+        if shift >= 10 or shift < 0:
+            warnings.warn(f'The chosen video shift was {shift}. This value is bigger than typically expected', UserWarning)
+
+        # Apply the shift
+        shift = max(shift, 0)
         grasp_data.wedge_video.clip(shift, len(grasp_data.wedge_video._raw_rgb_frames))
         grasp_data.other_wedge_video.clip(0, len(grasp_data.other_wedge_video._raw_rgb_frames)-shift)
         grasp_data.contact_force.clip(shift, len(grasp_data.contact_force.forces()))
         grasp_data.gripper_width.clip(shift, len(grasp_data.gripper_width.widths()))
 
-        if plot_collected_data:
+        if plot_collected_data or i == 0:
             plt.plot(abs(grasp_data.forces()) / abs(grasp_data.forces()).max(), label="Forces")
             plt.plot(grasp_data.gripper_widths() / grasp_data.gripper_widths().max(), label="Gripper Widths")
             plt.plot(grasp_data.max_depths() / grasp_data.max_depths().max(), label="Max Depths")
@@ -167,9 +174,11 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
         # Save
         grasp_data.save(f'./data/{folder_name}/{object_name}__t={str(i)}')
 
+        print('Depth shifting:', shift)
         print('Max depth in mm:', grasp_data.max_depths().max())
         print('Max force of N:', grasp_data.forces().max())
         print('Length of data:', len(grasp_data.forces()))
+        print('\n')
 
         # Reset data
         grasp_data._reset_data()
@@ -182,7 +191,7 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
 
 if __name__ == "__main__":
     # Record grasp data for the given object
-    object_name     = "golf_ball"
+    object_name     = "foam_banana"
     num_trials      = 5
     collect_data_for_object(
         object_name, \
