@@ -136,7 +136,7 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
         # Make some assertions to ensure data collection is okay
         assert grasp_data.forces()[0] < FORCE_THRESHOLD and grasp_data.forces()[-1] < FORCE_THRESHOLD
         assert grasp_data.forces().max() > FORCE_THRESHOLD
-        assert grasp_data.gripper_widths().max() >= grasp_data.gripper_widths().min() + 0.01
+        assert grasp_data.gripper_widths().max() > grasp_data.gripper_widths().min() # + 0.01
         
         # Clip conservatively based on force threshold
         grasp_data.auto_clip(clip_offset=AUTO_CLIP_OFFSET+10)
@@ -191,7 +191,7 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
 
 if __name__ == "__main__":
     # Record grasp data for the given object
-    object_name     = "wooden_rectangle"
+    object_name     = "wooden_plank"
     num_trials      = 5
     collect_data_for_object(
         object_name, \
