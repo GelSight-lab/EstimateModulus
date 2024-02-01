@@ -190,6 +190,54 @@ class GraspData():
         if self.use_gripper_width:
             self.gripper_width.clip(i_start, i_end)
         return
+
+    # Clip a press sequence to only the loading sequence (positive force)
+    def clip_to_press(self, force_threshold=FORCE_THRESHOLD):
+        # Find initial and peak force over press
+        i_start = np.argmax(self.forces() >= force_threshold)
+        i_peak = np.argmax(self.forces())
+
+        # Grab index before below 97.5% of peak
+        i_end = i_peak
+        for i in range(len(self.forces())):
+            if i > i_peak and self.forces()[i] <= 0.975*self.forces()[i_peak]:
+                i_end = i-1
+                break
+
+        if i_start >= i_end:
+            warnings.warn("No press detected! Cannot clip.", Warning)
+        else:
+            self.clip(i_start, i_end+1)
+        return
+    
+    # Linearly interpolate gripper widths wherever measurements are equal
+    def interpolate_gripper_widths(self, plot_result=False):
+        interpolated_gripper_widths = self.gripper_widths()
+        i = 0
+        while i < len(interpolated_gripper_widths)-1:
+            if self.gripper_widths()[i] == self.gripper_widths()[-1]: break
+            if self.gripper_widths()[i] == self.gripper_widths()[i+1]:
+                for k in range(i, len(interpolated_gripper_widths)):
+                    if self.gripper_widths()[i] != self.gripper_widths()[k]:
+                        break
+                slope = (self.gripper_widths()[k] - self.gripper_widths()[i]) / (k-i)
+                for j in range(i+1, k):
+                    interpolated_gripper_widths[j] = self.gripper_widths()[i] + slope*(j-i)
+                i = k
+            else:
+                i += 1
+
+        if plot_result:
+            plt.figure()
+            plt.plot(self.gripper_widths(), '.')
+            plt.plot(interpolated_gripper_widths, '-')
+            plt.xlabel('Index [/]')
+            plt.ylabel('Gripper Width [m]')
+            plt.show()
+
+        # Adjust the wrapped grasp_data object
+        self.gripper_width._widths = interpolated_gripper_widths
+        return
     
     # Plot all data over indices
     def plot_grasp_data(self):

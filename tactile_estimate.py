@@ -262,28 +262,20 @@ class EstimateModulus():
     
     # Clip a press sequence to only the loading sequence (positive force)
     def clip_to_press(self, use_force=True):
-        # Find maximum depth over press
         if use_force:
-            i_start = np.argmax(self.forces() >= self.force_threshold)
-            i_peak = np.argmax(self.forces())
-
-            # Grab index before below 97.5% of peak
-            i_end = i_peak
-            for i in range(len(self.forces())):
-                if i > i_peak and self.forces()[i] <= 0.975*self.forces()[i_peak]:
-                    i_end = i-1
-                    break
+            # Clip from initial to peak force
+            self.grasp_data.clip_to_press(force_threshold=FORCE_THRESHOLD)
         else:
             # Find peak and start over depth values
             i_start = np.argmax(self.max_depths() >= self.depth_threshold)
             i_peak = np.argmax(self.max_depths())
             i_end = i_peak
 
-        if i_start >= i_end:
-            warnings.warn("No press detected! Cannot clip.", Warning)
-        else:
-            # Clip from start to peak depth
-            self.grasp_data.clip(i_start, i_end+1)
+            if i_start >= i_end:
+                warnings.warn("No press detected! Cannot clip.", Warning)
+            else:
+                # Clip from start to peak depth
+                self.grasp_data.clip(i_start, i_end+1)
         return
     
     # Return the gripper width at first contact, assuming already clipped to press
@@ -297,31 +289,7 @@ class EstimateModulus():
 
     # Linearly interpolate gripper widths wherever measurements are equal
     def interpolate_gripper_widths(self, plot_result=False):
-        interpolated_gripper_widths = self.gripper_widths()
-        i = 0
-        while i < len(interpolated_gripper_widths)-1:
-            if self.gripper_widths()[i] == self.gripper_widths()[-1]: break
-            if self.gripper_widths()[i] == self.gripper_widths()[i+1]:
-                for k in range(i, len(interpolated_gripper_widths)):
-                    if self.gripper_widths()[i] != self.gripper_widths()[k]:
-                        break
-                slope = (self.gripper_widths()[k] - self.gripper_widths()[i]) / (k-i)
-                for j in range(i+1, k):
-                    interpolated_gripper_widths[j] = self.gripper_widths()[i] + slope*(j-i)
-                i = k
-            else:
-                i += 1
-
-        if plot_result:
-            plt.figure()
-            plt.plot(self.gripper_widths(), '.')
-            plt.plot(interpolated_gripper_widths, '-')
-            plt.xlabel('Index [/]')
-            plt.ylabel('Gripper Width [m]')
-            plt.show()
-
-        # Adjust the wrapped grasp_data object
-        self.grasp_data.gripper_width._widths = interpolated_gripper_widths
+        self.grasp_data.interpolate_gripper_widths(plot_result=plot_result)
         return
     
     # Preprocess depth by taking mean over square kernels

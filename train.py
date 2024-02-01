@@ -293,6 +293,9 @@ class TrainModulus():
     
 
 if __name__ == "__main__":
+
+    EXCLUDE = ['playdoh', 'silly_putty']
+
     # Train the model over some data
     train_modulus = TrainModulus("./data")
     train_modulus.train()
