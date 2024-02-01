@@ -192,15 +192,15 @@ class GraspData():
         return
 
     # Clip a press sequence to only the loading sequence (positive force)
-    def clip_to_press(self, force_threshold=FORCE_THRESHOLD):
+    def clip_to_press(self, force_threshold=FORCE_THRESHOLD, pct_peak_threshold=0.975):
         # Find initial and peak force over press
-        i_start = np.argmax(self.forces() >= force_threshold)
+        i_start = max(np.argmax(self.forces() >= force_threshold)-1, 0)
         i_peak = np.argmax(self.forces())
 
         # Grab index before below 97.5% of peak
         i_end = i_peak
         for i in range(len(self.forces())):
-            if i > i_peak and self.forces()[i] <= 0.975*self.forces()[i_peak]:
+            if i > i_peak and self.forces()[i] <= pct_peak_threshold*self.forces()[i_peak]:
                 i_end = i-1
                 break
 
