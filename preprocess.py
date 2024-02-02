@@ -10,12 +10,14 @@ from gripper_width import GripperWidth
 from contact_force import ContactForce
 from grasp_data import GraspData
 
+HARDDRIVE_DIR = '/media/mike/Elements'
+
 '''
 Preprocess recorded data for training...
     - Clip to the static loading sequence only
     - Down sample frames to small number
 '''
-def preprocess(path_to_file, grasp_data=GraspData(), destination_dir='./data/training_data', auto_clip=False, num_frames_to_sample=5, max_num_augmentations=6):
+def preprocess(path_to_file, grasp_data=GraspData(), destination_dir=f'{HARDDRIVE_DIR}/data/training_data', auto_clip=False, num_frames_to_sample=5, max_num_augmentations=6):
     _, file_name = os.path.split(path_to_file)
     object_name = file_name.split('__')[0]
     trial = int(file_name.split('__')[1][2:])
@@ -115,7 +117,7 @@ if __name__ == "__main__":
     #   training_data/{object_name}/t={n}/aug={n}/{object_name}__t={n}_a={n}_diff/depth
 
     # Loop through all data files
-    DATA_DIR = "./data/raw_data"
+    DATA_DIR = f'{HARDDRIVE_DIR}/data/raw_data'
     for object_name in tqdm(os.listdir(DATA_DIR)):
         for file_name in os.listdir(f'{DATA_DIR}/{object_name}'):
             if os.path.splitext(file_name)[1] != '.avi' or file_name.count("_other") > 0:
