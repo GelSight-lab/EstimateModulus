@@ -338,22 +338,19 @@ if __name__ == "__main__":
     # TODO: Add horizontal flipping here
 
     # Read CSV files with objects and labels tabulated
-    object_info = {}
+    object_to_modulus = {}
     csv_file_path = './data/objects_and_labels.csv'
     with open(csv_file_path, 'r') as file:
         csv_reader = csv.reader(file)
         for row in csv_reader:
-            object_info[row[1]] = row
+            object_to_modulus[row[1]] = row[14]
 
     # Extract object names as keys from data
-    object_names = object_info.keys()
+    object_names = object_to_modulus.keys()
     object_names = [x for x in object_names if x not in EXCLUDE]
 
     # Extract elastic modulus labels for each object
-    elastic_moduli = []
-    for object_name in object_names:
-        E_object = object_info[object_name][14]
-        elastic_moduli.append(E_object)
+    elastic_moduli = [object_to_modulus[x] for x in object_names]
 
     # Training and model settings
     config = {        
