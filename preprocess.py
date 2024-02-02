@@ -17,7 +17,7 @@ Preprocess recorded data for training...
     - Clip to the static loading sequence only
     - Down sample frames to small number
 '''
-def preprocess(path_to_file, grasp_data=GraspData(), destination_dir=f'{HARDDRIVE_DIR}/data/training_data', auto_clip=False, num_frames_to_sample=5, max_num_augmentations=6):
+def preprocess(path_to_file, grasp_data=GraspData(), destination_dir=f'{HARDDRIVE_DIR}/data/training_data', auto_clip=False, num_frames_to_sample=5, max_num_augmentations=6, plot_sampled_frames=False):
     _, file_name = os.path.split(path_to_file)
     object_name = file_name.split('__')[0]
     trial = int(file_name.split('__')[1][2:])
