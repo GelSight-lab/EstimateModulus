@@ -13,6 +13,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
 from sklearn.model_selection import train_test_split
 
+DATA_DIR = 'E:/data/training_data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350)
 
@@ -232,6 +233,15 @@ class TrainModulus():
             torch.cuda.empty_cache()
         else:
             self.device = torch.device("cpu")
+                    
+        # Data parameters 
+        self.image_style = config['image_style']
+        self.use_markers = config['use_markers']
+        self.use_force = config['use_force']
+        self.use_width = config['use_width']
+        self.use_estimation = config['use_estimation']
+        self.use_augmentations = config['use_augmentations']
+        self.exclude = config['exclude']
 
         # Define tactile input parameters
         self.n_frames       = N_FRAMES
@@ -330,12 +340,27 @@ class TrainModulus():
 
 if __name__ == "__main__":
 
-    IMAGE_STYLE = 'diff'
-    assert IMAGE_STYLE in ['diff', 'depth']
-    USE_MARKERS = True
-    EXCLUDE = ['playdoh', 'silly_putty']
+    # Training and model settings
+    config = {
+        # Data parameters 
+        'image_style': 'diff',
+        'use_markers': True,
+        'use_force': True,
+        'use_width': True,
+        'use_estimation': True,
+        'use_augmentations': True,
+        'exclude': ['playdoh', 'silly_putty'],
 
-    # TODO: Add horizontal flipping here
+        # Training and model parameters
+        'epochs'         : 250,
+        'batch_size'     : 32,
+        'feature_size'   : 512,
+        'val_pct'        : 0.2,
+        'learning_rate'  : 1e-5,
+        'random_state'   : 40,
+    }
+
+    assert config['image_style'] in ['diff', 'depth']
 
     # Read CSV files with objects and labels tabulated
     object_to_modulus = {}
@@ -347,21 +372,11 @@ if __name__ == "__main__":
 
     # Extract object names as keys from data
     object_names = object_to_modulus.keys()
-    object_names = [x for x in object_names if x not in EXCLUDE]
+    object_names = [x for x in object_names if x not in config['exclude']]
 
     # Extract elastic modulus labels for each object
     elastic_moduli = [object_to_modulus[x] for x in object_names]
-
-    # Training and model settings
-    config = {        
-        'epochs'         : 250,
-        'batch_size'     : 32,
-        'feature_size'   : 512,
-        'val_pct'        : 0.2,
-        'learning_rate'  : 1e-5,
-        'random_state'   : 40,
-    }
-
+    
     objects_train, objects_val, E_train, E_val = train_test_split(object_names, elastic_moduli, test_size=config['val_pct'], random_state=config['random_state'])
 
     # TODO: Unpack files and sort paths based on val or not
