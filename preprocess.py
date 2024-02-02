@@ -15,7 +15,7 @@ Preprocess recorded data for training...
     - Clip to the static loading sequence only
     - Down sample frames to small number
 '''
-def preprocess(path_to_file, grasp_data=GraspData(), destination_dir='./data/training_data', auto_clip=False, num_frames_to_sample=5, max_num_augmentations=6):
+def preprocess(path_to_file, grasp_data=GraspData(), destination_dir='./data/training_data', auto_clip=False, num_frames_to_sample=5, max_num_augmentations=6, plot_sampled_frames=False):
     _, file_name = os.path.split(path_to_file)
     object_name = file_name.split('__')[0]
     trial = int(file_name.split('__')[1][2:])
@@ -64,7 +64,15 @@ def preprocess(path_to_file, grasp_data=GraspData(), destination_dir='./data/tra
         forces = grasp_data.forces()[sample_indices + i]
         widths = grasp_data.gripper_widths()[sample_indices + i]
 
-        # TODO: Plot these to make sure they look good
+        # Plot chosen frames to make sure they look good
+        if plot_sampled_frames:
+            _, axs = plt.subplots(2, 3, figsize=(12, 8))
+            for k in range(num_frames_to_sample):
+                axs[i].imshow(diff_images[k])
+                axs[i].axis('off')  # Turn off axis ticks and labels
+                axs[i].set_title(f'Sampled Frame #{k + 1}')
+            plt.tight_layout()
+            plt.show()
 
         # Make necessary directories
         aug_dir = f'{trial_dir}/aug={i}'
