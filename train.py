@@ -1,5 +1,6 @@
-import cv2
 import os
+import cv2
+import csv
 import numpy as np
 
 import torch
@@ -11,6 +12,9 @@ from datetime import datetime
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
 from sklearn.model_selection import train_test_split
+
+N_FRAMES = 5
+WARPED_CROPPED_IMG_SIZE = (250, 350)
 
 def conv2D_output_size(img_size, padding, kernel_size, stride):
 	output_shape=(np.floor((img_size[0] + 2 * padding[0] - (kernel_size[0] - 1) - 1) / stride[0] + 1).astype(int),
@@ -168,25 +172,55 @@ class DecoderFC(nn.Module):
         x = 100 * torch.sigmoid(x)
         return x
  
+class ForcesLinear(nn.Module):
+    def __init__(self, hidden_size = 128, output_dim = 128):
+        super(ForcesLinear, self).__init__()
+
+        self.hidden_size = hidden_size
+        self.output_dim = output_dim
+
+        self.fc1 = nn.Linear(1, self.hidden_size)
+        self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.fc2(x)
+        return x
+ 
+class WidthsLinear(nn.Module):
+    def __init__(self, hidden_size = 128, output_dim = 128):
+        super(WidthsLinear, self).__init__()
+
+        self.hidden_size = hidden_size
+        self.output_dim = output_dim
+
+        self.fc1 = nn.Linear(1, self.hidden_size)
+        self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.fc2(x)
+        return x
 
 class CustomDataset(Dataset):
-    def __init__(self):
-        self.input_files = []
-        self.labels = []
+    def __init__(self, paths_to_files, labels):
+        self.input_files = paths_to_files
+        self.labels = labels
+        # TODO: Add horizontal flipping here
         pass
     
     def __len__(self):
         return len(self.labels)
     
     def __getitem__(self, idx):
+        # TODO: Add horizontal flipping here
         raise NotImplementedError
     
      
 class TrainModulus():
-    def __init__(self, data_folder, data_loader, use_cuda=True):
+    def __init__(self, config, data_loader, use_cuda=True):
 
         self.model = None
-        self.data_folder = data_folder
 
 
         # TODO: Load in videos
@@ -200,16 +234,16 @@ class TrainModulus():
             self.device = torch.device("cpu")
 
         # Define tactile input parameters
-        self.n_frames       = 5
-        self.img_size       = (None, None) # TODO: Port these numbers over
+        self.n_frames       = N_FRAMES
+        self.img_size       = WARPED_CROPPED_IMG_SIZE # TODO: Port these numbers over
 
         # Define training parameters
-        self.epochs         = 250
-        self.batch_size     = 32
-        self.feature_size   = 512
-        self.val_pct        = 0.2
-        self.learning_rate  = 1e-5
-        self.random_state   = 40
+        self.epochs         = config['epochs']
+        self.batch_size     = config['batch_size']
+        self.feature_size   = config['feature_size']
+        self.val_pct        = config['val_pct']
+        self.learning_rate  = config['learning_rate']
+        self.random_state   = config['random_state']
         self.loss           = nn.MSELoss()
         self.params         = list(self.model.parameters())
         self.optimizer      = torch.optim.Adam(self.params, lr=self.learning_rate)
@@ -276,6 +310,8 @@ class TrainModulus():
             if val_loss <= min_val_loss:
                 self._save_model()
 
+            # TODO: Add horizontal flipping here
+
             # Log information to W&B
             if self.use_wandb:
                 self.memory_allocated = torch.cuda.memory_allocated()
@@ -294,10 +330,53 @@ class TrainModulus():
 
 if __name__ == "__main__":
 
+    IMAGE_STYLE = 'diff'
+    assert IMAGE_STYLE in ['diff', 'depth']
+    USE_MARKERS = True
     EXCLUDE = ['playdoh', 'silly_putty']
 
     # TODO: Add horizontal flipping here
 
+    # Read CSV files with objects and labels tabulated
+    object_to_modulus = {}
+    csv_file_path = './data/objects_and_labels.csv'
+    with open(csv_file_path, 'r') as file:
+        csv_reader = csv.reader(file)
+        for row in csv_reader:
+            object_to_modulus[row[1]] = row[14]
+
+    # Extract object names as keys from data
+    object_names = object_to_modulus.keys()
+    object_names = [x for x in object_names if x not in EXCLUDE]
+
+    # Extract elastic modulus labels for each object
+    elastic_moduli = [object_to_modulus[x] for x in object_names]
+
+    # Training and model settings
+    config = {        
+        'epochs'         : 250,
+        'batch_size'     : 32,
+        'feature_size'   : 512,
+        'val_pct'        : 0.2,
+        'learning_rate'  : 1e-5,
+        'random_state'   : 40,
+    }
+
+    objects_train, objects_val, E_train, E_val = train_test_split(object_names, elastic_moduli, test_size=config['val_pct'], random_state=config['random_state'])
+
+    # TODO: Unpack files and sort paths based on val or not
+
+    paths_to_files = []
+    labels = []
+
+    data_loader = CustomDataset(paths_to_files, labels)
+
+    # kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
+    # train_dataset = CustomDataset(X_train, y_train, frame_tensor=torch.zeros((N_FRAMES, 3, IMG_X, IMG_Y), device=device), label_tensor=torch.zeros((1), device=device))
+    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, **kwargs)
+    # val_dataset = CustomDataset(X_val, y_val, frame_tensor=torch.zeros((N_FRAMES, 3, IMG_X, IMG_Y), device=device), label_tensor=torch.zeros((1), device=device))
+    # val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, **kwargs)
+
     # Train the model over some data
-    train_modulus = TrainModulus("./data")
+    train_modulus = TrainModulus(config, data_loader)
     train_modulus.train()
