@@ -226,6 +226,7 @@ class CustomDataset(Dataset):
                  width_tensor=torch.zeros((N_FRAMES, 1)),
         ):
         # Data parameters 
+        self.data_dir = config['data_dir']
         self.n_frames = config['n_frames']
         self.img_size = config['img_size']
         self.img_style = config['img_style']
@@ -234,7 +235,7 @@ class CustomDataset(Dataset):
         self.use_force = config['use_force']
         self.use_width = config['use_width']
         self.use_estimation = config['use_estimation']
-        self.use_augmentations = config['use_augmentations']
+        self.use_transformations  = config['use_transformations']
         self.exclude = config['exclude']
 
         # Define training parameters
@@ -245,8 +246,14 @@ class CustomDataset(Dataset):
         self.learning_rate  = config['learning_rate']
         self.random_state   = config['random_state']
 
-        self.input_paths = paths_to_files
-        self.modulus_labels = labels
+        if self.use_transformations:
+            self.input_paths = 2*paths_to_files
+            self.modulus_labels = 2*labels
+            self.flip_horizontal = [i > len(paths_to_files) for i in range(len(self.input_paths))]
+        else:
+            self.input_paths = paths_to_files
+            self.modulus_labels = labels
+            self.flip_horizontal = [False for i in range(len(self.input_paths))]
 
         # Define attributes to use to conserve memory
         self.cap = None
@@ -274,8 +281,8 @@ class CustomDataset(Dataset):
             # Convert frame to tensor format
             self.x_frames[i] = torch.tensor(cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)).permute(2, 0, 1)
 
-        if flip_horizontal:
-            # TODO: Add horizontal flipping here
+        # Flip the data horizontally
+        if self.use_transformations and self.flip_horizontal[idx]:
             self.x_frames = torch.flip(self.x_frames, dims=2)
 
         # Release the video capture object
@@ -298,13 +305,11 @@ class CustomDataset(Dataset):
 
         return self.x_frames, self.x_forces, self.x_widths, self.modulus_labels[idx]
      
-class TrainModulus():
+class ModulusModel():
     def __init__(self, config, data_loader, device=None):
 
         self.model = None
         self.data_loader = data_loader
-
-        # TODO: Load in videos
 
         # Use GPU by default
         if device is None:
@@ -314,6 +319,7 @@ class TrainModulus():
             self.device = device
 
         # Data parameters 
+        self.data_dir = config['data_dir']
         self.n_frames = config['n_frames']
         self.img_size = config['img_size']
         self.img_style = config['img_style']
@@ -322,7 +328,7 @@ class TrainModulus():
         self.use_force = config['use_force']
         self.use_width = config['use_width']
         self.use_estimation = config['use_estimation']
-        self.use_augmentations = config['use_augmentations']
+        self.use_transformations = config['use_transformations']
         self.exclude = config['exclude']
 
         # Define training parameters
@@ -417,7 +423,8 @@ if __name__ == "__main__":
 
     # Training and model settings
     config = {
-        # Data parameters 
+        # Data parameters
+        'data_dir': DATA_DIR,
         'n_frames': N_FRAMES,
         'img_size': WARPED_CROPPED_IMG_SIZE,
         'img_style': 'diff',
@@ -425,7 +432,7 @@ if __name__ == "__main__":
         'use_force': True,
         'use_width': True,
         'use_estimation': True,
-        'use_augmentations': True,
+        'use_transformations': True,
         'exclude': ['playdoh', 'silly_putty'],
 
         # Training and model parameters
@@ -440,13 +447,9 @@ if __name__ == "__main__":
     assert config['img_style'] in ['diff', 'depth']
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
-    if not config['use_augmentations']:
-        # TODO: Implement the ability to ignore augmentations?
-        raise NotImplementedError()
-
     # Read CSV files with objects and labels tabulated
     object_to_modulus = {}
-    csv_file_path = f'{DATA_DIR}/objects_and_labels.csv'
+    csv_file_path = f'{config["data_dir"]}/objects_and_labels.csv'
     with open(csv_file_path, 'r') as file:
         csv_reader = csv.reader(file)
         next(csv_reader)
@@ -466,7 +469,7 @@ if __name__ == "__main__":
 
     # Get all the paths to grasp data within directory
     paths_to_files = []
-    list_files(f'{DATA_DIR}/training_data', paths_to_files, config)
+    list_files(f'{config["data_dir"]}/training_data', paths_to_files, config)
 
     # Divide paths up into training and validation data
     x_train, x_val = [], []
@@ -489,5 +492,5 @@ if __name__ == "__main__":
     val_loader = DataLoader(val_dataset, batch_size=config['batch_size'], shuffle=False, **kwargs)
 
     # Train the model over some data
-    train_modulus = TrainModulus(config, data_loader, device=device)
+    train_modulus = ModulusModel(config, data_loader, device=device)
     train_modulus.train()
