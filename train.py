@@ -13,9 +13,23 @@ from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
 from sklearn.model_selection import train_test_split
 
-DATA_DIR = 'E:/data/training_data'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+torch.cuda.empty_cache()
+
+DATA_DIR = 'E:/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350)
+
+# Get the tree of all video files from a directory in place
+def list_files(folder_path, file_paths, config):
+    # Iterate through the list
+    for item in os.listdir(folder_path):
+        item_path = os.path.join(folder_path, item)
+        marker_signal = '_other' if config['use_markers'] else '.avi'
+        if os.path.isfile(item_path) and item.count(config['image_style']) > 0 and item.count(marker_signal) > 0:
+            file_paths.append(item_path)
+        elif os.path.isdir(item_path):
+            list_files(item_path, file_paths, config)
 
 def conv2D_output_size(img_size, padding, kernel_size, stride):
 	output_shape=(np.floor((img_size[0] + 2 * padding[0] - (kernel_size[0] - 1) - 1) / stride[0] + 1).astype(int),
@@ -204,19 +218,51 @@ class WidthsLinear(nn.Module):
         return x
 
 class CustomDataset(Dataset):
-    def __init__(self, paths_to_files, labels):
+    def __init__(self, config, paths_to_files, labels):
+        # Data parameters 
+        self.image_style = config['image_style']
+        self.use_markers = config['use_markers']
+        self.use_force = config['use_force']
+        self.use_width = config['use_width']
+        self.use_estimation = config['use_estimation']
+        self.use_augmentations = config['use_augmentations']
+        self.exclude = config['exclude']
+
+        # Define tactile input parameters
+        self.n_frames       = N_FRAMES
+        self.img_size       = WARPED_CROPPED_IMG_SIZE # TODO: Port these numbers over
+
+        # Define training parameters
+        self.epochs         = config['epochs']
+        self.batch_size     = config['batch_size']
+        self.feature_size   = config['feature_size']
+        self.val_pct        = config['val_pct']
+        self.learning_rate  = config['learning_rate']
+        self.random_state   = config['random_state']
+
         self.input_files = paths_to_files
         self.labels = labels
-        # TODO: Add horizontal flipping here
-        pass
     
     def __len__(self):
         return len(self.labels)
     
     def __getitem__(self, idx):
+        
         # TODO: Add horizontal flipping here
-        raise NotImplementedError
-    
+        # TODO: Return tuple of force measurements, width_measurements if necessary
+
+        x_frames = None
+        data = [x_frames]
+
+        if self.use_force:
+            x_forces = None
+            data.append(x_forces)
+
+        if self.use_width:
+            x_widths = None
+            data.append(x_widths)
+
+        return tuple(data)    
      
 class TrainModulus():
     def __init__(self, config, data_loader, use_cuda=True):
@@ -360,15 +406,19 @@ if __name__ == "__main__":
         'random_state'   : 40,
     }
 
+    PIXEL_SIZE = 3 if config['image_style'] == 'diff' else 1
+
     assert config['image_style'] in ['diff', 'depth']
 
     # Read CSV files with objects and labels tabulated
     object_to_modulus = {}
-    csv_file_path = './data/objects_and_labels.csv'
+    csv_file_path = f'{DATA_DIR}/objects_and_labels.csv'
     with open(csv_file_path, 'r') as file:
         csv_reader = csv.reader(file)
+        next(csv_reader)
         for row in csv_reader:
-            object_to_modulus[row[1]] = row[14]
+            if row[14] != '':
+                object_to_modulus[row[1]] = float(row[14])
 
     # Extract object names as keys from data
     object_names = object_to_modulus.keys()
@@ -376,21 +426,33 @@ if __name__ == "__main__":
 
     # Extract elastic modulus labels for each object
     elastic_moduli = [object_to_modulus[x] for x in object_names]
-    
+
+    # Split objects into validation or training
     objects_train, objects_val, E_train, E_val = train_test_split(object_names, elastic_moduli, test_size=config['val_pct'], random_state=config['random_state'])
 
-    # TODO: Unpack files and sort paths based on val or not
-
+    # Get all the paths to grasp data within directory
     paths_to_files = []
-    labels = []
+    list_files(f'{DATA_DIR}/training_data', paths_to_files, config)
 
-    data_loader = CustomDataset(paths_to_files, labels)
+    # Divide paths up into training and validation data
+    x_train, x_val = [], []
+    y_train, y_val = [], []
+    for file_path in paths_to_files:
+        file_name = os.path.basename(file_path)
+        object_name = file_name.split('__')[0]
+        if object_name in objects_train:
+            x_train.append(file_path)
+            y_train.append(object_to_modulus[object_name])
+        elif object_name in objects_val:
+            x_val.append(file_path)
+            y_val.append(object_to_modulus[object_name])
 
-    # kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
-    # train_dataset = CustomDataset(X_train, y_train, frame_tensor=torch.zeros((N_FRAMES, 3, IMG_X, IMG_Y), device=device), label_tensor=torch.zeros((1), device=device))
-    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, **kwargs)
-    # val_dataset = CustomDataset(X_val, y_val, frame_tensor=torch.zeros((N_FRAMES, 3, IMG_X, IMG_Y), device=device), label_tensor=torch.zeros((1), device=device))
-    # val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, **kwargs)
+    # Construct datasets
+    kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
+    train_dataset = CustomDataset(x_train, y_train, frame_tensor=torch.zeros((N_FRAMES, PIXEL_SIZE, IMG_X, IMG_Y), device=device), label_tensor=torch.zeros((1), device=device))
+    train_loader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=True, **kwargs)
+    val_dataset = CustomDataset(x_val, y_val, frame_tensor=torch.zeros((N_FRAMES, PIXEL_SIZE, IMG_X, IMG_Y), device=device), label_tensor=torch.zeros((1), device=device))
+    val_loader = DataLoader(val_dataset, batch_size=config['batch_size'], shuffle=False, **kwargs)
 
     # Train the model over some data
     train_modulus = TrainModulus(config, data_loader)
