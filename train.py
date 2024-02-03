@@ -306,10 +306,9 @@ class CustomDataset(Dataset):
         return self.x_frames, self.x_forces, self.x_widths, self.modulus_labels[idx]
      
 class ModulusModel():
-    def __init__(self, config, data_loader, device=None):
+    def __init__(self, config, device=None):
 
         self.model = None
-        self.data_loader = data_loader
 
         # Use GPU by default
         if device is None:
@@ -376,6 +375,56 @@ class ModulusModel():
                 "memory_reserved": self.memory_cached,
             })
 
+        # Load data
+        self._load_data_paths()
+
+        return
+    
+    # Create data loaders based on configuration
+    def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, training_data_folder_name='training_data'):
+        # Read CSV files with objects and labels tabulated
+        object_to_modulus = {}
+        csv_file_path = f'{self.data_dir}/{labels_csv_name}'
+        with open(csv_file_path, 'r') as file:
+            csv_reader = csv.reader(file)
+            next(csv_reader) # Skip title row
+            for row in csv_reader:
+                if row[csv_modulus_column] != '':
+                    object_to_modulus[row[1]] = float(row[csv_modulus_column])
+
+        # Extract object names as keys from data
+        object_names = object_to_modulus.keys()
+        object_names = [x for x in object_names if x not in self.exclude]
+
+        # Extract elastic modulus labels for each object
+        elastic_moduli = [object_to_modulus[x] for x in object_names]
+
+        # Split objects into validation or training
+        objects_train, objects_val, _, _ = train_test_split(object_names, elastic_moduli, test_size=self.val_pct, random_state=self.random_state)
+
+        # Get all the paths to grasp data within directory
+        paths_to_files = []
+        list_files(f'{self.data_dir}/{training_data_folder_name}', paths_to_files, config)
+
+        # Divide paths up into training and validation data
+        x_train, x_val = [], []
+        y_train, y_val = [], []
+        for file_path in paths_to_files:
+            file_name = os.path.basename(file_path)
+            object_name = file_name.split('__')[0]
+            if object_name in objects_train:
+                x_train.append(file_path)
+                y_train.append(object_to_modulus[object_name])
+            elif object_name in objects_val:
+                x_val.append(file_path)
+                y_val.append(object_to_modulus[object_name])
+
+        # Construct datasets
+        kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
+        self.train_dataset = CustomDataset(x_train, y_train, frame_tensor=torch.zeros((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device), label_tensor=torch.zeros((1), device=device))
+        self.train_loader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, **kwargs)
+        self.val_dataset = CustomDataset(x_val, y_val, frame_tensor=torch.zeros((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device), label_tensor=torch.zeros((1), device=device))
+        self.val_loader = DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, **kwargs)
         return
 
     def _train_epoch(self):
@@ -447,50 +496,6 @@ if __name__ == "__main__":
     assert config['img_style'] in ['diff', 'depth']
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
-    # Read CSV files with objects and labels tabulated
-    object_to_modulus = {}
-    csv_file_path = f'{config["data_dir"]}/objects_and_labels.csv'
-    with open(csv_file_path, 'r') as file:
-        csv_reader = csv.reader(file)
-        next(csv_reader)
-        for row in csv_reader:
-            if row[14] != '':
-                object_to_modulus[row[1]] = float(row[14])
-
-    # Extract object names as keys from data
-    object_names = object_to_modulus.keys()
-    object_names = [x for x in object_names if x not in config['exclude']]
-
-    # Extract elastic modulus labels for each object
-    elastic_moduli = [object_to_modulus[x] for x in object_names]
-
-    # Split objects into validation or training
-    objects_train, objects_val, E_train, E_val = train_test_split(object_names, elastic_moduli, test_size=config['val_pct'], random_state=config['random_state'])
-
-    # Get all the paths to grasp data within directory
-    paths_to_files = []
-    list_files(f'{config["data_dir"]}/training_data', paths_to_files, config)
-
-    # Divide paths up into training and validation data
-    x_train, x_val = [], []
-    y_train, y_val = [], []
-    for file_path in paths_to_files:
-        file_name = os.path.basename(file_path)
-        object_name = file_name.split('__')[0]
-        if object_name in objects_train:
-            x_train.append(file_path)
-            y_train.append(object_to_modulus[object_name])
-        elif object_name in objects_val:
-            x_val.append(file_path)
-            y_val.append(object_to_modulus[object_name])
-
-    # Construct datasets
-    kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
-    train_dataset = CustomDataset(x_train, y_train, frame_tensor=torch.zeros((config['n_frames'], config['n_channels'], config['img_size'][0], config['img_size'][1]), device=device), label_tensor=torch.zeros((1), device=device))
-    train_loader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=True, **kwargs)
-    val_dataset = CustomDataset(x_val, y_val, frame_tensor=torch.zeros((config['n_frames'], config['n_channels'], config['img_size'][0], config['img_size'][1]), device=device), label_tensor=torch.zeros((1), device=device))
-    val_loader = DataLoader(val_dataset, batch_size=config['batch_size'], shuffle=False, **kwargs)
-
     # Train the model over some data
-    train_modulus = ModulusModel(config, data_loader, device=device)
+    train_modulus = ModulusModel(config, device=device)
     train_modulus.train()
