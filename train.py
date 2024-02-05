@@ -499,6 +499,12 @@ class ModulusModel():
         for x_frames, x_forces, x_widths, x_estimations, y in self.train_loader:
             self.optimizer.zero_grad()
 
+            print('x_frames.device', x_frames.device)
+            print('x_forces.device', x_forces.device)
+            print('x_widths.device', x_widths.device)
+            print('x_estimations.device', x_estimations.device)
+            print('y.device', y.device)
+
             # Concatenate features across frames into a single vector
             features = []
             for i in range(N_FRAMES):
@@ -516,6 +522,8 @@ class ModulusModel():
 
             # Send aggregated features to the FC decoder
             outputs = self.decoder(features)
+
+            print('outputs.device', outputs.device)
 
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             loss.backward()
