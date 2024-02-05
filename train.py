@@ -1,5 +1,5 @@
 import os
-import cv2
+import pickle
 import csv
 import numpy as np
 
@@ -189,9 +189,9 @@ class DecoderFC(nn.Module):
         x = 100 * torch.sigmoid(x)
         return x
  
-class ForcesLinear(nn.Module):
+class ForceLinear(nn.Module):
     def __init__(self, hidden_size = 128, output_dim = 128):
-        super(ForcesLinear, self).__init__()
+        super(ForceLinear, self).__init__()
 
         self.hidden_size = hidden_size
         self.output_dim = output_dim
@@ -204,9 +204,24 @@ class ForcesLinear(nn.Module):
         x = self.fc2(x)
         return x
  
-class WidthsLinear(nn.Module):
+class WidthLinear(nn.Module):
     def __init__(self, hidden_size = 128, output_dim = 128):
-        super(WidthsLinear, self).__init__()
+        super(WidthLinear, self).__init__()
+
+        self.hidden_size = hidden_size
+        self.output_dim = output_dim
+
+        self.fc1 = nn.Linear(1, self.hidden_size)
+        self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.fc2(x)
+        return x
+ 
+class EstimationLinear(nn.Module):
+    def __init__(self, hidden_size = 128, output_dim = 128):
+        super(EstimationLinear, self).__init__()
 
         self.hidden_size = hidden_size
         self.output_dim = output_dim
@@ -256,13 +271,9 @@ class CustomDataset(Dataset):
             self.flip_horizontal = [False for i in range(len(self.input_paths))]
 
         # Define attributes to use to conserve memory
-        self.cap = None
-        self.ret = None
-        self.frame = None
         self.x_frames = video_frame_tensor
         self.x_forces = force_tensor
         self.x_width = width_tensor
-        self.data = []
     
     def __len__(self):
         return len(self.labels)
@@ -273,13 +284,8 @@ class CustomDataset(Dataset):
         self.x_width = self.x_width.zero_()
 
         # Read and store frames in the tensor
-        self.cap = cv2.VideoCapture(self.input_paths[idx])
-        for i in range(self.n_frames):
-            self.ret, self.frame = self.cap.read()
-            if not self.ret:
-                break
-            # Convert frame to tensor format
-            self.x_frames[i] = torch.tensor(cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)).permute(2, 0, 1)
+        with open(self.input_paths[idx], 'rb') as file:
+            self.x_frames = pickle.load(file)
 
         # Flip the data horizontally
         if self.use_transformations and self.flip_horizontal[idx]:
@@ -298,18 +304,15 @@ class CustomDataset(Dataset):
             self.x_widths = None
             raise NotImplementedError()
         
-        # Unpack gripper width measurements
-        if self.use_width:
-            self.x_widths = None
+        # Unpack modulus estimations
+        if self.use_estimation:
+            self.x_estimation = None
             raise NotImplementedError()
 
-        return self.x_frames, self.x_forces, self.x_widths, self.modulus_labels[idx]
+        return self.x_frames, self.x_forces, self.x_widths, self.x_estimation, self.modulus_labels[idx]
      
 class ModulusModel():
     def __init__(self, config, device=None):
-
-        self.model = None
-
         # Use GPU by default
         if device is None:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -340,6 +343,12 @@ class ModulusModel():
         self.loss           = nn.MSELoss()
         self.params         = list(self.model.parameters())
         self.optimizer      = torch.optim.Adam(self.params, lr=self.learning_rate)
+
+        self.video_encoder = None
+        self.force_encoder = ForceLinear() if self.use_force else None
+        self.width_encoder = WidthLinear() if self.use_width else None
+        self.estimation_encoder = EstimationLinear() if self.use_width else None
+        self.decoder = None
 
         self.use_wandb = True
         if self.use_wandb:
@@ -428,11 +437,17 @@ class ModulusModel():
         return
 
     def _train_epoch(self):
-        self.model.train()
+        self.video_encoder.train()
+        self.force_encoder.train()
+        self.width_encoder.train()
+        self.decoder.train()
         raise NotImplementedError
 
     def _val_epoch(self):
-        self.model.eval()
+        self.video_encoder.eval()
+        self.force_encoder.eval()
+        self.width_encoder.eval()
+        self.decoder.eval()
         raise NotImplementedError
 
     def _save_model(self):
