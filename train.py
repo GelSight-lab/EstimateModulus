@@ -328,17 +328,18 @@ class ModulusModel():
             self.device = device
 
         # Data parameters 
-        self.data_dir = config['data_dir']
-        self.n_frames = config['n_frames']
-        self.img_size = config['img_size']
-        self.img_style = config['img_style']
-        self.n_channels = config['n_channels']
-        self.use_markers = config['use_markers']
-        self.use_force = config['use_force']
-        self.use_width = config['use_width']
-        self.use_estimation = config['use_estimation']
-        self.use_transformations = config['use_transformations']
-        self.exclude = config['exclude']
+        self.data_dir               = config['data_dir']
+        self.n_frames               = config['n_frames']
+        self.img_size               = config['img_size']
+        self.img_style              = config['img_style']
+        self.n_channels             = config['n_channels']
+        self.use_markers            = config['use_markers']
+        self.use_force              = config['use_force']
+        self.use_width              = config['use_width']
+        self.use_estimation         = config['use_estimation']
+        self.use_transformations    = config['use_transformations']
+        self.exclude                = config['exclude']
+        self.use_wandb              = config['use_wandb']
 
         # Define training parameters
         self.epochs         = config['epochs']
@@ -378,7 +379,6 @@ class ModulusModel():
         # Create optimizer, use Adam
         self.optimizer      = torch.optim.Adam(self.params, lr=self.learning_rate)
 
-        self.use_wandb = False
         if self.use_wandb:
             wandb.init(
                 # Set the wandb project where this run will be logged
@@ -557,20 +557,23 @@ class ModulusModel():
         val_loss /=  batch_count
         val_log_acc /= batch_count
 
-        raise val_loss, val_log_acc
+        return val_loss, val_log_acc
 
     def _save_model(self):
-        torch.save(self.video_encoder.state_dict(), './model/video_encoder.pth')
-        torch.save(self.force_encoder.state_dict(), './model/force_encoder.pth')
-        torch.save(self.width_encoder.state_dict(), './model/width_encoder.pth')
-        torch.save(self.estimation_encoder.state_dict(), './model/estimation_encoder.pth')
-        torch.save(self.decoder.state_dict(), './model/decoder.pth')
-        raise NotImplementedError
+        model_dir = './model'
+        if not os.path.exists(model_dir):
+            os.mkdir(model_dir)
+        torch.save(self.video_encoder.state_dict(), f'{model_dir}/video_encoder.pth')
+        torch.save(self.force_encoder.state_dict(), f'{model_dir}/force_encoder.pth')
+        torch.save(self.width_encoder.state_dict(), f'{model_dir}/width_encoder.pth')
+        torch.save(self.estimation_encoder.state_dict(), f'{model_dir}/estimation_encoder.pth')
+        torch.save(self.decoder.state_dict(), f'{model_dir}/decoder.pth')
+        return
 
     def train(self):
         min_val_loss = 1e10
         for epoch in range(self.epochs):
-            
+
             # Train batch
             train_loss = self._train_epoch()
 
@@ -623,6 +626,9 @@ if __name__ == "__main__":
         'use_transformations': True,
         'exclude': ['playdoh', 'silly_putty', 'racquetball', 'blue_sponge_dry', 'blue_sponge_wet',
                     'blue_foam_brick', 'green_foam_brick', 'red_foam_brick', 'yellow_foam_brick'],
+
+        # Logging on/off
+        'use_wandb': True,
 
         # Training and model parameters
         'epochs'         : 250,
