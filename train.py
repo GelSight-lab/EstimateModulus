@@ -31,6 +31,7 @@ def list_files(folder_path, file_paths, config):
         elif os.path.isdir(item_path):
             list_files(item_path, file_paths, config)
 
+
 def conv2D_output_size(img_size, padding, kernel_size, stride):
 	output_shape=(np.floor((img_size[0] + 2 * padding[0] - (kernel_size[0] - 1) - 1) / stride[0] + 1).astype(int),
 				  np.floor((img_size[1] + 2 * padding[1] - (kernel_size[1] - 1) - 1) / stride[1] + 1).astype(int))
@@ -41,6 +42,7 @@ def conv3D_output_size(img_size, padding, kernel_size, stride):
 				  np.floor((img_size[1] + 2 * padding[1] - (kernel_size[1] - 1) - 1) / stride[1] + 1).astype(int),
 				  np.floor((img_size[2] + 2 * padding[2] - (kernel_size[2] - 1) - 1) / stride[2] + 1).astype(int))
 	return output_shape 
+
 
 class EncoderCNN(nn.Module):
     def __init__(self,
@@ -63,7 +65,7 @@ class EncoderCNN(nn.Module):
         self.s1, self.s2, self.s3, self.s4 = (2, 2), (2, 2), (2, 2), (2, 2)  # 2D strides
         self.pd1, self.pd2, self.pd3, self.pd4 = (0, 0), (0, 0), (0, 0), (0, 0)  # 2D padding
 
-        # conv2D output shapes
+        # 2D convolution output shapes
         self.conv1_outshape = conv2D_output_size((self.img_x, self.img_y),
                                                  self.pd1, self.k1, self.s1)  # Conv1 output shape
         self.conv2_outshape = conv2D_output_size(self.conv1_outshape, self.pd2,
@@ -151,6 +153,7 @@ class EncoderCNN(nn.Module):
         x = self.fc3(x) # CNN embedding
         return x
 
+
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
@@ -187,6 +190,7 @@ class DecoderFC(nn.Module):
         x = 100 * torch.sigmoid(x)
         return x
  
+
 class ForceFC(nn.Module):
     def __init__(self, hidden_size=16, output_dim=16):
         super(ForceFC, self).__init__()
@@ -201,6 +205,7 @@ class ForceFC(nn.Module):
         x = self.fc1(x)
         x = self.fc2(x)
         return x
+    
  
 class WidthFC(nn.Module):
     def __init__(self, hidden_size=16, output_dim =16):
@@ -217,6 +222,7 @@ class WidthFC(nn.Module):
         x = self.fc2(x)
         return x
  
+
 class EstimationFC(nn.Module):
     def __init__(self, hidden_size=16, output_dim=16):
         super(EstimationFC, self).__init__()
@@ -231,6 +237,7 @@ class EstimationFC(nn.Module):
         x = self.fc1(x)
         x = self.fc2(x)
         return x
+
 
 class CustomDataset(Dataset):
     def __init__(self, config, paths_to_files, labels, \
@@ -316,6 +323,7 @@ class CustomDataset(Dataset):
 
         return self.x_frames.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone()
      
+
 class ModulusModel():
     def __init__(self, config, device=None):
         # Use GPU by default
@@ -499,12 +507,6 @@ class ModulusModel():
         for x_frames, x_forces, x_widths, x_estimations, y in self.train_loader:
             self.optimizer.zero_grad()
 
-            print('x_frames.device', x_frames.device)
-            print('x_forces.device', x_forces.device)
-            print('x_widths.device', x_widths.device)
-            print('x_estimations.device', x_estimations.device)
-            print('y.device', y.device)
-
             # Concatenate features across frames into a single vector
             features = []
             for i in range(N_FRAMES):
@@ -522,8 +524,6 @@ class ModulusModel():
 
             # Send aggregated features to the FC decoder
             outputs = self.decoder(features)
-
-            print('outputs.device', outputs.device)
 
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             loss.backward()
