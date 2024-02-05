@@ -305,7 +305,7 @@ class CustomDataset(Dataset):
         # Unpack gripper width measurements
         if self.use_width:
             with open(self.base_name + '_widths.pkl', 'rb') as file:
-                self.x_widths = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
+                self.x_widths[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
         
         # Unpack modulus estimations
         if self.use_estimation:
