@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import wandb
 
-from wedge_video import WARPED_CROPPED_IMG_SIZE
+# from wedge_video import WARPED_CROPPED_IMG_SIZE
 
 from torch.utils.data import DataLoader, Dataset
 from sklearn.model_selection import train_test_split
@@ -16,9 +16,9 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = 'E:/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 5
-WARPED_CROPPED_IMG_SIZE = WARPED_CROPPED_IMG_SIZE[::-1]
+WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
 # Get the tree of all video files from a directory in place
 def list_files(folder_path, file_paths, config):
@@ -363,6 +363,16 @@ class ModulusModel():
         if self.use_estimation: 
             decoder_input_size += self.n_frames * self.estimation_encoder.output_dim
         self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1)
+
+        # Send models to device
+        self.video_encoder.to(self.device)
+        if self.use_force:
+            self.force_encoder.to(self.device)
+        if self.use_width:
+            self.width_encoder.to(self.device)
+        if self.use_estimation:
+            self.estimation_encoder.to(self.device)
+        self.decoder.to(self.device)
 
         # Concatenate parameters of all models
         self.params         = list(self.video_encoder.parameters())
