@@ -533,7 +533,7 @@ class ModulusModel():
             batch_count += 1
 
         # Return loss
-        train_loss /= batch_count
+        train_loss /= (self.batch_size * batch_count)
 
         return train_loss
 
@@ -570,8 +570,8 @@ class ModulusModel():
             batch_count += 1
         
         # Return loss and accuracy
-        val_loss /=  batch_count
-        val_log_acc /= batch_count
+        val_loss /= (self.batch_size * batch_count)
+        val_log_acc /= (self.batch_size * batch_count)
 
         return val_loss, val_log_acc
 
