@@ -10,7 +10,7 @@ from gripper_width import GripperWidth
 from contact_force import ContactForce
 from grasp_data import GraspData
 
-HARDDRIVE_DIR = '/media/mike/Elements'
+HARDDRIVE_DIR = 'E:'
 
 '''
 Preprocess recorded data for training...
@@ -38,7 +38,7 @@ def preprocess(path_to_file, grasp_data=GraspData(), destination_dir=f'{HARDDRIV
         grasp_data.auto_clip()
 
     # Crop video and forces to loading sequence
-    grasp_data.clip_to_press(pct_peak_threshold=0.9)
+    grasp_data.clip_to_press(pct_peak_threshold=0.95)
     if grasp_data.gripper_widths()[-1] > grasp_data.gripper_widths().min() + 0.0005:
         for i in range(len(grasp_data.gripper_widths()) - 1, -1, -1):
             if grasp_data.gripper_widths()[i] == grasp_data.gripper_widths().min():
@@ -96,21 +96,6 @@ def preprocess(path_to_file, grasp_data=GraspData(), destination_dir=f'{HARDDRIV
             pickle.dump(forces, file)
         with open(f'{output_path_prefix}_widths.pkl', 'wb') as file:
             pickle.dump(widths, file)
-
-        # # Generate horizontal flip permutation and save
-        # output_path_prefix = f'{aug_dir_flipped_horiz}/{output_name_prefix}'
-        # with open(f'{output_path_prefix}_diff.pkl', 'wb') as file:
-        #     pickle.dump(np.flip(diff_images, axis=1), file)
-        # with open(f'{output_path_prefix}_depth.pkl', 'wb') as file:
-        #     pickle.dump(np.flip(depth_images, axis=1), file)
-        # with open(f'{output_path_prefix}_diff_other.pkl', 'wb') as file:
-        #     pickle.dump(np.flip(other_diff_images, axis=1), file)
-        # with open(f'{output_path_prefix}_depth_other.pkl', 'wb') as file:
-        #     pickle.dump(np.flip(other_depth_images, axis=1), file)
-        # with open(f'{output_path_prefix}_forces.pkl', 'wb') as file:
-        #     pickle.dump(forces, file)
-        # with open(f'{output_path_prefix}_widths.pkl', 'wb') as file:
-        #     pickle.dump(widths, file)
 
     return
 
