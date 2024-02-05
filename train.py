@@ -647,7 +647,7 @@ if __name__ == "__main__":
         'use_wandb': True,
 
         # Training and model parameters
-        'epochs'         : 250,
+        'epochs'         : 500,
         'batch_size'     : 32,
         'feature_size'   : 512,
         'val_pct'        : 0.2,
