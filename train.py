@@ -10,8 +10,6 @@ import wandb
 
 from wedge_video import WARPED_CROPPED_IMG_SIZE
 
-from datetime import datetime
-from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
 from sklearn.model_selection import train_test_split
 
