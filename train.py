@@ -10,13 +10,14 @@ import wandb
 
 # from wedge_video import WARPED_CROPPED_IMG_SIZE
 
+from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, Dataset
 from sklearn.model_selection import train_test_split
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -208,7 +209,7 @@ class ForceFC(nn.Module):
     
  
 class WidthFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim =16):
+    def __init__(self, hidden_size=16, output_dim=16):
         super(WidthFC, self).__init__()
 
         self.hidden_size = hidden_size
@@ -266,6 +267,7 @@ class CustomDataset(Dataset):
         self.feature_size   = config['feature_size']
         self.val_pct        = config['val_pct']
         self.learning_rate  = config['learning_rate']
+        self.gamma          = config['gamma']
         self.random_state   = config['random_state']
 
         if self.use_transformations:
@@ -353,6 +355,7 @@ class ModulusModel():
         self.feature_size   = config['feature_size']
         self.val_pct        = config['val_pct']
         self.learning_rate  = config['learning_rate']
+        self.gamma          = config['gamma']
         self.random_state   = config['random_state']
         self.criterion      = nn.MSELoss()
 
@@ -394,6 +397,8 @@ class ModulusModel():
         
         # Create optimizer, use Adam
         self.optimizer      = torch.optim.Adam(self.params, lr=self.learning_rate)
+        if self.gamma is not None:
+            self.scheduler  = lr_scheduler.ExponentialLR(self.optimizer, gamma=self.gamma)
 
         if self.use_wandb:
             wandb.init(
@@ -404,17 +409,26 @@ class ModulusModel():
                 config={
                     "epochs": self.epochs,
                     "batch_size": self.batch_size,
-                    "N_frames": self.n_frames,
+                    "n_frames": self.n_frames,
+                    "n_channels": self.n_channels,
                     "img_size": self.img_size,
+                    "img_style": self.img_style,
                     "feature_size": self.feature_size,
                     "learning_rate": self.learning_rate,
+                    "gamma": self.gamma,
                     "validation_pct": self.val_pct,
                     "random_state": self.random_state,
                     "architecture": "ENCODE_DECODE",
                     "num_params": len(self.params),
                     "optimizer": "Adam",
                     "loss": "MSE",
-                    "scheduler": "None",
+                    "scheduler": "ExponentialLR",
+                    "use_markers": self.use_markers,
+                    "use_force": self.use_force,
+                    "use_width": self.use_width,
+                    "use_estimation": self.use_estimation,
+                    "use_transformations": self.use_transformations,
+                    "exclude": self.exclude,
                 }
             )
         
@@ -528,6 +542,9 @@ class ModulusModel():
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             loss.backward()
             self.optimizer.step()
+            
+            if self.gamma is not None:
+                self.scheduler.step()
 
             train_loss += loss.item()
             batch_count += 1
@@ -639,7 +656,7 @@ if __name__ == "__main__":
         'use_force': True,
         'use_width': True,
         'use_estimation': False,
-        'use_transformations': True,
+        'use_transformations': False,
         'exclude': ['playdoh', 'silly_putty', 'racquetball', 'blue_sponge_dry', 'blue_sponge_wet',
                     'blue_foam_brick', 'green_foam_brick', 'red_foam_brick', 'yellow_foam_brick'],
 
@@ -651,7 +668,8 @@ if __name__ == "__main__":
         'batch_size'     : 32,
         'feature_size'   : 512,
         'val_pct'        : 0.2,
-        'learning_rate'  : 1e-5,
+        'learning_rate'  : 1e-4,
+        'gamma'          : 0.95,
         'random_state'   : 40,
     }
     assert config['img_style'] in ['diff', 'depth']
