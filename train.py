@@ -425,6 +425,7 @@ class ModulusModel():
             wandb.init(
                 # Set the wandb project where this run will be logged
                 project="TrainModulus",
+                name="ALL_DATA__NO_TRANSFORMS",
                 
                 # Track hyperparameters and run metadata
                 config={
@@ -490,14 +491,6 @@ class ModulusModel():
             csv_reader = csv.reader(file)
             next(csv_reader) # Skip title row
             for row in csv_reader:
-
-
-
-                if not (row[3] in ['Metal', 'Foam', 'Rubber', 'Glass']):
-                    continue
-
-
-
                 if row[csv_modulus_column] != '' and float(row[csv_modulus_column]) > 0:
                     modulus = float(row[csv_modulus_column])
                     object_to_modulus[row[1]] = modulus
@@ -616,7 +609,7 @@ class ModulusModel():
             self.estimation_encoder.eval()
         self.decoder.eval()
 
-        val_loss, val_log_acc, batch_count = 0, 0, 0
+        val_loss, val_log_acc, val_avg_diff, val_avg_log_diff, batch_count = 0, 0, 0, 0, 0
         for x_frames, x_forces, x_widths, x_estimations, y in self.train_loader:
 
             # Concatenate features across frames into a single vector
@@ -640,13 +633,17 @@ class ModulusModel():
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             val_loss += loss.item()
             val_log_acc += (torch.round(torch.log10(self.log_unnormalize(outputs))) == torch.round(torch.log10(self.log_unnormalize(y)))).sum().item()
+            val_avg_diff += torch.abs(self.log_unnormalize(outputs) - self.log_unnormalize(y)).sum().item()
+            val_avg_log_diff += torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y))).sum().item()
             batch_count += 1
         
         # Return loss and accuracy
         val_loss /= self.batch_size
         val_log_acc /= (self.batch_size * batch_count)
+        val_avg_diff /= (self.batch_size * batch_count)
+        val_avg_log_diff /= (self.batch_size * batch_count)
 
-        return val_loss, val_log_acc
+        return val_loss, val_log_acc, val_avg_diff, val_avg_log_diff
 
     def _save_model(self):
         model_dir = './model'
@@ -679,7 +676,7 @@ class ModulusModel():
             train_loss = self._train_epoch()
 
             # Validation statistics
-            val_loss, val_log_acc = self._val_epoch()
+            val_loss, val_log_acc, val_avg_diff, val_avg_log_diff = self._val_epoch()
 
             # Increment learning rate
             for param_group in self.optimizer.param_groups:
@@ -689,6 +686,8 @@ class ModulusModel():
 
             print(f'Epoch: {epoch}, Training Loss: {train_loss:.4f},',
                 f'Validation Loss: {val_loss:.4f},', 
+                f'Validation Avg. Diff: {val_avg_diff:.4f}',
+                f'Validation Avg. Log Diff: {val_avg_log_diff:.4f}',
                 f'Validation Log Accuracy: {val_log_acc:.4f}',
             )
 
@@ -708,6 +707,9 @@ class ModulusModel():
                     "memory_reserved": self.memory_cached,
                     "train_loss": train_loss,
                     "val_loss": val_loss,
+                    "val_avg_diff": val_avg_diff,
+                    "val_avg_scaling_err": np.log10(val_avg_log_diff),
+                    "val_avg_log_diff": val_avg_log_diff,
                     "val_log_accuracy": val_log_acc,
                 })
 
@@ -729,7 +731,7 @@ if __name__ == "__main__":
         'img_style': 'diff',
         'use_markers': True,
         'use_force': True,
-        'use_width': False,
+        'use_width': True,
         'use_estimation': False,
         'use_transformations': False,
         'exclude': ['playdoh', 'silly_putty', 'racquetball', 'blue_sponge_dry', 'blue_sponge_wet',
@@ -739,13 +741,13 @@ if __name__ == "__main__":
         'use_wandb': True,
 
         # Training and model parameters
-        'epochs'         : 500,
+        'epochs'         : 250,
         'batch_size'     : 32,
         'feature_size'   : 512,
         'val_pct'        : 0.2,
         'learning_rate'  : 1e-5,
         'gamma'          : 0.5,
-        'lr_step_size'   : 30,
+        'lr_step_size'   : 50,
         'random_state'   : 40,
     }
     assert config['img_style'] in ['diff', 'depth']
