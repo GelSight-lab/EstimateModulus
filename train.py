@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -90,7 +90,7 @@ class EncoderCNN(nn.Module):
                       stride=self.s1,
                       padding=self.pd1),
             nn.BatchNorm2d(self.ch1, momentum=0.01),
-            nn.ReLU(inplace=True),
+            nn.SiLU(inplace=True),
         )
         self.conv2 = nn.Sequential(
             nn.Conv2d(in_channels=self.ch1,
@@ -99,7 +99,7 @@ class EncoderCNN(nn.Module):
                       stride=self.s2,
                       padding=self.pd2),
             nn.BatchNorm2d(self.ch2, momentum=0.01),
-            nn.ReLU(inplace=True),
+            nn.SiLU(inplace=True),
         )
         self.conv3 = nn.Sequential(
             nn.Conv2d(in_channels=self.ch2,
@@ -108,7 +108,7 @@ class EncoderCNN(nn.Module):
                       stride=self.s3,
                       padding=self.pd3),
             nn.BatchNorm2d(self.ch3, momentum=0.01),
-            nn.ReLU(inplace=True),
+            nn.SiLU(inplace=True),
         )
         self.conv4 = nn.Sequential(
             nn.Conv2d(in_channels=self.ch3,
@@ -117,7 +117,7 @@ class EncoderCNN(nn.Module):
                       stride=self.s4,
                       padding=self.pd4),
             nn.BatchNorm2d(self.ch4, momentum=0.01),
-            nn.ReLU(inplace=True),
+            nn.SiLU(inplace=True),
         )
 
         self.drop = nn.Dropout(self.drop_p)
@@ -147,10 +147,10 @@ class EncoderCNN(nn.Module):
         x = self.drop(x)
         # FC layers
         x = self.fc1(x)
-        x = F.relu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x) # CNN embedding
-        x = F.relu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x) # CNN embedding
         return x
@@ -180,16 +180,16 @@ class DecoderFC(nn.Module):
     def forward(self, x):
         x = torch.cat(x, -1)
         x = self.fc1(x)
-        x = F.relu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x)
-        x = F.relu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x)
-        x = F.relu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc4(x)
-        x = F.relu(x)
+        x = F.silu(x)
         return x
  
 
@@ -242,7 +242,7 @@ class EstimationFC(nn.Module):
 
 
 class CustomDataset(Dataset):
-    def __init__(self, config, paths_to_files, labels, \
+    def __init__(self, config, paths_to_files, labels, normalization_values, \
                  frame_tensor=torch.zeros((N_FRAMES, 3, WARPED_CROPPED_IMG_SIZE[0], WARPED_CROPPED_IMG_SIZE[1])),
                  force_tensor=torch.zeros((N_FRAMES, 1)),
                  width_tensor=torch.zeros((N_FRAMES, 1)),
@@ -270,6 +270,8 @@ class CustomDataset(Dataset):
         self.learning_rate  = config['learning_rate']
         self.gamma          = config['gamma']
         self.random_state   = config['random_state']
+
+        self.normalization_values = normalization_values
 
         if self.use_transformations:
             self.input_paths = 2*paths_to_files
@@ -301,6 +303,8 @@ class CustomDataset(Dataset):
         # Read and store frames in the tensor
         with open(self.input_paths[idx], 'rb') as file:
             self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
+            if self.img_style == 'depth':
+                self.x_frames /= self.normalization_values['max_depth']
 
         # Flip the data horizontally if desired
         if self.use_transformations and self.flip_horizontal[idx]:
@@ -311,11 +315,13 @@ class CustomDataset(Dataset):
         if self.use_force:
             with open(self.base_name + '_forces.pkl', 'rb') as file:
                 self.x_forces[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
+                self.x_forces /= self.normalization_values['max_force']
 
         # Unpack gripper width measurements
         if self.use_width:
             with open(self.base_name + '_widths.pkl', 'rb') as file:
                 self.x_widths[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
+                self.x_widths /= self.normalization_values['max_width']
         
         # Unpack modulus estimations
         if self.use_estimation:
@@ -352,6 +358,16 @@ class ModulusModel():
         self.exclude                = config['exclude']
         self.use_wandb              = config['use_wandb']
 
+        # Create max values for scaling
+        self.normalization_values = { # Based on acquired data maximums
+            'max_modulus': 0,
+            'min_modulus': 1e10,
+            'max_depth': 7.0,
+            'max_width': 0.08,
+            'max_force': 60.0,
+            'max_estimation': 0.0,
+        }
+
         # Define training parameters
         self.epochs         = config['epochs']
         self.batch_size     = config['batch_size']
@@ -359,6 +375,7 @@ class ModulusModel():
         self.val_pct        = config['val_pct']
         self.learning_rate  = config['learning_rate']
         self.gamma          = config['gamma']
+        self.lr_step_size   = config['lr_step_size']
         self.random_state   = config['random_state']
         self.criterion      = nn.MSELoss()
 
@@ -401,7 +418,7 @@ class ModulusModel():
         # Create optimizer, use Adam
         self.optimizer      = torch.optim.Adam(self.params, lr=self.learning_rate)
         if self.gamma is not None:
-            self.scheduler  = lr_scheduler.ExponentialLR(self.optimizer, gamma=self.gamma)
+            self.scheduler  = lr_scheduler.StepLR(self.optimizer, step_size=self.lr_step_size, gamma=self.gamma)
 
         if self.use_wandb:
             wandb.init(
@@ -419,13 +436,14 @@ class ModulusModel():
                     "feature_size": self.feature_size,
                     "learning_rate": self.learning_rate,
                     "gamma": self.gamma,
+                    "lr_step_size": self.lr_step_size,
                     "validation_pct": self.val_pct,
                     "random_state": self.random_state,
                     "architecture": "ENCODE_DECODE",
                     "num_params": len(self.params),
                     "optimizer": "Adam",
                     "loss": "MSE",
-                    "scheduler": "ExponentialLR",
+                    "scheduler": "StepLR",
                     "use_markers": self.use_markers,
                     "use_force": self.use_force,
                     "use_width": self.use_width,
@@ -450,6 +468,18 @@ class ModulusModel():
 
         return
     
+    # Normalize labels to maximum on log scale
+    def log_normalize(self, x, x_max=None, x_min=None):
+        if x_max is None: x_max = self.normalization_values['max_modulus']
+        if x_min is None: x_min = self.normalization_values['min_modulus']
+        return (np.log10(x) - np.log10(x_min)) / (np.log10(x_max) - np.log10(x_min))
+    
+    # Unnormalize labels from maximum on log scale
+    def log_unnormalize(self, x_scaled, x_max=None, x_min=None):
+        if x_max is None: x_max = self.normalization_values['max_modulus']
+        if x_min is None: x_min = self.normalization_values['min_modulus']
+        return x_min * (x_max/x_min)**(x_scaled)
+
     # Create data loaders based on configuration
     def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, training_data_folder_name='training_data'):
         # Read CSV files with objects and labels tabulated
@@ -467,8 +497,11 @@ class ModulusModel():
 
 
 
-                if row[csv_modulus_column] != '':
-                    object_to_modulus[row[1]] = float(row[csv_modulus_column])
+                if row[csv_modulus_column] != '' and float(row[csv_modulus_column]) > 0:
+                    modulus = float(row[csv_modulus_column])
+                    object_to_modulus[row[1]] = modulus
+                    self.normalization_values['max_modulus'] = max(self.normalization_values['max_modulus'], modulus)
+                    self.normalization_values['min_modulus'] = min(self.normalization_values['min_modulus'], modulus)
 
         # Extract object names as keys from data
         object_names = object_to_modulus.keys()
@@ -492,10 +525,10 @@ class ModulusModel():
             object_name = file_name.split('__')[0]
             if object_name in objects_train:
                 x_train.append(file_path)
-                y_train.append(object_to_modulus[object_name])
+                y_train.append(self.log_normalize(object_to_modulus[object_name]))
             elif object_name in objects_val:
                 x_val.append(file_path)
-                y_val.append(object_to_modulus[object_name])
+                y_val.append(self.log_normalize(object_to_modulus[object_name]))
 
         # Create tensor's on device to send to dataset
         empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device)
@@ -504,15 +537,21 @@ class ModulusModel():
         empty_estimation_tensor   = torch.zeros((self.n_frames, 1), device=device)
         empty_label_tensor        = torch.zeros((1), device=device)
 
+        if self.use_estimation:
+            print('MUST NORMALIZE ESTIMATIONS')
+            raise NotImplementedError
+    
         # Construct datasets
         kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
-        self.train_dataset  = CustomDataset(config, x_train, y_train,
+        self.train_dataset  = CustomDataset(config, x_train, y_train, 
+                                            self.normalization_values,
                                             frame_tensor=empty_frame_tensor, 
                                             force_tensor=empty_force_tensor,
                                             width_tensor=empty_width_tensor,
                                             estimation_tensor=empty_estimation_tensor,
                                             label_tensor=empty_label_tensor)
-        self.val_dataset    = CustomDataset(config, x_val, y_val,
+        self.val_dataset    = CustomDataset(config, x_val, y_val, 
+                                            self.normalization_values,
                                             frame_tensor=empty_frame_tensor, 
                                             force_tensor=empty_force_tensor,
                                             width_tensor=empty_width_tensor,
@@ -561,14 +600,8 @@ class ModulusModel():
             train_loss += loss.item()
             batch_count += 1
 
-        # Increment learning rate
-        for param_group in self.optimizer.param_groups:
-            print('Learning Rate:', param_group['lr'])
-        if self.gamma is not None:
-            self.scheduler.step()
-
         # Return loss
-        train_loss /= (self.batch_size * batch_count)
+        train_loss /= self.batch_size
 
         return train_loss
 
@@ -605,11 +638,11 @@ class ModulusModel():
 
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             val_loss += loss.item()
-            val_log_acc += (torch.round(torch.log10(outputs)) == torch.round(torch.log10(y))).sum().item()
+            val_log_acc += (torch.round(torch.log10(self.log_unnormalize(outputs))) == torch.round(torch.log10(self.log_unnormalize(y)))).sum().item()
             batch_count += 1
         
         # Return loss and accuracy
-        val_loss /= (self.batch_size * batch_count)
+        val_loss /= self.batch_size
         val_log_acc /= (self.batch_size * batch_count)
 
         return val_loss, val_log_acc
@@ -637,6 +670,7 @@ class ModulusModel():
         return
 
     def train(self):
+        learning_rate = self.learning_rate 
         min_val_loss = 1e100
         for epoch in range(self.epochs):
 
@@ -646,10 +680,16 @@ class ModulusModel():
             # Validation statistics
             val_loss, val_log_acc = self._val_epoch()
 
+            # Increment learning rate
+            for param_group in self.optimizer.param_groups:
+                learning_rate = param_group['lr']
+            if self.gamma is not None:
+                self.scheduler.step()
+
             print(f'Epoch: {epoch}, Training Loss: {train_loss:.4f},',
                 f'Validation Loss: {val_loss:.4f},', 
                 f'Validation Log Accuracy: {val_log_acc:.4f}',
-                )
+            )
 
             # Save the best model based on validation loss
             if val_loss <= min_val_loss:
@@ -662,6 +702,7 @@ class ModulusModel():
                 self.memory_cached = torch.cuda.memory_reserved()
                 wandb.log({
                     "epoch": epoch,
+                    "learning_rate": learning_rate,
                     "memory_allocated": self.memory_allocated,
                     "memory_reserved": self.memory_cached,
                     "train_loss": train_loss,
@@ -686,7 +727,7 @@ if __name__ == "__main__":
         'img_size': WARPED_CROPPED_IMG_SIZE,
         'img_style': 'diff',
         'use_markers': True,
-        'use_force': False,
+        'use_force': True,
         'use_width': False,
         'use_estimation': False,
         'use_transformations': False,
@@ -701,8 +742,9 @@ if __name__ == "__main__":
         'batch_size'     : 32,
         'feature_size'   : 512,
         'val_pct'        : 0.2,
-        'learning_rate'  : 1e-4,
-        'gamma'          : 0.95,
+        'learning_rate'  : 1e-5,
+        'gamma'          : 0.5,
+        'lr_step_size'   : 30,
         'random_state'   : 40,
     }
     assert config['img_style'] in ['diff', 'depth']

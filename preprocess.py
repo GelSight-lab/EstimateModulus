@@ -10,7 +10,7 @@ from gripper_width import GripperWidth
 from contact_force import ContactForce
 from grasp_data import GraspData
 
-HARDDRIVE_DIR = 'E:'
+HARDDRIVE_DIR = './'
 
 '''
 Preprocess recorded data for training...
