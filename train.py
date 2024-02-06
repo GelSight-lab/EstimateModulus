@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -623,7 +623,7 @@ class ModulusModel():
         return
 
     def train(self):
-        min_val_loss = 1e10
+        min_val_loss = 1e100
         for epoch in range(self.epochs):
 
             # Train batch
