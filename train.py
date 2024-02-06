@@ -153,6 +153,7 @@ class EncoderCNN(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x) # CNN embedding
+        x = torch.sigmoid(x)
         return x
 
 
