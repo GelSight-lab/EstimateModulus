@@ -254,6 +254,22 @@ class EstimateModulus():
     # Wrap the chosen contact mask function into one place
     def contact_mask(self, depth):
         return self.conditional_contact_mask(depth)
+    
+    # Use a user-specified contact mask
+    def input_contact_mask(self, contact_mask_str, depth):
+        contact_mask_functions = {
+            'constant_threshold_contact_mask': self.constant_threshold_contact_mask,
+            'mean_threshold_contact_mask': self.mean_threshold_contact_mask,
+            'total_mean_threshold_contact_mask': self.total_mean_threshold_contact_mask,
+            'normalized_threshold_contact_mask': self.normalized_threshold_contact_mask,
+            'total_normalized_threshold_contact_mask': self.total_normalized_threshold_contact_mask,
+            'std_above_mean_contact_mask': self.std_above_mean_contact_mask,
+            'ellipse_contact_mask': self.ellipse_contact_mask,
+            'conditional_contact_mask': self.conditional_contact_mask,
+            'total_conditional_contact_mask': self.total_conditional_contact_mask,
+        }
+        assert contact_mask_str in contact_mask_functions.keys()
+        return contact_mask_functions[contact_mask_str](depth)
 
     # Fit linear equation with least squares
     def linear_coeff_fit(self, x, y):
@@ -365,7 +381,7 @@ class EstimateModulus():
     
     # Naively estimate modulus based on gripper width change and aggregate modulus
     # (Notably requires both gripper width and tactile depth data)
-    def fit_modulus_naive(self, use_mean=True, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_lower_resolution_depth=False):
+    def fit_modulus_naive(self, contact_mask=None, use_mean=True, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_lower_resolution_depth=False):
         assert self.use_gripper_width
         assert not (use_ellipse_mask and fit_mask_to_ellipse)
 
@@ -388,9 +404,13 @@ class EstimateModulus():
             if use_ellipse_mask:
                 # Compute mask using ellipse fit
                 mask = self.ellipse_contact_mask(depth_i)
+                assert contact_mask is None
             else:
                 # Compute mask using traditional thresholding alone
-                mask = self.contact_mask(depth_i)
+                if contact_mask is None:
+                    mask = self.contact_mask(depth_i)
+                else:
+                    mask = self.input_contact_mask(contact_mask, depth_i)
                 if mask.max() == 0: continue
 
                 if fit_mask_to_ellipse:
@@ -435,7 +455,7 @@ class EstimateModulus():
     
     # Fit data to Hertizan model with apparent deformation
     # (Notably only requires gripper width data, not tactile depth)
-    def fit_modulus_hertz(self, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_lower_resolution_depth=False):
+    def fit_modulus_hertz(self, contact_mask=None, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_lower_resolution_depth=False):
         # Calculate apparent deformation using gripper width
         # Pretend that the contact geometry is cylindrical
         # This gives the relation...
@@ -460,9 +480,14 @@ class EstimateModulus():
             if use_ellipse_mask:
                 # Compute mask using ellipse fit
                 mask = self.ellipse_contact_mask(depth_i)
+                assert contact_mask is None
             else:
                 # Compute mask using traditional thresholding alone
-                mask = self.contact_mask(depth_i)
+                if contact_mask is None:
+                    mask = self.contact_mask(depth_i)
+                else:
+                    mask = self.input_contact_mask(contact_mask, depth_i)
+                if mask.max() == 0: continue
 
                 if fit_mask_to_ellipse:
                     # Fit an ellipse to the mask and modify
@@ -566,7 +591,7 @@ class EstimateModulus():
     
     # Use Hertzian contact models and MDR to compute the modulus of unknown object
     # (Notably only requires tactile depth data, not gripper width)
-    def fit_modulus_MDR(self, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_apparent_deformation=True, use_lower_resolution_depth=False, use_mean_radius=False):
+    def fit_modulus_MDR(self, contact_mask=None, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_apparent_deformation=True, use_lower_resolution_depth=False, use_mean_radius=False):
         # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
         if use_apparent_deformation:
             assert self.use_gripper_width
@@ -599,9 +624,13 @@ class EstimateModulus():
             if use_ellipse_mask:
                 # Compute mask using ellipse fit
                 mask = self.ellipse_contact_mask(depth_images[i])
+                assert contact_mask is None
             else:
                 # Compute mask using traditional thresholding alone
-                mask = self.contact_mask(depth_images[i])
+                if contact_mask is None:
+                    mask = self.contact_mask(depth_images[i])
+                else:
+                    mask = self.input_contact_mask(contact_mask, depth_images[i])
             
             if mask.max() == 0: continue
         

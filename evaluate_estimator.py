@@ -81,23 +81,29 @@ if __name__ == '__main__':
         sp2.set_xlabel('Strain (dL/L) [/]')
         sp2.set_ylabel('Stress (F/A) [Pa]')
 
-    # TODO: Add configuration set ups for each estimator
-    #           => Including the contact mask used
-    #           => And all other settings
-
+    # Define settings configuration for each estimator method
     naive_config = {
-
+        'contact_mask': None,
+        'use_mean': False,
+        'use_ellipse_mask': False,
+        'fit_mask_to_ellipse': True,
+        'use_lower_resolution_depth': True,
     }
     hertz_config = {
-        
+        'contact_mask': None,
+        'use_ellipse_mask': True, 
+        'fit_mask_to_ellipse': False,
+        'use_lower_resolution_depth': False,
     }
     MDR_config = {
-        
+        'contact_mask': None,
+        'use_ellipse_mask': True,
+        'fit_mask_to_ellipse': False,
+        'use_apparent_deformation': True,
+        'use_lower_resolution_depth': False,
+        'use_mean_radius': False
     }
-    stochastic_config = {
-        
-    }
-
+    stochastic_config = {}
 
     naive_estimates         = {}
     hertz_estimates         = {}
@@ -134,17 +140,35 @@ if __name__ == '__main__':
             estimator.interpolate_gripper_widths()
 
             # Fit using naive estimator
-            E_naive = estimator.fit_modulus_naive(use_mean=False, use_ellipse_mask=False, fit_mask_to_ellipse=True, use_lower_resolution_depth=True)
+            E_naive = estimator.fit_modulus_naive(
+                                    contact_mask=naive_config['contact_mask'],
+                                    use_mean=naive_config['use_mean'],
+                                    use_ellipse_mask=naive_config['use_ellipse_mask'],
+                                    fit_mask_to_ellipse=naive_config['fit_mask_to_ellipse'],
+                                    use_lower_resolution_depth=naive_config['use_lower_resolution_depth']
+                                )
             naive_estimates[object_name].append(E_naive)
             x_naive = estimator._x_data
             y_naive = estimator._y_data
 
             # Fit using Hertzian estimator
-            E_hertz = estimator.fit_modulus_naive()
+            E_hertz = estimator.fit_modulus_hertz(
+                                    contact_mask=hertz_config['contact_mask'],
+                                    use_ellipse_mask=hertz_config['use_ellipse_mask'],
+                                    fit_mask_to_ellipse=hertz_config['fit_mask_to_ellipse'],
+                                    use_lower_resolution_depth=hertz_config['use_lower_resolution_depth']
+                                )
             hertz_estimates[object_name].append(E_hertz)
 
             # Fit using MDR estimator
-            E_MDR = estimator.fit_modulus_naive()
+            E_MDR = estimator.fit_modulus_MDR(
+                                    contact_mask=MDR_config['contact_mask'],
+                                    use_ellipse_mask=MDR_config['use_ellipse_mask'],
+                                    fit_mask_to_ellipse=MDR_config['fit_mask_to_ellipse'],
+                                    use_apparent_deformation=MDR_config['use_apparent_deformation'],
+                                    use_lower_resolution_depth=MDR_config['use_lower_resolution_depth'],
+                                    use_mean_radius=MDR_config['use_mean_radius'],
+                                )
             MDR_estimates[object_name].append(E_MDR)
 
             # Fit using the stochastic estimator
