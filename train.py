@@ -456,6 +456,14 @@ class ModulusModel():
             csv_reader = csv.reader(file)
             next(csv_reader) # Skip title row
             for row in csv_reader:
+
+
+
+                if not (row[3] in ['Metal', 'Foam', 'Rubber', 'Glass']):
+                    continue
+
+
+
                 if row[csv_modulus_column] != '':
                     object_to_modulus[row[1]] = float(row[csv_modulus_column])
 
@@ -513,8 +521,12 @@ class ModulusModel():
 
     def _train_epoch(self):
         self.video_encoder.train()
-        self.force_encoder.train()
-        self.width_encoder.train()
+        if self.use_force:
+            self.force_encoder.train()
+        if self.use_width:
+            self.width_encoder.train()
+        if self.use_estimation:
+            self.estimation_encoder.train()
         self.decoder.train()
 
         train_loss, batch_count = 0, 0
@@ -542,12 +554,15 @@ class ModulusModel():
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             loss.backward()
             self.optimizer.step()
-            
-            if self.gamma is not None:
-                self.scheduler.step()
 
             train_loss += loss.item()
             batch_count += 1
+
+        # Increment learning rate
+        for param_group in self.optimizer.param_groups:
+            print('Learning Rate:', param_group['lr'])
+        if self.gamma is not None:
+            self.scheduler.step()
 
         # Return loss
         train_loss /= (self.batch_size * batch_count)
@@ -556,8 +571,12 @@ class ModulusModel():
 
     def _val_epoch(self):
         self.video_encoder.eval()
-        self.force_encoder.eval()
-        self.width_encoder.eval()
+        if self.use_force:
+            self.force_encoder.eval()
+        if self.use_width:
+            self.width_encoder.eval()
+        if self.use_estimation:
+            self.estimation_encoder.eval()
         self.decoder.eval()
 
         val_loss, val_log_acc, batch_count = 0, 0, 0
@@ -653,8 +672,8 @@ if __name__ == "__main__":
         'img_size': WARPED_CROPPED_IMG_SIZE,
         'img_style': 'diff',
         'use_markers': True,
-        'use_force': True,
-        'use_width': True,
+        'use_force': False,
+        'use_width': False,
         'use_estimation': False,
         'use_transformations': False,
         'exclude': ['playdoh', 'silly_putty', 'racquetball', 'blue_sponge_dry', 'blue_sponge_wet',
