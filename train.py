@@ -708,7 +708,7 @@ class ModulusModel():
                     "train_loss": train_loss,
                     "val_loss": val_loss,
                     "val_avg_diff": val_avg_diff,
-                    "val_avg_scaling_err": np.log10(val_avg_log_diff),
+                    "val_avg_scaling_err": 10**(val_avg_log_diff),
                     "val_avg_log_diff": val_avg_log_diff,
                     "val_log_accuracy": val_log_acc,
                 })
