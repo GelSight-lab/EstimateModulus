@@ -1,6 +1,7 @@
 import os
 import pickle
 import csv
+import json
 import numpy as np
 
 import torch
@@ -17,7 +18,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -328,6 +329,8 @@ class CustomDataset(Dataset):
 
 class ModulusModel():
     def __init__(self, config, device=None):
+        self.config = config
+
         # Use GPU by default
         if device is None:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -615,10 +618,21 @@ class ModulusModel():
         model_dir = './model'
         if not os.path.exists(model_dir):
             os.mkdir(model_dir)
+        else:
+            if os.path.exists(f'{model_dir}/config.json'): os.remove(f'{model_dir}/config.json')
+            if os.path.exists(f'{model_dir}/video_encoder.pth'): os.remove(f'{model_dir}/video_encoder.pth')
+            if os.path.exists(f'{model_dir}/force_encoder.pth'): os.remove(f'{model_dir}/force_encoder.pth')
+            if os.path.exists(f'{model_dir}/width_encoder.pth'): os.remove(f'{model_dir}/width_encoder.pth')
+            if os.path.exists(f'{model_dir}/estimation_encoder.pth'): os.remove(f'{model_dir}/estimation_encoder.pth')
+            if os.path.exists(f'{model_dir}/decoder.pth'): os.remove(f'{model_dir}/decoder.pth')
+
+        # Save configuration dictionary and all files for the model(s)
+        with open(f'{model_dir}/config.json', 'w') as json_file:
+            json.dump(self.config, json_file)
         torch.save(self.video_encoder.state_dict(), f'{model_dir}/video_encoder.pth')
-        torch.save(self.force_encoder.state_dict(), f'{model_dir}/force_encoder.pth')
-        torch.save(self.width_encoder.state_dict(), f'{model_dir}/width_encoder.pth')
-        torch.save(self.estimation_encoder.state_dict(), f'{model_dir}/estimation_encoder.pth')
+        if self.use_force: torch.save(self.force_encoder.state_dict(), f'{model_dir}/force_encoder.pth')
+        if self.use_width: torch.save(self.width_encoder.state_dict(), f'{model_dir}/width_encoder.pth')
+        if self.use_estimation: torch.save(self.estimation_encoder.state_dict(), f'{model_dir}/estimation_encoder.pth')
         torch.save(self.decoder.state_dict(), f'{model_dir}/decoder.pth')
         return
 
