@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -794,7 +794,8 @@ if __name__ == "__main__":
 
     if config['use_estimation']: raise NotImplementedError()
 
-    for i in range(3):
-        # Train the model over some data
-        train_modulus = ModulusModel(config, device=device)
-        train_modulus.train()
+    # for i in range(3):
+
+    # Train the model over some data
+    train_modulus = ModulusModel(config, device=device)
+    train_modulus.train()
