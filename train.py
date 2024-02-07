@@ -758,7 +758,7 @@ if __name__ == "__main__":
         'run_name': 'Diff_F64_W64_Transforms_Markers',
 
         # Training and model parameters
-        'epochs'         : 150,
+        'epochs'         : 100,
         'batch_size'     : 32,
         'feature_size'   : 512,
         'val_pct'        : 0.2,
