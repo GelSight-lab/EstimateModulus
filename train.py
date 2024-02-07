@@ -599,7 +599,7 @@ class ModulusModel():
             batch_count += 1
 
         # Return loss
-        train_loss /= self.batch_size
+        train_loss /= (self.batch_size * batch_count)
 
         return train_loss
 
@@ -614,7 +614,7 @@ class ModulusModel():
         self.decoder.eval()
 
         val_loss, val_log_acc, val_avg_diff, val_avg_log_diff, pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0, 0
-        for x_frames, x_forces, x_widths, x_estimations, y in self.train_loader:
+        for x_frames, x_forces, x_widths, x_estimations, y in self.val_loader:
 
             # Concatenate features across frames into a single vector
             features = []
@@ -633,18 +633,19 @@ class ModulusModel():
 
             # Send aggregated features to the FC decoder
             outputs = self.decoder(features)
+
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             val_loss += loss.item()
+            batch_count += 1
 
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
             val_log_acc += (abs_log_diff <= 0.5).sum().item()
             val_avg_diff += torch.abs(self.log_unnormalize(outputs) - self.log_unnormalize(y)).sum().item()
             val_avg_log_diff += abs_log_diff.sum().item()
             pct_with_100_factor_err += (abs_log_diff >= 2).sum().item() 
-            batch_count += 1
         
         # Return loss and accuracy
-        val_loss /= self.batch_size
+        val_loss /= (self.batch_size * batch_count)
         val_log_acc /= (self.batch_size * batch_count)
         val_avg_diff /= (self.batch_size * batch_count)
         val_avg_log_diff /= (self.batch_size * batch_count)
