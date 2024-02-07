@@ -128,7 +128,7 @@ class EstimateModulus():
         # Estimated from Shore 00 hardness:
         #     "https://www.dow.com/content/dam/dcc/documents/en-us/tech-art/11/11-37/11-3716-01-durometer-hardness-for-silicones.pdf"
         self.shore_00_hardness = 60 # From durometer measurement
-        self.E_gel = 275000 # N/m^2
+        self.E_gel = 150000 # N/m^2
         self.nu_gel = 0.485 # [\]
         self.gel_width = 0.035 # [m]
         self.gel_depth = 0.0055 # [m] (slightly adjusted because of depth inaccuracies)
@@ -513,7 +513,7 @@ class EstimateModulus():
         self._d = np.array(d)
 
         E_agg = self.linear_coeff_fit(x_data, y_data)
-        E = (1/E_agg - 1/self.E_gel)**(-1)
+        E = (1/E_agg - 1/(10*self.E_gel))**(-1)
 
         return E
     

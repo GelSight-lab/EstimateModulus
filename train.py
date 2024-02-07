@@ -755,9 +755,9 @@ if __name__ == "__main__":
         'batch_size'     : 32,
         'feature_size'   : 512,
         'val_pct'        : 0.2,
-        'learning_rate'  : 1e-5,
+        'learning_rate'  : 1e-6,
         'gamma'          : 0.5,
-        'lr_step_size'   : 50,
+        'lr_step_size'   : 30,
         'random_state'   : 40,
     }
     assert config['img_style'] in ['diff', 'depth']

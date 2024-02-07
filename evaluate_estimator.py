@@ -17,7 +17,7 @@ contact_force       = ContactForce()
 gripper_width       = GripperWidth()
 grasp_data          = GraspData(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width, use_gripper_width=True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data'
 
 USE_MARKER_FINGER = False
 PLOT = False
@@ -110,7 +110,7 @@ if __name__ == '__main__':
     MDR_estimates           = {}
     stochastic_estimates    = {}
 
-    objects = sorted(os.listdir('./data'))
+    objects = sorted(os.listdir(f'{DATA_DIR}/raw_data'))
     for object_name in objects:
         if PLOT: plotting_color = random_hex_color()
 
@@ -130,7 +130,7 @@ if __name__ == '__main__':
             # Load data into estimator
             grasp_data._reset_data()
             estimator = EstimateModulus(grasp_data=grasp_data, use_gripper_width=True, use_other_video=USE_MARKER_FINGER)
-            estimator.load_from_file(f"./data/{object_name}/{os.path.splitext(file_name)[0]}", auto_clip=False)
+            estimator.load_from_file(f"{DATA_DIR}/raw_data/{object_name}/{os.path.splitext(file_name)[0]}", auto_clip=False)
 
             # Clip to loading sequence
             estimator.clip_to_press()
@@ -151,6 +151,9 @@ if __name__ == '__main__':
             x_naive = estimator._x_data
             y_naive = estimator._y_data
 
+            if E_naive < 0:
+                print('Negative modulus!')
+
             # Fit using Hertzian estimator
             E_hertz = estimator.fit_modulus_hertz(
                                     contact_mask=hertz_config['contact_mask'],
@@ -170,6 +173,9 @@ if __name__ == '__main__':
                                     use_mean_radius=MDR_config['use_mean_radius'],
                                 )
             MDR_estimates[object_name].append(E_MDR)
+
+            if E_MDR < 0:
+                print('Negative modulus!')
 
             # Fit using the stochastic estimator
             E_stochastic = estimator.fit_modulus_stochastic()
