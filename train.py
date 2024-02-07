@@ -202,8 +202,6 @@ class EncoderCNN(nn.Module):
             self.CNN_embed_dim
         )  # Output = CNN embedding latent variables
 
-
-
         # self.fc2 = nn.Linear(
         #     self.fc_hidden1,
         #     self.fc_hidden2
@@ -231,7 +229,6 @@ class EncoderCNN(nn.Module):
         # x = F.silu(x)
         # x = self.drop(x)
         # x = self.fc3(x) # CNN embedding
-        x = torch.sigmoid(x)
         return x
 
 
@@ -268,7 +265,6 @@ class DecoderFC(nn.Module):
         x = F.tanh(x)
         x = self.drop(x)
         x = self.fc4(x)
-        x = torch.sigmoid(x)
         return x
  
 
@@ -286,7 +282,6 @@ class ForceFC(nn.Module):
         x = self.fc1(x)
         x = F.silu(x)
         x = self.fc2(x)
-        x = torch.sigmoid(x)
         return x
     
  
@@ -304,7 +299,6 @@ class WidthFC(nn.Module):
         x = self.fc1(x)
         x = F.silu(x)
         x = self.fc2(x)
-        x = torch.sigmoid(x)
         return x
  
 
@@ -322,7 +316,6 @@ class EstimationFC(nn.Module):
         x = self.fc1(x)
         x = F.silu(x)
         x = self.fc2(x)
-        x = torch.sigmoid(x)
         return x
 
 
@@ -853,12 +846,12 @@ if __name__ == "__main__":
         'use_force': True,
         'use_width': True,
         'use_estimation': False,
-        'use_transformations': False,
+        'use_transformations': True,
         'exclude': ['playdoh', 'silly_putty', 'racquetball', 'blue_sponge_dry', 'blue_sponge_wet'],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'AllActivations_Diff128_F16_W16_NoTransforms_Markers',
+        'run_name': 'Diff128_F16_W16_NoTransforms_Markers',
 
         # Training and model parameters
         'epochs'            : 100,
