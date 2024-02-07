@@ -128,10 +128,10 @@ class EncoderCNN(nn.Module):
         ) # Fully connected layer, output k classes
         self.fc2 = nn.Linear(
             self.fc_hidden1,
-            self.CNN_embed_dim
+            self.fc_hidden2
         ) # Output = CNN embedding latent variables
         self.fc3 = nn.Linear(
-            self.CNN_embed_dim,
+            self.fc_hidden2,
             self.CNN_embed_dim
         ) # Output = CNN embedding latent variables
 
@@ -153,14 +153,13 @@ class EncoderCNN(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x) # CNN embedding
-        x = torch.sigmoid(x)
         return x
 
 
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[512, 512, 256],
+                FC_layer_nodes=[1024, 512, 512, 256],
                 drop_p=0.5,
                 output_dim=6):
         super(DecoderFC, self).__init__()
@@ -175,7 +174,8 @@ class DecoderFC(nn.Module):
         self.fc1 = nn.Linear(self.FC_input_size, self.FC_layer_nodes[0])
         self.fc2 = nn.Linear(self.FC_layer_nodes[0], self.FC_layer_nodes[1])
         self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
-        self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.output_dim)
+        self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.FC_layer_nodes[3])
+        self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.output_dim)
         self.drop = nn.Dropout(self.drop_p)
 
     def forward(self, x):
@@ -191,11 +191,15 @@ class DecoderFC(nn.Module):
         x = self.drop(x)
         x = self.fc4(x)
         x = F.silu(x)
+        x = self.drop(x)
+        x = self.fc5(x)
+        x = F.silu(x)
+        x = torch.sigmoid(x)
         return x
  
 
 class ForceFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim=16):
+    def __init__(self, hidden_size=64, output_dim=64):
         super(ForceFC, self).__init__()
 
         self.hidden_size = hidden_size
@@ -211,7 +215,7 @@ class ForceFC(nn.Module):
     
  
 class WidthFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim=16):
+    def __init__(self, hidden_size=64, output_dim=64):
         super(WidthFC, self).__init__()
 
         self.hidden_size = hidden_size
@@ -227,7 +231,7 @@ class WidthFC(nn.Module):
  
 
 class EstimationFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim=16):
+    def __init__(self, hidden_size=64, output_dim=64):
         super(EstimationFC, self).__init__()
 
         self.hidden_size = hidden_size
@@ -359,7 +363,9 @@ class ModulusModel():
         self.use_estimation         = config['use_estimation']
         self.use_transformations    = config['use_transformations']
         self.exclude                = config['exclude']
+        
         self.use_wandb              = config['use_wandb']
+        self.run_name              = config['run_name']
 
         # Create max values for scaling
         self.normalization_values = { # Based on acquired data maximums
@@ -430,7 +436,7 @@ class ModulusModel():
             wandb.init(
                 # Set the wandb project where this run will be logged
                 project="TrainModulus",
-                name=self.config['run_name'],
+                name=self.run_name,
                 
                 # Track hyperparameters and run metadata
                 config={
@@ -657,22 +663,24 @@ class ModulusModel():
         model_dir = './model'
         if not os.path.exists(model_dir):
             os.mkdir(model_dir)
+        if not os.path.exists(f'{model_dir}/{self.run_name}'):
+            os.mkdir(f'{model_dir}/{self.run_name}')
         else:
-            if os.path.exists(f'{model_dir}/config.json'): os.remove(f'{model_dir}/config.json')
-            if os.path.exists(f'{model_dir}/video_encoder.pth'): os.remove(f'{model_dir}/video_encoder.pth')
-            if os.path.exists(f'{model_dir}/force_encoder.pth'): os.remove(f'{model_dir}/force_encoder.pth')
-            if os.path.exists(f'{model_dir}/width_encoder.pth'): os.remove(f'{model_dir}/width_encoder.pth')
-            if os.path.exists(f'{model_dir}/estimation_encoder.pth'): os.remove(f'{model_dir}/estimation_encoder.pth')
-            if os.path.exists(f'{model_dir}/decoder.pth'): os.remove(f'{model_dir}/decoder.pth')
+            if os.path.exists(f'{model_dir}/{self.run_name}/config.json'): os.remove(f'{model_dir}/config.json')
+            if os.path.exists(f'{model_dir}/{self.run_name}/video_encoder.pth'): os.remove(f'{model_dir}/video_encoder.pth')
+            if os.path.exists(f'{model_dir}/{self.run_name}/force_encoder.pth'): os.remove(f'{model_dir}/force_encoder.pth')
+            if os.path.exists(f'{model_dir}/{self.run_name}/width_encoder.pth'): os.remove(f'{model_dir}/width_encoder.pth')
+            if os.path.exists(f'{model_dir}/{self.run_name}/estimation_encoder.pth'): os.remove(f'{model_dir}/estimation_encoder.pth')
+            if os.path.exists(f'{model_dir}/{self.run_name}/decoder.pth'): os.remove(f'{model_dir}/decoder.pth')
 
         # Save configuration dictionary and all files for the model(s)
-        with open(f'{model_dir}/config.json', 'w') as json_file:
+        with open(f'{model_dir}/{self.run_name}/config.json', 'w') as json_file:
             json.dump(self.config, json_file)
-        torch.save(self.video_encoder.state_dict(), f'{model_dir}/video_encoder.pth')
-        if self.use_force: torch.save(self.force_encoder.state_dict(), f'{model_dir}/force_encoder.pth')
-        if self.use_width: torch.save(self.width_encoder.state_dict(), f'{model_dir}/width_encoder.pth')
-        if self.use_estimation: torch.save(self.estimation_encoder.state_dict(), f'{model_dir}/estimation_encoder.pth')
-        torch.save(self.decoder.state_dict(), f'{model_dir}/decoder.pth')
+        torch.save(self.video_encoder.state_dict(), f'{model_dir}/{self.run_name}/video_encoder.pth')
+        if self.use_force: torch.save(self.force_encoder.state_dict(), f'{model_dir}/{self.run_name}/force_encoder.pth')
+        if self.use_width: torch.save(self.width_encoder.state_dict(), f'{model_dir}/{self.run_name}/width_encoder.pth')
+        if self.use_estimation: torch.save(self.estimation_encoder.state_dict(), f'{model_dir}/{self.run_name}/estimation_encoder.pth')
+        torch.save(self.decoder.state_dict(), f'{model_dir}/{self.run_name}/decoder.pth')
         return
 
     def train(self):
@@ -742,13 +750,12 @@ if __name__ == "__main__":
         'use_force': True,
         'use_width': True,
         'use_estimation': False,
-        'use_transformations': False,
-        'exclude': ['playdoh', 'silly_putty', 'racquetball', 'blue_sponge_dry', 'blue_sponge_wet',
-                    'blue_foam_brick', 'green_foam_brick', 'red_foam_brick', 'yellow_foam_brick'],
+        'use_transformations': True,
+        'exclude': ['playdoh', 'silly_putty', 'racquetball', 'blue_sponge_dry', 'blue_sponge_wet'],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Diff_F_W_NoTransforms_Markers',
+        'run_name': 'Diff_F64_W64_Transforms_Markers',
 
         # Training and model parameters
         'epochs'         : 150,
@@ -765,33 +772,7 @@ if __name__ == "__main__":
 
     if config['use_estimation']: raise NotImplementedError()
 
-
-    SETUPS = ["Diff_F_W_NoTransforms_Markers", "Diff_F_NoTransforms_Markers", "Diff_F_W_Transforms_Markers", "Diff_F_NoTransforms_NoMarkers", "Depth_F_W_Transforms", "Depth_F_W_NoTransforms"]
-
-    for setup in SETUPS:
-
-        this_setup_config = config.copy()
-        if setup == "Diff_F_W_NoTransforms_Markers":
-            pass
-        elif setup == "Diff_F_NoTransforms_Markers":
-            this_setup_config['use_width'] = False
-        elif setup == "Diff_F_W_Transforms_Markers":
-            this_setup_config['use_transformations'] = True
-        elif setup == "Diff_F_NoTransforms_NoMarkers":
-            this_setup_config['use_markers'] = False
-        elif setup == "Depth_F_W_Transforms":
-            this_setup_config['img_style'] = 'depth'
-            this_setup_config['n_channels'] = 1
-            this_setup_config['use_markers'] = False
-            this_setup_config['use_transformations'] = True
-        elif setup == "Depth_F_W_NoTransforms":
-            this_setup_config['img_style'] = 'depth'
-            this_setup_config['n_channels'] = 1
-            this_setup_config['use_markers'] = False
-
-        for i in range(2):
-            this_setup_config['run_name'] = f'{setup}_t={str(i)}'
-
-            # Train the model over some data
-            train_modulus = ModulusModel(this_setup_config, device=device)
-            train_modulus.train()
+    for i in range(3):
+        # Train the model over some data
+        train_modulus = ModulusModel(config, device=device)
+        train_modulus.train()

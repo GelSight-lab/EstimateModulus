@@ -1,5 +1,6 @@
 import os
 import csv
+import json
 from tactile_estimate import *
 
 def random_hex_color():
@@ -86,21 +87,21 @@ if __name__ == '__main__':
         'contact_mask': None,
         'use_mean': False,
         'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': True,
+        'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': True,
     }
     hertz_config = {
         'contact_mask': None,
-        'use_ellipse_mask': True, 
+        'use_ellipse_mask': False, 
         'fit_mask_to_ellipse': False,
-        'use_lower_resolution_depth': False,
+        'use_lower_resolution_depth': True,
     }
     MDR_config = {
         'contact_mask': None,
-        'use_ellipse_mask': True,
+        'use_ellipse_mask': False,
         'fit_mask_to_ellipse': False,
         'use_apparent_deformation': True,
-        'use_lower_resolution_depth': False,
+        'use_lower_resolution_depth': True,
         'use_mean_radius': False
     }
     stochastic_config = {}
@@ -109,6 +110,11 @@ if __name__ == '__main__':
     hertz_estimates         = {}
     MDR_estimates           = {}
     stochastic_estimates    = {}
+
+    max_depths = {}
+    skipped_files = []
+
+    estimator = EstimateModulus(grasp_data=grasp_data, use_gripper_width=True, use_other_video=USE_MARKER_FINGER)
 
     objects = sorted(os.listdir(f'{DATA_DIR}/raw_data'))
     for object_name in objects:
@@ -128,13 +134,22 @@ if __name__ == '__main__':
             print(f'Working on {os.path.splitext(file_name)[0]}...')
 
             # Load data into estimator
-            grasp_data._reset_data()
-            estimator = EstimateModulus(grasp_data=grasp_data, use_gripper_width=True, use_other_video=USE_MARKER_FINGER)
+            estimator._reset_data()
             estimator.load_from_file(f"{DATA_DIR}/raw_data/{object_name}/{os.path.splitext(file_name)[0]}", auto_clip=False)
 
             # Clip to loading sequence
             estimator.clip_to_press()
             assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
+
+            # Save maximum depths
+            max_depths[os.path.splitext(file_name)[0]] = (np.argmax(estimator.max_depths()), estimator.max_depths().max(), -1, estimator.max_depths()[-1])
+
+            # Skip those with shallow depths
+            if estimator.max_depths().max() <= 10*estimator.depth_threshold:
+                skipped_files.append(os.path.splitext(file_name)[0])
+                print('Skipped.')
+                print('\n')
+                continue
 
             # Remove stagnant gripper values across measurement frames
             estimator.interpolate_gripper_widths()
@@ -202,6 +217,9 @@ if __name__ == '__main__':
     hertz_scaling       = scale_predictions(hertz_estimates, object_to_modulus)
     MDR_scaling         = scale_predictions(MDR_estimates, object_to_modulus)
     stochastic_scaling  = scale_predictions(stochastic_estimates, object_to_modulus)
+    
+    with open('./max_depths.json', 'w') as json_file:
+        json.dump(max_depths, json_file)
 
     # Compute average loss / average log difference / log accuracy for each
     print('NAIVE CONFIG:\n', naive_config)
