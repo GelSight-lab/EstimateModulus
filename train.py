@@ -89,7 +89,7 @@ class EncoderCNN(nn.Module):
                       kernel_size=self.k1,
                       stride=self.s1,
                       padding=self.pd1),
-            nn.BatchNorm2d(self.ch1, momentum=0.01),
+            nn.BatchNorm2d(self.ch1),
             nn.SiLU(inplace=True),
         )
         self.conv2 = nn.Sequential(
@@ -98,7 +98,7 @@ class EncoderCNN(nn.Module):
                       kernel_size=self.k2,
                       stride=self.s2,
                       padding=self.pd2),
-            nn.BatchNorm2d(self.ch2, momentum=0.01),
+            nn.BatchNorm2d(self.ch2),
             nn.SiLU(inplace=True),
         )
         self.conv3 = nn.Sequential(
@@ -107,7 +107,7 @@ class EncoderCNN(nn.Module):
                       kernel_size=self.k3,
                       stride=self.s3,
                       padding=self.pd3),
-            nn.BatchNorm2d(self.ch3, momentum=0.01),
+            nn.BatchNorm2d(self.ch3),
             nn.SiLU(inplace=True),
         )
         self.conv4 = nn.Sequential(
@@ -116,7 +116,7 @@ class EncoderCNN(nn.Module):
                       kernel_size=self.k4,
                       stride=self.s4,
                       padding=self.pd4),
-            nn.BatchNorm2d(self.ch4, momentum=0.01),
+            nn.BatchNorm2d(self.ch4),
             nn.SiLU(inplace=True),
         )
 
@@ -759,11 +759,11 @@ if __name__ == "__main__":
         'run_name': 'Diff_F64_W64_Transforms_Markers',
 
         # Training and model parameters
-        'epochs'         : 100,
+        'epochs'         : 60,
         'batch_size'     : 32,
         'feature_size'   : 512,
         'val_pct'        : 0.2,
-        'learning_rate'  : 1e-5,
+        'learning_rate'  : 5e-6,
         'gamma'          : 0.5,
         'lr_step_size'   : 30,
         'random_state'   : 40,

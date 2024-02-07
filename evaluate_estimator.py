@@ -19,6 +19,7 @@ gripper_width       = GripperWidth()
 grasp_data          = GraspData(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width, use_gripper_width=True)
 
 DATA_DIR = './data'
+RUN_NAME = 'THRESHOLD'
 
 USE_MARKER_FINGER = False
 PLOT = False
@@ -166,7 +167,7 @@ if __name__ == '__main__':
             x_naive = estimator._x_data
             y_naive = estimator._y_data
 
-            if E_naive < 0:
+            if not (E_naive > 0):
                 print('Negative modulus!')
 
             # Fit using Hertzian estimator
@@ -218,19 +219,54 @@ if __name__ == '__main__':
     MDR_scaling         = scale_predictions(MDR_estimates, object_to_modulus)
     stochastic_scaling  = scale_predictions(stochastic_estimates, object_to_modulus)
     
-    with open('./max_depths.json', 'w') as json_file:
+    with open(f'{DATA_DIR}/evaluate_estimator/max_depths.json', 'w') as json_file:
         json.dump(max_depths, json_file)
 
     # Compute average loss / average log difference / log accuracy for each
-    print('NAIVE CONFIG:\n', naive_config)
-    print('NAIVE METHOD:\n', compute_estimation_stats(naive_estimates, object_to_modulus), '\n')
-    print('HERTZ CONFIG:\n', hertz_config)
-    print('HERTZ METHOD:\n', compute_estimation_stats(hertz_estimates, object_to_modulus), '\n')
-    print('MDR CONFIG:\n', MDR_config)
-    print('MDR METHOD:\n', compute_estimation_stats(MDR_estimates, object_to_modulus), '\n')
-    print('STOCHASTIC CONFIG:\n', stochastic_config)
-    print('STOCHASTIC METHOD:\n', compute_estimation_stats(stochastic_estimates, object_to_modulus), '\n')
+    naive_stats         = compute_estimation_stats(naive_estimates, object_to_modulus)
+    hertz_stats         = compute_estimation_stats(hertz_estimates, object_to_modulus)
+    MDR_stats           = compute_estimation_stats(MDR_estimates, object_to_modulus)
+    stochastic_stats    = compute_estimation_stats(stochastic_estimates, object_to_modulus)
 
+    print('NAIVE CONFIG:\n', naive_config)
+    print('NAIVE METHOD:\n', naive_stats, '\n')
+    print('HERTZ CONFIG:\n', hertz_config)
+    print('HERTZ METHOD:\n', hertz_stats, '\n')
+    print('MDR CONFIG:\n', MDR_config)
+    print('MDR METHOD:\n', MDR_stats, '\n')
+    print('STOCHASTIC CONFIG:\n', stochastic_config)
+    print('STOCHASTIC METHOD:\n', stochastic_stats, '\n')
+
+    # Create path to save all generate data in
+    if not os.path.exists(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}'):
+        os.mkdir(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}')
+
+    # Save run data for each method
+    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/naive_config.json', 'w') as json_file:
+        json.dump(naive_config, json_file)
+    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/naive_estimates.json', 'w') as json_file:
+        json.dump(naive_estimates, json_file)
+    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/naive_stats.json', 'w') as json_file:
+        json.dump(naive_stats, json_file)
+    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/hertz_config.json', 'w') as json_file:
+        json.dump(hertz_config, json_file)
+    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/hertz_estimates.json', 'w') as json_file:
+        json.dump(hertz_estimates, json_file)
+    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/hertz_stats.json', 'w') as json_file:
+        json.dump(hertz_stats, json_file)
+    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/MDR_config.json', 'w') as json_file:
+        json.dump(MDR_config, json_file)
+    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/MDR_estimates.json', 'w') as json_file:
+        json.dump(MDR_estimates, json_file)
+    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/MDR_stats.json', 'w') as json_file:
+        json.dump(MDR_stats, json_file)
+    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/stochastic_config.json', 'w') as json_file:
+        json.dump(stochastic_config, json_file)
+    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/stochastic_estimates.json', 'w') as json_file:
+        json.dump(stochastic_estimates, json_file)
+    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/stochastic_stats.json', 'w') as json_file:
+        json.dump(stochastic_stats, json_file)
+        
     if PLOT:
         fig1.legend()
         fig1.set_figwidth(10)

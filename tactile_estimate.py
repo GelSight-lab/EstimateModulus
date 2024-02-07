@@ -1,5 +1,6 @@
 import os
 import cv2
+import math
 import colorsys
 import random
 import webcolors
@@ -450,6 +451,9 @@ class EstimateModulus():
 
         # Fit to modulus
         E = self.linear_coeff_fit(x_data, y_data)
+
+        if math.isnan(E) or E <= 0:
+            print('Bad prediction!')
 
         return E
     
