@@ -858,7 +858,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Diff128_F16_W16_NoTransforms_Markers',
+        'run_name': 'AllActivations_Diff128_F16_W16_NoTransforms_Markers',
 
         # Training and model parameters
         'epochs'            : 100,
