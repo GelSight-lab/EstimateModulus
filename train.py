@@ -170,7 +170,7 @@ class DecoderFC(nn.Module):
         self.output_dim = output_dim
 
         assert len(FC_layer_nodes) == 4
-        
+
         self.fc1 = nn.Linear(self.FC_input_size, self.FC_layer_nodes[0])
         self.fc2 = nn.Linear(self.FC_layer_nodes[0], self.FC_layer_nodes[1])
         self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
@@ -666,12 +666,18 @@ class ModulusModel():
         if not os.path.exists(f'{model_dir}/{self.run_name}'):
             os.mkdir(f'{model_dir}/{self.run_name}')
         else:
-            if os.path.exists(f'{model_dir}/{self.run_name}/config.json'): os.remove(f'{model_dir}/config.json')
-            if os.path.exists(f'{model_dir}/{self.run_name}/video_encoder.pth'): os.remove(f'{model_dir}/video_encoder.pth')
-            if os.path.exists(f'{model_dir}/{self.run_name}/force_encoder.pth'): os.remove(f'{model_dir}/force_encoder.pth')
-            if os.path.exists(f'{model_dir}/{self.run_name}/width_encoder.pth'): os.remove(f'{model_dir}/width_encoder.pth')
-            if os.path.exists(f'{model_dir}/{self.run_name}/estimation_encoder.pth'): os.remove(f'{model_dir}/estimation_encoder.pth')
-            if os.path.exists(f'{model_dir}/{self.run_name}/decoder.pth'): os.remove(f'{model_dir}/decoder.pth')
+            if os.path.exists(f'{model_dir}/{self.run_name}/config.json'):
+                os.remove(f'{model_dir}/{self.run_name}/config.json')
+            if os.path.exists(f'{model_dir}/{self.run_name}/video_encoder.pth'):
+                os.remove(f'{model_dir}/{self.run_name}/video_encoder.pth')
+            if os.path.exists(f'{model_dir}/{self.run_name}/force_encoder.pth'):
+                os.remove(f'{model_dir}/{self.run_name}/force_encoder.pth')
+            if os.path.exists(f'{model_dir}/{self.run_name}/width_encoder.pth'):
+                os.remove(f'{model_dir}/{self.run_name}/width_encoder.pth')
+            if os.path.exists(f'{model_dir}/{self.run_name}/estimation_encoder.pth'):
+                os.remove(f'{model_dir}/{self.run_name}/estimation_encoder.pth')
+            if os.path.exists(f'{model_dir}/{self.run_name}/decoder.pth'):
+                os.remove(f'{model_dir}/{self.run_name}/decoder.pth')
 
         # Save configuration dictionary and all files for the model(s)
         with open(f'{model_dir}/{self.run_name}/config.json', 'w') as json_file:
