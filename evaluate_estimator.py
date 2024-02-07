@@ -53,7 +53,7 @@ def compute_estimation_stats(prediction_dict, linear_scaling, label_dict):
     return {
         'avg_loss': loss.mean(),
         'avg_log_diff': log_diff.mean(),
-        'log_accuracy': np.sum(log_diff < 1.0),
+        'log_accuracy': np.sum(log_diff < 0.5),
     }
 
 if __name__ == '__main__':

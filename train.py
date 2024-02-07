@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -27,7 +27,7 @@ def list_files(folder_path, file_paths, config):
     # Iterate through the list
     for item in os.listdir(folder_path):
         item_path = f'{folder_path}/{item}'
-        marker_signal = '_other' if config['use_markers'] else '.avi'
+        marker_signal = '_other' if config['use_markers'] else '.pkl'
         if os.path.isfile(item_path) and item.count(config['img_style']) > 0 and item.count(marker_signal) > 0:
             file_paths.append(item_path)
         elif os.path.isdir(item_path):
@@ -303,8 +303,10 @@ class CustomDataset(Dataset):
 
         # Read and store frames in the tensor
         with open(self.input_paths[idx], 'rb') as file:
-            self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
-            if self.img_style == 'depth':
+            if self.img_style == 'diff':
+                self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
+            elif self.img_style == 'depth':
+                self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
                 self.x_frames /= self.normalization_values['max_depth']
 
         # Flip the data horizontally if desired
@@ -421,16 +423,21 @@ class ModulusModel():
         if self.gamma is not None:
             self.scheduler  = lr_scheduler.StepLR(self.optimizer, step_size=self.lr_step_size, gamma=self.gamma)
 
+        # Load data
+        self._load_data_paths()
+
         if self.use_wandb:
             wandb.init(
                 # Set the wandb project where this run will be logged
                 project="TrainModulus",
-                name="ALL_DATA__NO_TRANSFORMS",
+                name=self.config['run_name'],
                 
                 # Track hyperparameters and run metadata
                 config={
                     "epochs": self.epochs,
                     "batch_size": self.batch_size,
+                    "training_inputs": len(self.train_loader) * self.batch_size,
+                    "val_inputs": len(self.val_loader) * self.batch_size,
                     "n_frames": self.n_frames,
                     "n_channels": self.n_channels,
                     "img_size": self.img_size,
@@ -464,9 +471,6 @@ class ModulusModel():
                 "memory_allocated": self.memory_allocated,
                 "memory_reserved": self.memory_cached,
             })
-
-        # Load data
-        self._load_data_paths()
 
         return
     
@@ -509,7 +513,7 @@ class ModulusModel():
 
         # Get all the paths to grasp data within directory
         paths_to_files = []
-        list_files(f'{self.data_dir}/{training_data_folder_name}', paths_to_files, config)
+        list_files(f'{self.data_dir}/{training_data_folder_name}', paths_to_files, self.config)
 
         # Divide paths up into training and validation data
         x_train, x_val = [], []
@@ -537,14 +541,14 @@ class ModulusModel():
     
         # Construct datasets
         kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
-        self.train_dataset  = CustomDataset(config, x_train, y_train, 
+        self.train_dataset  = CustomDataset(self.config, x_train, y_train, 
                                             self.normalization_values,
                                             frame_tensor=empty_frame_tensor, 
                                             force_tensor=empty_force_tensor,
                                             width_tensor=empty_width_tensor,
                                             estimation_tensor=empty_estimation_tensor,
                                             label_tensor=empty_label_tensor)
-        self.val_dataset    = CustomDataset(config, x_val, y_val, 
+        self.val_dataset    = CustomDataset(self.config, x_val, y_val, 
                                             self.normalization_values,
                                             frame_tensor=empty_frame_tensor, 
                                             force_tensor=empty_force_tensor,
@@ -609,7 +613,7 @@ class ModulusModel():
             self.estimation_encoder.eval()
         self.decoder.eval()
 
-        val_loss, val_log_acc, val_avg_diff, val_avg_log_diff, batch_count = 0, 0, 0, 0, 0
+        val_loss, val_log_acc, val_avg_diff, val_avg_log_diff, pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0, 0
         for x_frames, x_forces, x_widths, x_estimations, y in self.train_loader:
 
             # Concatenate features across frames into a single vector
@@ -629,12 +633,14 @@ class ModulusModel():
 
             # Send aggregated features to the FC decoder
             outputs = self.decoder(features)
-
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             val_loss += loss.item()
-            val_log_acc += (torch.round(torch.log10(self.log_unnormalize(outputs))) == torch.round(torch.log10(self.log_unnormalize(y)))).sum().item()
+
+            abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
+            val_log_acc += (abs_log_diff <= 0.5).sum().item()
             val_avg_diff += torch.abs(self.log_unnormalize(outputs) - self.log_unnormalize(y)).sum().item()
-            val_avg_log_diff += torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y))).sum().item()
+            val_avg_log_diff += abs_log_diff.sum().item()
+            pct_with_100_factor_err += (abs_log_diff >= 2).sum().item() 
             batch_count += 1
         
         # Return loss and accuracy
@@ -642,8 +648,9 @@ class ModulusModel():
         val_log_acc /= (self.batch_size * batch_count)
         val_avg_diff /= (self.batch_size * batch_count)
         val_avg_log_diff /= (self.batch_size * batch_count)
+        pct_with_100_factor_err /= (self.batch_size * batch_count)
 
-        return val_loss, val_log_acc, val_avg_diff, val_avg_log_diff
+        return val_loss, val_log_acc, val_avg_diff, val_avg_log_diff, pct_with_100_factor_err
 
     def _save_model(self):
         model_dir = './model'
@@ -676,7 +683,7 @@ class ModulusModel():
             train_loss = self._train_epoch()
 
             # Validation statistics
-            val_loss, val_log_acc, val_avg_diff, val_avg_log_diff = self._val_epoch()
+            val_loss, val_log_acc, val_avg_diff, val_avg_log_diff, pct_with_100_factor_err = self._val_epoch()
 
             # Increment learning rate
             for param_group in self.optimizer.param_groups:
@@ -711,6 +718,7 @@ class ModulusModel():
                     "val_avg_scaling_err": 10**(val_avg_log_diff),
                     "val_avg_log_diff": val_avg_log_diff,
                     "val_log_accuracy": val_log_acc,
+                    "pct_with_100_factor_err": pct_with_100_factor_err,
                 })
 
         if self.use_wandb: wandb.finish()
@@ -739,9 +747,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
+        'run_name': 'Diff_F_W_NoTransforms_Markers',
 
         # Training and model parameters
-        'epochs'         : 250,
+        'epochs'         : 200,
         'batch_size'     : 32,
         'feature_size'   : 512,
         'val_pct'        : 0.2,
@@ -755,6 +764,33 @@ if __name__ == "__main__":
 
     if config['use_estimation']: raise NotImplementedError()
 
-    # Train the model over some data
-    train_modulus = ModulusModel(config, device=device)
-    train_modulus.train()
+
+    SETUPS = ["Diff_F_W_NoTransforms_Markers", "Diff_F_NoTransforms_Markers", "Diff_F_W_Transforms_Markers", "Diff_F_NoTransforms_NoMarkers", "Depth_F_W_Transforms", "Depth_F_W_NoTransforms"]
+
+    for setup in SETUPS:
+
+        this_setup_config = config.copy()
+        if setup == "Diff_F_W_NoTransforms_Markers":
+            pass
+        elif setup == "Diff_F_NoTransforms_Markers":
+            this_setup_config['use_width'] = False
+        elif setup == "Diff_F_W_Transforms_Markers":
+            this_setup_config['use_transformations'] = True
+        elif setup == "Diff_F_NoTransforms_NoMarkers":
+            this_setup_config['use_markers'] = False
+        elif setup == "Depth_F_W_Transforms":
+            this_setup_config['img_style'] = 'depth'
+            this_setup_config['n_channels'] = 1
+            this_setup_config['use_markers'] = False
+            this_setup_config['use_transformations'] = True
+        elif setup == "Depth_F_W_NoTransforms":
+            this_setup_config['img_style'] = 'depth'
+            this_setup_config['n_channels'] = 1
+            this_setup_config['use_markers'] = False
+
+        for i in range(2):
+            this_setup_config['run_name'] = f'{setup}_t={str(i)}'
+
+            # Train the model over some data
+            train_modulus = ModulusModel(this_setup_config, device=device)
+            train_modulus.train()
