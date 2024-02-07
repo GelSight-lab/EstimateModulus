@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -159,7 +159,7 @@ class EncoderCNN(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[1024, 512, 256],
+                FC_layer_nodes=[512, 512, 256],
                 drop_p=0.5,
                 output_dim=6):
         super(DecoderFC, self).__init__()
@@ -194,7 +194,7 @@ class DecoderFC(nn.Module):
  
 
 class ForceFC(nn.Module):
-    def __init__(self, hidden_size=64, output_dim=64):
+    def __init__(self, hidden_size=16, output_dim=16):
         super(ForceFC, self).__init__()
 
         self.hidden_size = hidden_size
@@ -205,12 +205,13 @@ class ForceFC(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
+        x = F.silu(x)
         x = self.fc2(x)
         return x
     
  
 class WidthFC(nn.Module):
-    def __init__(self, hidden_size=64, output_dim=64):
+    def __init__(self, hidden_size=16, output_dim=16):
         super(WidthFC, self).__init__()
 
         self.hidden_size = hidden_size
@@ -221,12 +222,13 @@ class WidthFC(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
+        x = F.silu(x)
         x = self.fc2(x)
         return x
  
 
 class EstimationFC(nn.Module):
-    def __init__(self, hidden_size=64, output_dim=64):
+    def __init__(self, hidden_size=16, output_dim=16):
         super(EstimationFC, self).__init__()
 
         self.hidden_size = hidden_size
@@ -237,6 +239,7 @@ class EstimationFC(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
+        x = F.silu(x)
         x = self.fc2(x)
         return x
 
@@ -263,13 +266,14 @@ class CustomDataset(Dataset):
         self.exclude = config['exclude']
 
         # Define training parameters
-        self.epochs         = config['epochs']
-        self.batch_size     = config['batch_size']
-        self.feature_size   = config['feature_size']
-        self.val_pct        = config['val_pct']
-        self.learning_rate  = config['learning_rate']
-        self.gamma          = config['gamma']
-        self.random_state   = config['random_state']
+        self.epochs             = config['epochs']
+        self.batch_size         = config['batch_size']
+        self.img_feature_size   = config['img_feature_size']
+        self.fwe_feature_size   = config['fwe_feature_size']
+        self.val_pct            = config['val_pct']
+        self.learning_rate      = config['learning_rate']
+        self.gamma              = config['gamma']
+        self.random_state       = config['random_state']
 
         self.normalization_values = normalization_values
 
@@ -373,30 +377,31 @@ class ModulusModel():
         }
 
         # Define training parameters
-        self.epochs         = config['epochs']
-        self.batch_size     = config['batch_size']
-        self.feature_size   = config['feature_size']
-        self.val_pct        = config['val_pct']
-        self.learning_rate  = config['learning_rate']
-        self.gamma          = config['gamma']
-        self.lr_step_size   = config['lr_step_size']
-        self.random_state   = config['random_state']
-        self.criterion      = nn.MSELoss()
+        self.epochs             = config['epochs']
+        self.batch_size         = config['batch_size']
+        self.img_feature_size   = config['img_feature_size']
+        self.fwe_feature_size   = config['fwe_feature_size']
+        self.val_pct            = config['val_pct']
+        self.learning_rate      = config['learning_rate']
+        self.gamma              = config['gamma']
+        self.lr_step_size       = config['lr_step_size']
+        self.random_state       = config['random_state']
+        self.criterion          = nn.MSELoss()
 
         # Initialize models based on config
-        self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.feature_size)
-        self.force_encoder = ForceFC() if self.use_force else None
-        self.width_encoder = WidthFC() if self.use_width else None
-        self.estimation_encoder = EstimationFC() if self.use_width else None
+        self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
+        self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
+        self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
+        self.estimation_encoder = EstimationFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
 
         # Compute the size of the input to the decoder based on config
-        decoder_input_size = self.n_frames * self.feature_size
+        decoder_input_size = self.n_frames * self.img_feature_size
         if self.use_force: 
-            decoder_input_size += self.n_frames * self.force_encoder.output_dim
+            decoder_input_size += self.n_frames * self.fwe_feature_size
         if self.use_width: 
-            decoder_input_size += self.n_frames * self.width_encoder.output_dim
+            decoder_input_size += self.n_frames * self.fwe_feature_size
         if self.use_estimation: 
-            decoder_input_size += self.n_frames * self.estimation_encoder.output_dim
+            decoder_input_size += self.n_frames * self.fwe_feature_size
         self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1)
 
         # Send models to device
@@ -443,7 +448,8 @@ class ModulusModel():
                     "n_channels": self.n_channels,
                     "img_size": self.img_size,
                     "img_style": self.img_style,
-                    "feature_size": self.feature_size,
+                    "img_feature_size": self.img_feature_size,
+                    "fwe_feature_size": self.fwe_feature_size,
                     "learning_rate": self.learning_rate,
                     "gamma": self.gamma,
                     "lr_step_size": self.lr_step_size,
@@ -570,28 +576,35 @@ class ModulusModel():
             self.estimation_encoder.train()
         self.decoder.train()
 
-        train_loss, batch_count = 0, 0
+        train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
         for x_frames, x_forces, x_widths, x_estimations, y in self.train_loader:
             self.optimizer.zero_grad()
+                
+            # x_frames = x_frames.detach().to(device)
+            # x_forces = x_forces.detach().to(device)
+            # x_widths = x_widths.detach().to(device)
+            # x_estimations = x_estimations.detach().to(device)
 
             # Concatenate features across frames into a single vector
             features = []
             for i in range(N_FRAMES):
-                
+
                 # Execute CNN on video frames
-                features.append(self.video_encoder(x_frames[:, i, :, :, :].clone()))
+                features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
                 # Execute FC layers on other data and append
                 if not (x_forces.max() == x_forces.min() == 0): # Force measurements
-                    features.append(self.force_encoder(x_forces[:, i, :].clone()))
+                    features.append(self.force_encoder(x_forces[:, i, :]))
                 if not (x_widths.max() == x_widths.min() == 0): # Width measurements
-                    features.append(self.width_encoder(x_widths[:, i, :].clone()))
+                    features.append(self.width_encoder(x_widths[:, i, :]))
                 if not (x_estimations.max() == x_estimations.min() == 0): # Precomputed modulus estimation
-                    features.append(self.estimation_encoder(x_estimations[:, i, :].clone()))
+                    features.append(self.estimation_encoder(x_estimations[:, i, :]))
 
             # Send aggregated features to the FC decoder
             outputs = self.decoder(features)
 
+            print(outputs.min().item(), outputs.max().item())
+            
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             loss.backward()
             self.optimizer.step()
@@ -599,10 +612,18 @@ class ModulusModel():
             train_loss += loss.item()
             batch_count += 1
 
+            abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
+            train_log_acc += (abs_log_diff <= 0.5).sum().item()
+            train_avg_log_diff += abs_log_diff.sum().item()
+            train_pct_with_100_factor_err += (abs_log_diff >= 2).sum().item() 
+
         # Return loss
         train_loss /= batch_count
+        train_log_acc /= (self.batch_size * batch_count)
+        train_avg_log_diff /= (self.batch_size * batch_count)
+        train_pct_with_100_factor_err /= (self.batch_size * batch_count)
 
-        return train_loss
+        return train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err
 
     def _val_epoch(self):
         self.video_encoder.eval()
@@ -614,7 +635,7 @@ class ModulusModel():
             self.estimation_encoder.eval()
         self.decoder.eval()
 
-        val_loss, val_log_acc, val_avg_diff, val_avg_log_diff, val_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0, 0
+        val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
         for x_frames, x_forces, x_widths, x_estimations, y in self.val_loader:
 
             # Concatenate features across frames into a single vector
@@ -622,15 +643,15 @@ class ModulusModel():
             for i in range(N_FRAMES):
                 
                 # Execute CNN on video frames
-                features.append(self.video_encoder(x_frames[:, i, :, :, :].clone()))
+                features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
                 # Execute FC layers on other data and append
                 if not (x_forces.max() == x_forces.min() == 0): # Force measurements
-                    features.append(self.force_encoder(x_forces[:, i, :].clone()))
+                    features.append(self.force_encoder(x_forces[:, i, :]))
                 if not (x_widths.max() == x_widths.min() == 0): # Width measurements
-                    features.append(self.width_encoder(x_widths[:, i, :].clone()))
+                    features.append(self.width_encoder(x_widths[:, i, :]))
                 if not (x_estimations.max() == x_estimations.min() == 0): # Precomputed modulus estimation
-                    features.append(self.estimation_encoder(x_estimations[:, i, :].clone()))
+                    features.append(self.estimation_encoder(x_estimations[:, i, :]))
 
             # Send aggregated features to the FC decoder
             outputs = self.decoder(features)
@@ -641,18 +662,16 @@ class ModulusModel():
 
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
             val_log_acc += (abs_log_diff <= 0.5).sum().item()
-            val_avg_diff += torch.abs(self.log_unnormalize(outputs) - self.log_unnormalize(y)).sum().item()
             val_avg_log_diff += abs_log_diff.sum().item()
             val_pct_with_100_factor_err += (abs_log_diff >= 2).sum().item() 
         
         # Return loss and accuracy
         val_loss /= batch_count
         val_log_acc /= (self.batch_size * batch_count)
-        val_avg_diff /= (self.batch_size * batch_count)
         val_avg_log_diff /= (self.batch_size * batch_count)
         val_pct_with_100_factor_err /= (self.batch_size * batch_count)
 
-        return val_loss, val_log_acc, val_avg_diff, val_avg_log_diff, val_pct_with_100_factor_err
+        return val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err
 
     def _save_model(self):
         model_dir = './model'
@@ -690,10 +709,10 @@ class ModulusModel():
         for epoch in range(self.epochs):
 
             # Train batch
-            train_loss = self._train_epoch()
+            train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err = self._train_epoch()
 
             # Validation statistics
-            val_loss, val_log_acc, val_avg_diff, val_avg_log_diff, val_pct_with_100_factor_err = self._val_epoch()
+            val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err = self._val_epoch()
 
             # Increment learning rate
             for param_group in self.optimizer.param_groups:
@@ -702,10 +721,10 @@ class ModulusModel():
                 self.scheduler.step()
 
             print(f'Epoch: {epoch}, Training Loss: {train_loss:.4f},',
-                f'Validation Loss: {val_loss:.4f},', 
-                f'Validation Avg. Diff: {val_avg_diff:.4f}',
+                f'Validation Loss: {val_loss:.4f},',
                 f'Validation Avg. Log Diff: {val_avg_log_diff:.4f}',
                 f'Validation Log Accuracy: {val_log_acc:.4f}',
+                '\n'
             )
 
             # Save the best model based on validation loss
@@ -723,9 +742,10 @@ class ModulusModel():
                     "memory_allocated": self.memory_allocated,
                     "memory_reserved": self.memory_cached,
                     "train_loss": train_loss,
+                    "train_avg_log_diff": train_avg_log_diff,
+                    "train_log_accuracy": train_log_acc,
+                    "train_pct_with_100_factor_err": train_pct_with_100_factor_err,
                     "val_loss": val_loss,
-                    "val_avg_diff": val_avg_diff,
-                    "val_avg_scaling_err": 10**(val_avg_log_diff),
                     "val_avg_log_diff": val_avg_log_diff,
                     "val_log_accuracy": val_log_acc,
                     "val_pct_with_100_factor_err": val_pct_with_100_factor_err,
@@ -759,14 +779,15 @@ if __name__ == "__main__":
         'run_name': 'Diff_F64_W64_Transforms_Markers',
 
         # Training and model parameters
-        'epochs'         : 100,
-        'batch_size'     : 32,
-        'feature_size'   : 512,
-        'val_pct'        : 0.2,
-        'learning_rate'  : 5e-6,
-        'gamma'          : 0.5,
-        'lr_step_size'   : 30,
-        'random_state'   : 40,
+        'epochs'            : 100,
+        'batch_size'        : 32,
+        'img_feature_size'  : 128,
+        'fwe_feature_size'  : 16,
+        'val_pct'           : 0.2,
+        'learning_rate'     : 5e-6,
+        'gamma'             : 0.5,
+        'lr_step_size'      : 30,
+        'random_state'      : 40,
     }
     assert config['img_style'] in ['diff', 'depth']
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
