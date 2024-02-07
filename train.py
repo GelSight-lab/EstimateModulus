@@ -751,7 +751,7 @@ if __name__ == "__main__":
         'run_name': 'Diff_F_W_NoTransforms_Markers',
 
         # Training and model parameters
-        'epochs'         : 200,
+        'epochs'         : 150,
         'batch_size'     : 32,
         'feature_size'   : 512,
         'val_pct'        : 0.2,
