@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -599,7 +599,7 @@ class ModulusModel():
             batch_count += 1
 
         # Return loss
-        train_loss /= (self.batch_size * batch_count)
+        train_loss /= batch_count
 
         return train_loss
 
@@ -613,7 +613,7 @@ class ModulusModel():
             self.estimation_encoder.eval()
         self.decoder.eval()
 
-        val_loss, val_log_acc, val_avg_diff, val_avg_log_diff, pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0, 0
+        val_loss, val_log_acc, val_avg_diff, val_avg_log_diff, val_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0, 0
         for x_frames, x_forces, x_widths, x_estimations, y in self.val_loader:
 
             # Concatenate features across frames into a single vector
@@ -642,16 +642,16 @@ class ModulusModel():
             val_log_acc += (abs_log_diff <= 0.5).sum().item()
             val_avg_diff += torch.abs(self.log_unnormalize(outputs) - self.log_unnormalize(y)).sum().item()
             val_avg_log_diff += abs_log_diff.sum().item()
-            pct_with_100_factor_err += (abs_log_diff >= 2).sum().item() 
+            val_pct_with_100_factor_err += (abs_log_diff >= 2).sum().item() 
         
         # Return loss and accuracy
-        val_loss /= (self.batch_size * batch_count)
+        val_loss /= batch_count
         val_log_acc /= (self.batch_size * batch_count)
         val_avg_diff /= (self.batch_size * batch_count)
         val_avg_log_diff /= (self.batch_size * batch_count)
-        pct_with_100_factor_err /= (self.batch_size * batch_count)
+        val_pct_with_100_factor_err /= (self.batch_size * batch_count)
 
-        return val_loss, val_log_acc, val_avg_diff, val_avg_log_diff, pct_with_100_factor_err
+        return val_loss, val_log_acc, val_avg_diff, val_avg_log_diff, val_pct_with_100_factor_err
 
     def _save_model(self):
         model_dir = './model'
@@ -684,7 +684,7 @@ class ModulusModel():
             train_loss = self._train_epoch()
 
             # Validation statistics
-            val_loss, val_log_acc, val_avg_diff, val_avg_log_diff, pct_with_100_factor_err = self._val_epoch()
+            val_loss, val_log_acc, val_avg_diff, val_avg_log_diff, val_pct_with_100_factor_err = self._val_epoch()
 
             # Increment learning rate
             for param_group in self.optimizer.param_groups:
@@ -719,7 +719,7 @@ class ModulusModel():
                     "val_avg_scaling_err": 10**(val_avg_log_diff),
                     "val_avg_log_diff": val_avg_log_diff,
                     "val_log_accuracy": val_log_acc,
-                    "pct_with_100_factor_err": pct_with_100_factor_err,
+                    "val_pct_with_100_factor_err": val_pct_with_100_factor_err,
                 })
 
         if self.use_wandb: wandb.finish()
