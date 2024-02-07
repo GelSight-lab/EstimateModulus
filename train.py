@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -61,27 +61,84 @@ class EncoderCNN(nn.Module):
         self.img_y = img_y
         self.CNN_embed_dim = CNN_embed_dim
 
-        # CNN architectures
-        self.ch1, self.ch2, self.ch3, self.ch4 = 8, 16, 32, 64
-        self.k1, self.k2, self.k3, self.k4 = (5, 5), (3, 3), (3, 3), (3, 3)  # 2D kernel size
-        self.s1, self.s2, self.s3, self.s4 = (2, 2), (2, 2), (2, 2), (2, 2)  # 2D strides
-        self.pd1, self.pd2, self.pd3, self.pd4 = (0, 0), (0, 0), (0, 0), (0, 0)  # 2D padding
+        # Fully connected layer hidden nodes
+        self.fc_hidden1, self.fc_hidden2 = fc_hidden1, fc_hidden2
+        self.drop_p = drop_p
 
-        # 2D convolution output shapes
+        # # CNN architectures
+        # self.ch1, self.ch2, self.ch3, self.ch4 = 8, 16, 32, 64
+        # self.k1, self.k2, self.k3, self.k4 = (5, 5), (3, 3), (3, 3), (3, 3)  # 2D kernel size
+        # self.s1, self.s2, self.s3, self.s4 = (2, 2), (2, 2), (2, 2), (2, 2)  # 2D strides
+        # self.pd1, self.pd2, self.pd3, self.pd4 = (0, 0), (0, 0), (0, 0), (0, 0)  # 2D padding
+
+        # # 2D convolution output shapes
+        # self.conv1_outshape = conv2D_output_size((self.img_x, self.img_y),
+        #                                          self.pd1, self.k1, self.s1)  # Conv1 output shape
+        # self.conv2_outshape = conv2D_output_size(self.conv1_outshape, self.pd2,
+        #                                          self.k2, self.s2)
+        # self.conv2_outshape = (int(self.conv2_outshape[0] / 2), int(self.conv2_outshape[1] / 2))
+        # self.conv3_outshape = conv2D_output_size(self.conv2_outshape, self.pd3,
+        #                                          self.k3, self.s3)
+        # self.conv4_outshape = conv2D_output_size(self.conv3_outshape, self.pd4,
+        #                                          self.k4, self.s4)
+        # self.conv4_outshape = (int(self.conv4_outshape[0] / 2), int(self.conv4_outshape[1] / 2))
+
+        # self.conv1 = nn.Sequential(
+        #     nn.Conv2d(in_channels=input_channels,
+        #               out_channels=self.ch1,
+        #               kernel_size=self.k1,
+        #               stride=self.s1,
+        #               padding=self.pd1),
+        #     nn.BatchNorm2d(self.ch1),
+        #     nn.SiLU(inplace=True),
+        # )
+        # self.conv2 = nn.Sequential(
+        #     nn.Conv2d(in_channels=self.ch1,
+        #               out_channels=self.ch2,
+        #               kernel_size=self.k2,
+        #               stride=self.s2,
+        #               padding=self.pd2),
+        #     nn.BatchNorm2d(self.ch2),
+        #     nn.SiLU(inplace=True),
+        # )
+        # self.conv3 = nn.Sequential(
+        #     nn.Conv2d(in_channels=self.ch2,
+        #               out_channels=self.ch3,
+        #               kernel_size=self.k3,
+        #               stride=self.s3,
+        #               padding=self.pd3),
+        #     nn.BatchNorm2d(self.ch3),
+        #     nn.SiLU(inplace=True),
+        # )
+        # self.conv4 = nn.Sequential(
+        #     nn.Conv2d(in_channels=self.ch3,
+        #               out_channels=self.ch4,
+        #               kernel_size=self.k4,
+        #               stride=self.s4,
+        #               padding=self.pd4),
+        #     nn.BatchNorm2d(self.ch4),
+        #     nn.SiLU(inplace=True),
+        # )
+
+
+        # CNN architechtures
+        self.ch1, self.ch2, self.ch3, self.ch4, self.ch5 = 16, 32, 64, 128, 256
+        self.k1, self.k2, self.k3, self.k4, self.k5 = (5, 5), (3, 3), (3, 3), (3, 3), (3, 3)  # 2d kernal size
+        self.s1, self.s2, self.s3, self.s4, self.s5 = (2, 2), (2, 2), (2, 2), (2, 2), (2, 2)  # 2d strides
+        self.pd1, self.pd2, self.pd3, self.pd4, self.pd5 = (0, 0), (0, 0), (0, 0), (0, 0), (0, 0)  # 2d padding
+
+        # conv2D output shapes
         self.conv1_outshape = conv2D_output_size((self.img_x, self.img_y),
-                                                 self.pd1, self.k1, self.s1)  # Conv1 output shape
+                                                 self.pd1, self.k1,
+                                                 self.s1)  # Conv1 output shape
         self.conv2_outshape = conv2D_output_size(self.conv1_outshape, self.pd2,
                                                  self.k2, self.s2)
-        self.conv2_outshape = (int(self.conv2_outshape[0] / 2), int(self.conv2_outshape[1] / 2))
         self.conv3_outshape = conv2D_output_size(self.conv2_outshape, self.pd3,
                                                  self.k3, self.s3)
         self.conv4_outshape = conv2D_output_size(self.conv3_outshape, self.pd4,
                                                  self.k4, self.s4)
-        self.conv4_outshape = (int(self.conv4_outshape[0] / 2), int(self.conv4_outshape[1] / 2))
-
-        # Fully connected layer hidden nodes
-        self.fc_hidden1, self.fc_hidden2 = fc_hidden1, fc_hidden2
-        self.drop_p = drop_p
+        self.conv5_outshape = conv2D_output_size(self.conv4_outshape, self.pd5,
+                                                 self.k5, self.s5)
 
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels=input_channels,
@@ -101,6 +158,7 @@ class EncoderCNN(nn.Module):
             nn.BatchNorm2d(self.ch2),
             nn.SiLU(inplace=True),
         )
+
         self.conv3 = nn.Sequential(
             nn.Conv2d(in_channels=self.ch2,
                       out_channels=self.ch3,
@@ -110,6 +168,7 @@ class EncoderCNN(nn.Module):
             nn.BatchNorm2d(self.ch3),
             nn.SiLU(inplace=True),
         )
+
         self.conv4 = nn.Sequential(
             nn.Conv2d(in_channels=self.ch3,
                       out_channels=self.ch4,
@@ -120,29 +179,48 @@ class EncoderCNN(nn.Module):
             nn.SiLU(inplace=True),
         )
 
+        self.conv5 = nn.Sequential(
+            nn.Conv2d(in_channels=self.ch4,
+                      out_channels=self.ch5,
+                      kernel_size=self.k5,
+                      stride=self.s5,
+                      padding=self.pd5),
+            nn.BatchNorm2d(self.ch5),
+            nn.SiLU(inplace=True),
+        )
+
         self.drop = nn.Dropout(self.drop_p)
-        self.pool = nn.MaxPool2d(2)
+        # self.pool = nn.MaxPool2d(2)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+
         self.fc1 = nn.Linear(
-            self.ch4 * self.conv4_outshape[0] * self.conv4_outshape[1],
+            self.ch5, # self.ch5 * self.conv5_outshape[0] * self.conv5_outshape[1],
             self.fc_hidden1
         ) # Fully connected layer, output k classes
         self.fc2 = nn.Linear(
             self.fc_hidden1,
-            self.fc_hidden2
-        ) # Output = CNN embedding latent variables
-        self.fc3 = nn.Linear(
-            self.fc_hidden2,
             self.CNN_embed_dim
-        ) # Output = CNN embedding latent variables
+        )  # Output = CNN embedding latent variables
+
+
+
+        # self.fc2 = nn.Linear(
+        #     self.fc_hidden1,
+        #     self.fc_hidden2
+        # ) # Output = CNN embedding latent variables
+        # self.fc3 = nn.Linear(
+        #     self.fc_hidden2,
+        #     self.CNN_embed_dim
+        # ) # Output = CNN embedding latent variables
 
     def forward(self, x):
         # CNNs
         x = self.conv1(x)
         x = self.conv2(x)
-        x = self.pool(x)
         x = self.conv3(x)
         x = self.conv4(x)
-        x = self.pool(x)
+        x = self.conv5(x)
+        x = self.avgpool(x)
         x = x.view(x.size(0), -1)  # Flatten the output of conv
         x = self.drop(x)
         # FC layers
@@ -150,9 +228,9 @@ class EncoderCNN(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x) # CNN embedding
-        x = F.silu(x)
-        x = self.drop(x)
-        x = self.fc3(x) # CNN embedding
+        # x = F.silu(x)
+        # x = self.drop(x)
+        # x = self.fc3(x) # CNN embedding
         return x
 
 
