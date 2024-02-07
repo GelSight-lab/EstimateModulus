@@ -265,7 +265,8 @@ class DecoderFC(nn.Module):
         x = F.tanh(x)
         x = self.drop(x)
         x = self.fc4(x)
-        return x
+        # return torch.sigmoid(x)
+        return 12*torch.sigmoid(x)
  
 
 class ForceFC(nn.Module):
@@ -558,15 +559,17 @@ class ModulusModel():
     
     # Normalize labels to maximum on log scale
     def log_normalize(self, x, x_max=None, x_min=None):
-        if x_max is None: x_max = self.normalization_values['max_modulus']
-        if x_min is None: x_min = self.normalization_values['min_modulus']
-        return (np.log10(x) - np.log10(x_min)) / (np.log10(x_max) - np.log10(x_min))
+        # if x_max is None: x_max = self.normalization_values['max_modulus']
+        # if x_min is None: x_min = self.normalization_values['min_modulus']
+        # return (np.log10(x) - np.log10(x_min)) / (np.log10(x_max) - np.log10(x_min))
+        return np.log10(x)
     
     # Unnormalize labels from maximum on log scale
-    def log_unnormalize(self, x_scaled, x_max=None, x_min=None):
-        if x_max is None: x_max = self.normalization_values['max_modulus']
-        if x_min is None: x_min = self.normalization_values['min_modulus']
-        return x_min * (x_max/x_min)**(x_scaled)
+    def log_unnormalize(self, x_normal, x_max=None, x_min=None):
+        # if x_max is None: x_max = self.normalization_values['max_modulus']
+        # if x_min is None: x_min = self.normalization_values['min_modulus']
+        # return x_min * (x_max/x_min)**(x_normal)
+        return 10**x_normal
 
     # Create data loaders based on configuration
     def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, training_data_folder_name='training_data'):
