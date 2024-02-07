@@ -168,7 +168,7 @@ if __name__ == '__main__':
             y_naive = estimator._y_data
 
             if not (E_naive > 0):
-                print('Negative modulus!')
+                print('Negative or NaN modulus!')
 
             # Fit using Hertzian estimator
             E_hertz = estimator.fit_modulus_hertz(

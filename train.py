@@ -139,7 +139,6 @@ class EncoderCNN(nn.Module):
         # CNNs
         x = self.conv1(x)
         x = self.conv2(x)
-        x = self.pool(x)
         x = self.conv3(x)
         x = self.conv4(x)
         x = self.pool(x)
