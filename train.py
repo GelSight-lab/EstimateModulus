@@ -174,7 +174,7 @@ class DecoderFC(nn.Module):
         self.fc1 = nn.Linear(self.FC_input_size, self.FC_layer_nodes[0])
         self.fc2 = nn.Linear(self.FC_layer_nodes[0], self.FC_layer_nodes[1])
         self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
-        self.fc5 = nn.Linear(self.FC_layer_nodes[2], self.output_dim)
+        self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.output_dim)
         self.drop = nn.Dropout(self.drop_p)
 
     def forward(self, x):
@@ -189,9 +189,6 @@ class DecoderFC(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc4(x)
-        x = F.silu(x)
-        x = self.drop(x)
-        x = self.fc5(x)
         x = torch.sigmoid(x)
         return x
  
