@@ -926,7 +926,7 @@ if __name__ == "__main__":
     if config['use_estimation']: raise NotImplementedError()
 
     LR = ['1e-4', '1e-5', '1e-6', '1e-7']
-    epochs = [50, 50, 80, 120]
+    epochs = [50, 50, 80, 100]
 
     for j in range(len(LR)):
 
