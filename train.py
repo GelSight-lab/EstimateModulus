@@ -633,11 +633,11 @@ if __name__ == "__main__":
     if config['use_estimation']: raise NotImplementedError()
 
     LR = ['1e-4', '1e-5', '1e-6', '1e-7']
-    epochs = [50, 50, 80, 100]
+    epochs = [80, 80, 80, 120]
 
     for j in range(len(LR)):
 
-        for i in range(3):
+        for i in range(2):
             config['run_name'] = f'LR={LR[j]}_t={str(i)}'
             config['learning_rate'] = eval(LR[j])
             config['epochs'] = epochs[j]
