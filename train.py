@@ -377,46 +377,85 @@ class CustomDataset(Dataset):
         return len(self.modulus_labels)
     
     def __getitem__(self, idx):
-        self.x_frames       = self.x_frames.zero_()
-        self.x_forces       = self.x_forces.zero_()
-        self.x_widths       = self.x_widths.zero_()
-        self.x_estimations  = self.x_estimations.zero_()
-        self.y_label        = self.y_label.zero_()
+        # self.x_frames       = self.x_frames.zero_()
+        # self.x_forces       = self.x_forces.zero_()
+        # self.x_widths       = self.x_widths.zero_()
+        # self.x_estimations  = self.x_estimations.zero_()
+        # self.y_label        = self.y_label.zero_()
+
+        # # Read and store frames in the tensor
+        # with open(self.input_paths[idx], 'rb') as file:
+        #     if self.img_style == 'diff':
+        #         self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
+        #     elif self.img_style == 'depth':
+        #         self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
+        #         self.x_frames /= self.normalization_values['max_depth']
+
+        # # Flip the data horizontally if desired
+        # if self.use_transformations and self.flip_horizontal[idx]:
+        #     self.x_frames = torch.flip(self.x_frames, dims=(2,))
+
+        # # Unpack force measurements
+        # self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
+        # if self.use_force:
+        #     with open(self.base_name + '_forces.pkl', 'rb') as file:
+        #         self.x_forces[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
+        #         self.x_forces /= self.normalization_values['max_force']
+
+        # # Unpack gripper width measurements
+        # if self.use_width:
+        #     with open(self.base_name + '_widths.pkl', 'rb') as file:
+        #         self.x_widths[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
+        #         self.x_widths /= self.normalization_values['max_width']
+        
+        # # Unpack modulus estimations
+        # if self.use_estimation:
+        #     raise NotImplementedError()
+        
+        # # Unpack label
+        # self.y_label[0] = self.modulus_labels[idx]
+
+        # return self.x_frames.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone()
+     
+
+        x_forces         = torch.zeros((N_FRAMES, 1))
+        x_widths         = torch.zeros((N_FRAMES, 1))
+        x_estimations    = torch.zeros((N_FRAMES, 1))
 
         # Read and store frames in the tensor
         with open(self.input_paths[idx], 'rb') as file:
             if self.img_style == 'diff':
-                self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
+                x_frames = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
             elif self.img_style == 'depth':
-                self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
-                self.x_frames /= self.normalization_values['max_depth']
+                x_frames = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
+                x_frames /= self.normalization_values['max_depth']
 
         # Flip the data horizontally if desired
         if self.use_transformations and self.flip_horizontal[idx]:
-            self.x_frames = torch.flip(self.x_frames, dims=(2,))
+            x_frames = torch.flip(x_frames, dims=(2,))
 
         # Unpack force measurements
-        self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
+        base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
         if self.use_force:
-            with open(self.base_name + '_forces.pkl', 'rb') as file:
-                self.x_forces[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
-                self.x_forces /= self.normalization_values['max_force']
+            with open(base_name + '_forces.pkl', 'rb') as file:
+                x_forces = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
+                x_forces /= self.normalization_values['max_force']
 
         # Unpack gripper width measurements
         if self.use_width:
-            with open(self.base_name + '_widths.pkl', 'rb') as file:
-                self.x_widths[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
-                self.x_widths /= self.normalization_values['max_width']
+            with open(base_name + '_widths.pkl', 'rb') as file:
+                x_widths = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
+                x_widths /= self.normalization_values['max_width']
         
         # Unpack modulus estimations
         if self.use_estimation:
             raise NotImplementedError()
         
         # Unpack label
-        self.y_label[0] = self.modulus_labels[idx]
+        y_label = torch.zeros((1, 1))
+        y_label[0] = self.modulus_labels[idx]
 
-        return self.x_frames.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone()
-     
+        return x_frames, x_forces, x_widths, x_estimations, y_label
 
 class ModulusModel():
     def __init__(self, config, device=None):
@@ -659,10 +698,11 @@ class ModulusModel():
         for x_frames, x_forces, x_widths, x_estimations, y in self.train_loader:
             self.optimizer.zero_grad()
                 
-            # x_frames = x_frames.detach().to(device)
-            # x_forces = x_forces.detach().to(device)
-            # x_widths = x_widths.detach().to(device)
-            # x_estimations = x_estimations.detach().to(device)
+            x_frames = x_frames.to(self.device)
+            x_forces = x_forces.to(self.device)
+            x_widths = x_widths.to(self.device)
+            x_estimations = x_estimations.to(self.device)
+            y = y.to(self.device)
 
             # Concatenate features across frames into a single vector
             features = []
@@ -714,6 +754,12 @@ class ModulusModel():
 
         val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
         for x_frames, x_forces, x_widths, x_estimations, y in self.val_loader:
+                
+            x_frames = x_frames.to(self.device)
+            x_forces = x_forces.to(self.device)
+            x_widths = x_widths.to(self.device)
+            x_estimations = x_estimations.to(self.device)
+            y = y.to(self.device)
 
             # Concatenate features across frames into a single vector
             features = []
