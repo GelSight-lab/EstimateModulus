@@ -22,10 +22,24 @@ DATA_DIR = './data'
 RUN_NAME = 'THRESHOLD'
 
 USE_MARKER_FINGER = False
-PLOT = False
+PLOT_DATA = False
 
 # Objects to exclude from evaluation
-EXCLUDE = ['playdoh', 'silly_putty', 'racquetball']
+EXCLUDE = ['playdoh', 'silly_putty', 'silly_puty', 'racquetball']
+
+# Read CSV files with objects and labels tabulated
+object_to_modulus = {}
+object_to_shape = {}
+object_to_material = {}
+csv_file_path = f'{DATA_DIR}/objects_and_labels.csv'
+with open(csv_file_path, 'r') as file:
+    csv_reader = csv.reader(file)
+    next(csv_reader) # Skip title row
+    for row in csv_reader:
+        if row[14] != '':
+            object_to_modulus[row[1]] = float(row[14])
+            object_to_shape[row[1]] = row[2]
+            object_to_material[row[1]] = row[3]
 
 # Find an optimal linear scaling for a set of modulus predictions
 def scale_predictions(prediction_dict, label_dict):
@@ -58,19 +72,57 @@ def compute_estimation_stats(prediction_dict, linear_scaling, label_dict):
         'log_accuracy': np.sum(log_diff < 0.5),
     }
 
+# Plot on log scale to see how performance is
+def plot_performance(plot_title, prediction_dict, linear_scaling, label_dict):
+    material_to_color = {
+        'Foam': 'firebrick',
+        'Plastic': 'forestgreen',
+        'Wood': 'goldenrod',
+        'Glass': 'darkgray',
+        'Rubber': 'slateblue',
+        'Metal': 'royalblue',
+        'Food': 'darkorange',
+    }
+    material_prediction_data = {
+        mat : [] for mat in material_to_color.keys()
+    }
+    material_label_data = {
+        mat : [] for mat in material_to_color.keys()
+    }
+    
+    for obj in prediction_dict.keys():
+        assert obj in object_to_material.keys()
+        mat = object_to_material[obj]
+        material_prediction_data[mat].append(linear_scaling[0]*prediction_dict[obj] + linear_scaling[1])
+        material_label_data[mat].append(label_dict[obj])
+
+    # Create plot
+    plt.rcParams['font.family'] = 'Times New Roman'
+    plt.figure()
+    plt.plot([0, 10**12], [0, 10**12], 'k--', label='_')
+    plt.xscale('log')
+    plt.yscale('log')
+
+    for mat in material_to_color.keys():
+        plt.plot(material_label_data[mat], material_prediction_data[mat], '.', markersize=10, color=material_to_color[mat], label=mat)
+
+    plt.xlabel("Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
+    plt.ylabel("Predicted Modulus ($\\widetilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
+    plt.title(plot_title, fontsize=14)
+
+    plt.legend()
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.tick_params(axis='both', which='both', labelsize=10)
+
+    plt.savefig(f'{plot_title}.png')
+    plt.show()
+
+    return
+
+
 if __name__ == '__main__':
 
-    # Read CSV files with objects and labels tabulated
-    object_to_modulus = {}
-    csv_file_path = f'{DATA_DIR}/objects_and_labels.csv'
-    with open(csv_file_path, 'r') as file:
-        csv_reader = csv.reader(file)
-        next(csv_reader) # Skip title row
-        for row in csv_reader:
-            if row[14] != '':
-                object_to_modulus[row[1]] = float(row[14])
-
-    if PLOT:
+    if PLOT_DATA:
         # Set up raw data plot
         fig1 = plt.figure(1)
         sp1 = fig1.add_subplot(211)
@@ -119,7 +171,7 @@ if __name__ == '__main__':
 
     objects = sorted(os.listdir(f'{DATA_DIR}/raw_data'))
     for object_name in objects:
-        if PLOT: plotting_color = random_hex_color()
+        if PLOT_DATA: plotting_color = random_hex_color()
 
         # Create list of estimates for each trial of each object
         naive_estimates[object_name]        = []
@@ -204,7 +256,7 @@ if __name__ == '__main__':
             print('E_stochastic:', E_stochastic)
             print('\n')
             
-            if PLOT:
+            if PLOT_DATA:
                 # Plot raw data
                 plotting_label = object_name if file_name.count('t=0') > 0 else '_'
                 sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=plotting_label, markersize=8, color=plotting_color)
@@ -212,6 +264,16 @@ if __name__ == '__main__':
                 # Plot naive fit
                 sp2.plot(x_naive, y_naive, ".", label=plotting_label, markersize=8, color=plotting_color)
                 sp2.plot(x_naive, E_naive*np.array(x_naive), "-", label=plotting_label, markersize=8, color=plotting_color)
+
+    if PLOT_DATA:
+        fig1.legend()
+        fig1.set_figwidth(10)
+        fig1.set_figheight(10)
+        fig2.legend()
+        fig2.set_figwidth(10)
+        fig2.set_figheight(10)
+        plt.show()
+        print('Done.')
 
     # Find a linear scaling for each set of predictions to minimize error
     naive_scaling       = scale_predictions(naive_estimates, object_to_modulus)
@@ -223,19 +285,10 @@ if __name__ == '__main__':
         json.dump(max_depths, json_file)
 
     # Compute average loss / average log difference / log accuracy for each
-    naive_stats         = compute_estimation_stats(naive_estimates, object_to_modulus)
-    hertz_stats         = compute_estimation_stats(hertz_estimates, object_to_modulus)
-    MDR_stats           = compute_estimation_stats(MDR_estimates, object_to_modulus)
-    stochastic_stats    = compute_estimation_stats(stochastic_estimates, object_to_modulus)
-
-    print('NAIVE CONFIG:\n', naive_config)
-    print('NAIVE METHOD:\n', naive_stats, '\n')
-    print('HERTZ CONFIG:\n', hertz_config)
-    print('HERTZ METHOD:\n', hertz_stats, '\n')
-    print('MDR CONFIG:\n', MDR_config)
-    print('MDR METHOD:\n', MDR_stats, '\n')
-    print('STOCHASTIC CONFIG:\n', stochastic_config)
-    print('STOCHASTIC METHOD:\n', stochastic_stats, '\n')
+    naive_stats         = compute_estimation_stats(naive_estimates, naive_scaling, object_to_modulus)
+    hertz_stats         = compute_estimation_stats(hertz_estimates, hertz_scaling, object_to_modulus)
+    MDR_stats           = compute_estimation_stats(MDR_estimates, MDR_scaling, object_to_modulus)
+    stochastic_stats    = compute_estimation_stats(stochastic_estimates, stochastic_scaling, object_to_modulus)
 
     # Create path to save all generate data in
     if not os.path.exists(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}'):
@@ -266,13 +319,18 @@ if __name__ == '__main__':
         json.dump(stochastic_estimates, json_file)
     with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/stochastic_stats.json', 'w') as json_file:
         json.dump(stochastic_stats, json_file)
-        
-    if PLOT:
-        fig1.legend()
-        fig1.set_figwidth(10)
-        fig1.set_figheight(10)
-        fig2.legend()
-        fig2.set_figwidth(10)
-        fig2.set_figheight(10)
-        plt.show()
-        print('Done.')
+
+    print('NAIVE CONFIG:\n', naive_config)
+    print('NAIVE METHOD:\n', naive_stats, '\n')
+    print('HERTZ CONFIG:\n', hertz_config)
+    print('HERTZ METHOD:\n', hertz_stats, '\n')
+    print('MDR CONFIG:\n', MDR_config)
+    print('MDR METHOD:\n', MDR_stats, '\n')
+    print('STOCHASTIC CONFIG:\n', stochastic_config)
+    print('STOCHASTIC METHOD:\n', stochastic_stats, '\n')
+
+    # Create plots showing how well each method does
+    compute_estimation_stats('Naive Elasticity Method', naive_estimates, naive_scaling, object_to_modulus)
+    compute_estimation_stats('Hertzian Method', hertz_estimates, hertz_scaling, object_to_modulus)
+    compute_estimation_stats('MDR', MDR_estimates, MDR_scaling, object_to_modulus)
+    compute_estimation_stats('Stochastic Method', stochastic_estimates, stochastic_scaling, object_to_modulus)
