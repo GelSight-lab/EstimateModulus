@@ -266,7 +266,8 @@ class DecoderFC(nn.Module):
         x = self.drop(x)
         x = self.fc4(x)
         # return torch.sigmoid(x)
-        return 12*torch.sigmoid(x)
+        # return 10*torch.sigmoid(x)
+        return torch.relu(x)
  
 
 class ForceFC(nn.Module):
@@ -562,14 +563,14 @@ class ModulusModel():
         # if x_max is None: x_max = self.normalization_values['max_modulus']
         # if x_min is None: x_min = self.normalization_values['min_modulus']
         # return (np.log10(x) - np.log10(x_min)) / (np.log10(x_max) - np.log10(x_min))
-        return np.log10(x)
+        return np.log10(x) - 2
     
     # Unnormalize labels from maximum on log scale
     def log_unnormalize(self, x_normal, x_max=None, x_min=None):
         # if x_max is None: x_max = self.normalization_values['max_modulus']
         # if x_min is None: x_min = self.normalization_values['min_modulus']
         # return x_min * (x_max/x_min)**(x_normal)
-        return 10**x_normal
+        return 10**(x_normal + 2)
 
     # Create data loaders based on configuration
     def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, training_data_folder_name='training_data'):
