@@ -235,7 +235,7 @@ class EncoderCNN(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[512, 512, 256, 64],
+                FC_layer_nodes=[512, 512, 128], # 64]
                 drop_p=0.5,
                 output_dim=6):
         super(DecoderFC, self).__init__()
@@ -245,13 +245,13 @@ class DecoderFC(nn.Module):
         self.drop_p = drop_p
         self.output_dim = output_dim
 
-        assert len(FC_layer_nodes) == 4
+        assert len(FC_layer_nodes) == 3
 
         self.fc1 = nn.Linear(self.FC_input_size, self.FC_layer_nodes[0])
         self.fc2 = nn.Linear(self.FC_layer_nodes[0], self.FC_layer_nodes[1])
         self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
         self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.FC_layer_nodes[3])
-        self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.output_dim)
+        # self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.output_dim)
         self.drop = nn.Dropout(self.drop_p)
 
     def forward(self, x):
@@ -266,9 +266,9 @@ class DecoderFC(nn.Module):
         x = F.tanh(x)
         x = self.drop(x)
         x = self.fc4(x)
-        x = F.tanh(x)
-        x = self.drop(x)
-        x = self.fc5(x)
+        # x = F.tanh(x)
+        # x = self.drop(x)
+        # x = self.fc5(x)
         return torch.sigmoid(x)
  
 
@@ -827,7 +827,7 @@ class ModulusModel():
 
     def train(self):
         learning_rate = self.learning_rate 
-        min_val_loss = 1e100
+        min_val_log_acc = 10
         for epoch in range(self.epochs):
 
             # Create some data structures for tracking performance
@@ -859,8 +859,8 @@ class ModulusModel():
             )
 
             # Save the best model based on validation loss
-            if val_loss <= min_val_loss:
-                min_val_loss = val_loss
+            if val_log_acc <= min_val_log_acc:
+                min_val_log_acc = val_log_acc
                 self._save_model()
 
             # Log information to W&B
