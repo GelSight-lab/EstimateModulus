@@ -636,7 +636,7 @@ if __name__ == "__main__":
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 16,
         'val_pct'           : 0.2,
-        'learning_rate'     : 5e-5,
+        'learning_rate'     : 1e-4,
         'gamma'             : 0.5,
         'lr_step_size'      : 20,
         'random_state'      : 40,
