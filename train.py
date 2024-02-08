@@ -704,9 +704,9 @@ class ModulusModel():
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
             train_avg_log_diff += abs_log_diff.sum().item()
             for i in range(self.batch_size):
-                if (abs_log_diff <= 0.5).squeeze().tolist():
+                if abs_log_diff[i] <= 0.5:
                     train_log_acc += 1
-                if (abs_log_diff >= 2).squeeze().tolist():
+                if abs_log_diff[i] >= 2:
                     train_pct_with_100_factor_err += 1
                     self.poorly_predicted[object_names[i]] = True
 
@@ -762,7 +762,7 @@ class ModulusModel():
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
             val_avg_log_diff += abs_log_diff.sum().item()
             for i in range(self.batch_size):
-                if (abs_log_diff <= 0.5).squeeze().tolist():
+                if abs_log_diff[i] <= 0.5:
                     val_log_acc += 1
                     self.material_log_acc[self.object_to_material[object_names[i]]][0] += 1
                     self.material_log_acc[self.object_to_material[object_names[i]]][1] += 1
@@ -772,7 +772,7 @@ class ModulusModel():
                     self.material_log_acc[self.object_to_material[object_names[i]]][1] += 1
                     self.shape_log_acc[self.object_to_shape[object_names[i]]][1] += 1
 
-                if (abs_log_diff >= 2).squeeze().tolist():
+                if abs_log_diff[i] >= 2:
                     val_pct_with_100_factor_err += 1
                     self.poorly_predicted[object_names[i]] = True
         
