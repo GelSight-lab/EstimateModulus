@@ -612,9 +612,9 @@ if __name__ == "__main__":
                     'apple', 'orange', 'strawberry'],
 
         # Logging on/off
-        'use_wandb': False,
-        # 'run_name': 'Diff128_F16_W16_NoTransforms_Markers',
-        'run_name': 'ExtraLayerInDecoder',
+        'use_wandb': True,
+        'run_name': 'Diff128_F16_W16_NoTransforms_Markers',
+        # 'run_name': 'ExtraLayerInDecoder',
 
         # Training and model parameters
         'epochs'            : 120,
