@@ -925,11 +925,15 @@ if __name__ == "__main__":
 
     if config['use_estimation']: raise NotImplementedError()
 
-    for LR in ['1e-5', '1e-6', '1e-7']:
+    LR = ['1e-4', '1e-5', '1e-6', '1e-7']
+    epochs = [50, 50, 80, 120]
+
+    for j in range(len(LR)):
 
         for i in range(3):
-            config['run_name'] = f'LR={LR}_t={str(i)}'
-            config['learning_rate'] = eval(LR)
+            config['run_name'] = f'LR={LR[j]}_t={str(i)}'
+            config['learning_rate'] = eval(LR[j])
+            config['epochs'] = eval(epochs[j])
 
             # Train the model over some data
             train_modulus = ModulusModel(config, device=device)
