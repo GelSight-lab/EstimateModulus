@@ -21,7 +21,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -630,13 +630,13 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'CNNFeature64',   
+        'run_name': 'CNNFeature64_FW8',   
 
         # Training and model parameters
         'epochs'            : 60,
         'batch_size'        : 32,
         'img_feature_size'  : 64,
-        'fwe_feature_size'  : 16,
+        'fwe_feature_size'  : 8,
         'val_pct'           : 0.2,
         'learning_rate'     : 1e-4,
         'gamma'             : 0.5,
