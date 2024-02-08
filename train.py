@@ -70,13 +70,15 @@ class CustomDataset(Dataset):
         self.normalization_values = normalization_values
 
         if self.use_transformations:
-            self.input_paths = 2*paths_to_files
-            self.modulus_labels = 2*labels
-            self.flip_horizontal = [i > len(paths_to_files) for i in range(len(self.input_paths))]
+            self.input_paths = 4*paths_to_files
+            self.modulus_labels = 4*labels
+            self.flip_horizontal = [i > 2*len(paths_to_files) for i in range(len(self.input_paths))]
+            self.flip_vertical = [i % 2 == 1 for i in range(len(self.input_paths))]
         else:
             self.input_paths = paths_to_files
             self.modulus_labels = labels
             self.flip_horizontal = [False for i in range(len(self.input_paths))]
+            self.flip_vertical = [False for i in range(len(self.input_paths))]
 
         # Define attributes to use to conserve memory
         self.base_name      = ''
@@ -106,9 +108,11 @@ class CustomDataset(Dataset):
                 self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
                 self.x_frames /= self.normalization_values['max_depth']
 
-        # Flip the data horizontally if desired
+        # Flip the data if desired
         if self.use_transformations and self.flip_horizontal[idx]:
             self.x_frames = torch.flip(self.x_frames, dims=(2,))
+        if self.use_transformations and self.flip_vertical[idx]:
+            self.x_frames = torch.flip(self.x_frames, dims=(3,))
 
         # Unpack force measurements
         self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
@@ -624,7 +628,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': '',   
+        'run_name': 'VerticalTransformsToo',   
 
         # Training and model parameters
         'epochs'            : 60,
@@ -642,21 +646,7 @@ if __name__ == "__main__":
 
     if config['use_estimation']: raise NotImplementedError()
 
-    # LR = ['1e-4', '1e-5', '1e-6', '1e-7']
-    # epochs = [80, 80, 80, 120]
-
-    # for j in range(len(LR)):
-
-    #     for i in range(2):
-    #         config['run_name'] = f'LR={LR[j]}_t={str(i)}'
-    #         config['learning_rate'] = eval(LR[j])
-    #         config['epochs'] = epochs[j]
-
-    for t in ['Transforms', 'NoTransforms']:
-        if t.count('No') > 0:
-            config['use_transformations'] = False
-        config['run_name'] = f'LR=5e-5_{t}'
-        for i in range(2):
-            # Train the model over some data
-            train_modulus = ModulusModel(config, device=device)
-            train_modulus.train()
+    for i in range(2):
+        # Train the model over some data
+        train_modulus = ModulusModel(config, device=device)
+        train_modulus.train()
