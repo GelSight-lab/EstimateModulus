@@ -29,4 +29,8 @@ for run_name in run_names:
     print(shap)
     print('\n')
 
-print('Poorly predicted in all:', poorly_predicted_in_all, '\n')
+print('Poorly predicted in all:')
+for obj in poorly_predicted_in_all:
+    if poorly_predicted_in_all[obj]:
+        print(obj)
+print('\n')

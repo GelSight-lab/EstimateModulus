@@ -534,7 +534,7 @@ class ModulusModel():
 
     def train(self):
         learning_rate = self.learning_rate 
-        min_val_log_acc = 10
+        max_val_log_acc = 0.0
         for epoch in range(self.epochs):
 
             # Create some data structures for tracking performance
@@ -566,8 +566,8 @@ class ModulusModel():
             )
 
             # Save the best model based on validation loss
-            if val_log_acc <= min_val_log_acc:
-                min_val_log_acc = val_log_acc
+            if val_log_acc >= max_val_log_acc:
+                max_val_log_acc = val_log_acc
                 self._save_model()
 
             # Log information to W&B
