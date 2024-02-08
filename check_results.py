@@ -15,9 +15,12 @@ for run_name in run_names:
     with open(f'./model/{run_name}/poorly_predicted.json', 'r') as file:
         pp = json.load(file)
 
+    pp_count = 0
     for obj in pp.keys():
         if pp[obj] == False:
             poorly_predicted_in_all[key] = False
+        else:
+            pp_count += 1
     
     with open(f'./model/{run_name}/material_log_acc.json', 'r') as file:
         mat = json.load(file)
@@ -25,8 +28,9 @@ for run_name in run_names:
         shap = json.load(file)
 
     print(run_name)
-    print(mat)
-    print(shap)
+    print('% POORLY PREDICTED:', pp_count / len(pp.keys()))
+    print('MATERIAL PERFORMANCE:', mat)
+    print('SHAPE PERFORMANCE:',shap)
     print('\n')
 
 print('Poorly predicted in all:')
