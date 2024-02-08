@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -928,12 +928,19 @@ if __name__ == "__main__":
     LR = ['1e-4', '1e-5', '1e-6', '1e-7']
     epochs = [50, 50, 80, 100]
 
+    with open('./model/LR=1e-5_t=1/poorly_predicted.json', 'r') as file:
+        data_dict = json.load(file)
+    poorly_predicted = 0
+    for key in data_dict.keys():
+        poorly_predicted += 1
+    print(poorly_predicted / len(data_dict.keys()))
+
     for j in range(len(LR)):
 
         for i in range(3):
             config['run_name'] = f'LR={LR[j]}_t={str(i)}'
             config['learning_rate'] = eval(LR[j])
-            config['epochs'] = eval(epochs[j])
+            config['epochs'] = epochs[j]
 
             # Train the model over some data
             train_modulus = ModulusModel(config, device=device)
