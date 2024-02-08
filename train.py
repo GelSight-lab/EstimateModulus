@@ -932,7 +932,8 @@ if __name__ == "__main__":
         data_dict = json.load(file)
     poorly_predicted = 0
     for key in data_dict.keys():
-        poorly_predicted += 1
+        if poorly_predicted[key]:
+            poorly_predicted += 1
     print(poorly_predicted / len(data_dict.keys()))
 
     for j in range(len(LR)):
