@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -932,7 +932,7 @@ if __name__ == "__main__":
         data_dict = json.load(file)
     poorly_predicted = 0
     for key in data_dict.keys():
-        if poorly_predicted[key]:
+        if data_dict[key]:
             poorly_predicted += 1
     print(poorly_predicted / len(data_dict.keys()))
 
