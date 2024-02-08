@@ -464,11 +464,6 @@ class ModulusModel():
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             val_loss += loss.item()
             batch_count += 1
-
-            abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
-            val_log_acc += (abs_log_diff <= 0.5).sum().item()
-            val_avg_log_diff += abs_log_diff.sum().item()
-            val_pct_with_100_factor_err += (abs_log_diff >= 2).sum().item() 
             
             # Calculate performance metrics
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
