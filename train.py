@@ -5,6 +5,7 @@ import json
 import numpy as np
 
 import torch
+import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
 import wandb
@@ -12,6 +13,7 @@ import wandb
 # from wedge_video import WARPED_CROPPED_IMG_SIZE
 from nn_modules import *
 
+from torchinfo import summary
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, Dataset
 from sklearn.model_selection import train_test_split
@@ -205,6 +207,15 @@ class ModulusModel():
         if self.use_estimation:
             self.estimation_encoder.to(self.device)
         self.decoder.to(self.device)
+
+        print('Summaries...')
+        summary(self.video_encoder, (self.batch_size, self.n_frames, self.n_channels,  self.img_size[0], self.img_size[1]))
+        print('\nIn comparison, ResNet looks like this...')
+        summary(torchvision.models.resnet18(), (self.batch_size, self.n_frames, self.n_channels,  self.img_size[0], self.img_size[1]))
+        if self.use_force:
+            summary(self.force_encoder, (self.batch_size, 1))
+        summary(self.decoder, (self.batch_size, decoder_input_size))
+        print('Done.')
 
         # Concatenate parameters of all models
         self.params         = list(self.video_encoder.parameters())
