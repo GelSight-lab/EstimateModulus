@@ -285,6 +285,8 @@ if __name__ == '__main__':
     with open(f'{DATA_DIR}/evaluate_estimator/max_depths.json', 'w') as json_file:
         json.dump(max_depths, json_file)
 
+    print('All skipped files:', skipped_files)
+
     # Compute average loss / average log difference / log accuracy for each
     naive_stats         = compute_estimation_stats(naive_estimates, naive_scaling, object_to_modulus)
     hertz_stats         = compute_estimation_stats(hertz_estimates, hertz_scaling, object_to_modulus)
