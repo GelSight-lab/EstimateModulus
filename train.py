@@ -613,18 +613,17 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Diff128_F16_W16_NoTransforms_Markers',
-        # 'run_name': 'ExtraLayerInDecoder',
+        'run_name': '',   
 
         # Training and model parameters
-        'epochs'            : 120,
+        'epochs'            : 60,
         'batch_size'        : 32,
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 16,
         'val_pct'           : 0.2,
-        'learning_rate'     : 5e-6,
-        'gamma'             : 0.5,
-        'lr_step_size'      : 30,
+        'learning_rate'     : 5e-5,
+        'gamma'             : 0.1,
+        'lr_step_size'      : 10,
         'random_state'      : 40,
     }
     assert config['img_style'] in ['diff', 'depth']
@@ -632,16 +631,21 @@ if __name__ == "__main__":
 
     if config['use_estimation']: raise NotImplementedError()
 
-    LR = ['1e-4', '1e-5', '1e-6', '1e-7']
-    epochs = [80, 80, 80, 120]
+    # LR = ['1e-4', '1e-5', '1e-6', '1e-7']
+    # epochs = [80, 80, 80, 120]
 
-    for j in range(len(LR)):
+    # for j in range(len(LR)):
 
+    #     for i in range(2):
+    #         config['run_name'] = f'LR={LR[j]}_t={str(i)}'
+    #         config['learning_rate'] = eval(LR[j])
+    #         config['epochs'] = epochs[j]
+
+    for t in ['Transforms', 'NoTransforms']:
+        if t.count('No') > 0:
+            config['use_transformations'] = False
+        config['run_name'] = f'LR=5e-5_{t}'
         for i in range(2):
-            config['run_name'] = f'LR={LR[j]}_t={str(i)}'
-            config['learning_rate'] = eval(LR[j])
-            config['epochs'] = epochs[j]
-
             # Train the model over some data
             train_modulus = ModulusModel(config, device=device)
             train_modulus.train()
