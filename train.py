@@ -21,7 +21,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -213,12 +213,12 @@ class ModulusModel():
         self.decoder.to(self.device)
 
         print('Summaries...')
-        summary(self.video_encoder, (self.batch_size, self.n_frames, self.n_channels,  self.img_size[0], self.img_size[1]))
+        summary(self.video_encoder, (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), device=device)
         print('\nIn comparison, ResNet looks like this...')
-        summary(torchvision.models.resnet18(), (self.batch_size, self.n_frames, self.n_channels,  self.img_size[0], self.img_size[1]))
+        summary(torchvision.models.resnet18(), (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]))
         if self.use_force:
-            summary(self.force_encoder, (self.batch_size, 1))
-        summary(self.decoder, (self.batch_size, decoder_input_size))
+            summary(self.force_encoder, (self.batch_size, 1), device=device)
+        summary(self.decoder, (self.batch_size, decoder_input_size), device=device)
         print('Done.')
 
         # Concatenate parameters of all models
@@ -628,7 +628,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'VerticalTransformsToo',   
+        'run_name': 'LargerCNNArch',   
 
         # Training and model parameters
         'epochs'            : 60,
