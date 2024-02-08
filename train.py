@@ -926,10 +926,11 @@ if __name__ == "__main__":
     if config['use_estimation']: raise NotImplementedError()
 
     for LR in ['1e-5', '1e-6', '1e-7']:
-        config['run_name'] = f'LR={LR}'
-        config['learning_rate'] = eval(LR)
 
         for i in range(3):
+            config['run_name'] = f'LR={LR}_t={str(i)}'
+            config['learning_rate'] = eval(LR)
+
             # Train the model over some data
             train_modulus = ModulusModel(config, device=device)
             train_modulus.train()
