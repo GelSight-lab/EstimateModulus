@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -377,85 +377,47 @@ class CustomDataset(Dataset):
         return len(self.modulus_labels)
     
     def __getitem__(self, idx):
-        # self.x_frames       = self.x_frames.zero_()
-        # self.x_forces       = self.x_forces.zero_()
-        # self.x_widths       = self.x_widths.zero_()
-        # self.x_estimations  = self.x_estimations.zero_()
-        # self.y_label        = self.y_label.zero_()
+        self.x_frames       = self.x_frames.zero_()
+        self.x_forces       = self.x_forces.zero_()
+        self.x_widths       = self.x_widths.zero_()
+        self.x_estimations  = self.x_estimations.zero_()
+        self.y_label        = self.y_label.zero_()
 
-        # # Read and store frames in the tensor
-        # with open(self.input_paths[idx], 'rb') as file:
-        #     if self.img_style == 'diff':
-        #         self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
-        #     elif self.img_style == 'depth':
-        #         self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
-        #         self.x_frames /= self.normalization_values['max_depth']
-
-        # # Flip the data horizontally if desired
-        # if self.use_transformations and self.flip_horizontal[idx]:
-        #     self.x_frames = torch.flip(self.x_frames, dims=(2,))
-
-        # # Unpack force measurements
-        # self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
-        # if self.use_force:
-        #     with open(self.base_name + '_forces.pkl', 'rb') as file:
-        #         self.x_forces[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
-        #         self.x_forces /= self.normalization_values['max_force']
-
-        # # Unpack gripper width measurements
-        # if self.use_width:
-        #     with open(self.base_name + '_widths.pkl', 'rb') as file:
-        #         self.x_widths[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
-        #         self.x_widths /= self.normalization_values['max_width']
-        
-        # # Unpack modulus estimations
-        # if self.use_estimation:
-        #     raise NotImplementedError()
-        
-        # # Unpack label
-        # self.y_label[0] = self.modulus_labels[idx]
-
-        # return self.x_frames.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone()
-     
-
-        x_forces         = torch.zeros((N_FRAMES, 1))
-        x_widths         = torch.zeros((N_FRAMES, 1))
-        x_estimations    = torch.zeros((N_FRAMES, 1))
+        object_name = os.path.basename(self.input_paths[idx]).split('__')[0]
 
         # Read and store frames in the tensor
         with open(self.input_paths[idx], 'rb') as file:
             if self.img_style == 'diff':
-                x_frames = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
+                self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
             elif self.img_style == 'depth':
-                x_frames = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
-                x_frames /= self.normalization_values['max_depth']
+                self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
+                self.x_frames /= self.normalization_values['max_depth']
 
         # Flip the data horizontally if desired
         if self.use_transformations and self.flip_horizontal[idx]:
-            x_frames = torch.flip(x_frames, dims=(2,))
+            self.x_frames = torch.flip(self.x_frames, dims=(2,))
 
         # Unpack force measurements
-        base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
+        self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
         if self.use_force:
-            with open(base_name + '_forces.pkl', 'rb') as file:
-                x_forces = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
-                x_forces /= self.normalization_values['max_force']
+            with open(self.base_name + '_forces.pkl', 'rb') as file:
+                self.x_forces[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
+                self.x_forces /= self.normalization_values['max_force']
 
         # Unpack gripper width measurements
         if self.use_width:
-            with open(base_name + '_widths.pkl', 'rb') as file:
-                x_widths = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
-                x_widths /= self.normalization_values['max_width']
+            with open(self.base_name + '_widths.pkl', 'rb') as file:
+                self.x_widths[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
+                self.x_widths /= self.normalization_values['max_width']
         
         # Unpack modulus estimations
         if self.use_estimation:
             raise NotImplementedError()
         
         # Unpack label
-        y_label = torch.zeros((1,))
-        y_label[0] = self.modulus_labels[idx]
+        self.y_label[0] = self.modulus_labels[idx]
 
-        return x_frames, x_forces, x_widths, x_estimations, y_label
+        return self.x_frames.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
 
 class ModulusModel():
     def __init__(self, config, device=None):
@@ -482,7 +444,7 @@ class ModulusModel():
         self.exclude                = config['exclude']
         
         self.use_wandb              = config['use_wandb']
-        self.run_name              = config['run_name']
+        self.run_name               = config['run_name']
 
         # Create max values for scaling
         self.normalization_values = { # Based on acquired data maximums
@@ -548,6 +510,10 @@ class ModulusModel():
             self.scheduler  = lr_scheduler.StepLR(self.optimizer, step_size=self.lr_step_size, gamma=self.gamma)
 
         # Load data
+        self.object_names = []
+        self.object_to_modulus = {}
+        self.object_to_shape = {}
+        self.object_to_material = {}
         self._load_data_paths()
 
         if self.use_wandb:
@@ -612,9 +578,11 @@ class ModulusModel():
         return x_min * (x_max/x_min)**(x_normal)
 
     # Create data loaders based on configuration
-    def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, training_data_folder_name='training_data'):
+    def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, csv_shape_column=2, csv_material_column=3, training_data_folder_name='training_data'):
         # Read CSV files with objects and labels tabulated
-        object_to_modulus = {}
+        self.object_to_modulus = {}
+        self.object_to_shape = {}
+        self.object_to_material = {}
         csv_file_path = f'{self.data_dir}/{labels_csv_name}'
         with open(csv_file_path, 'r') as file:
             csv_reader = csv.reader(file)
@@ -622,16 +590,20 @@ class ModulusModel():
             for row in csv_reader:
                 if row[csv_modulus_column] != '' and float(row[csv_modulus_column]) > 0:
                     modulus = float(row[csv_modulus_column])
-                    object_to_modulus[row[1]] = modulus
+                    self.object_to_modulus[row[1]] = modulus
                     self.normalization_values['max_modulus'] = max(self.normalization_values['max_modulus'], modulus)
                     self.normalization_values['min_modulus'] = min(self.normalization_values['min_modulus'], modulus)
 
+                    # Snatch other relavent data too
+                    self.object_to_shape[row[1]] = row[csv_shape_column]
+                    self.object_to_material[row[1]] = row[csv_material_column]
+
         # Extract object names as keys from data
-        object_names = object_to_modulus.keys()
+        object_names = self.object_to_modulus.keys()
         object_names = [x for x in object_names if x not in self.exclude]
 
         # Extract elastic modulus labels for each object
-        elastic_moduli = [object_to_modulus[x] for x in object_names]
+        elastic_moduli = [self.object_to_modulus[x] for x in object_names]
 
         # Split objects into validation or training
         objects_train, objects_val, _, _ = train_test_split(object_names, elastic_moduli, test_size=self.val_pct, random_state=self.random_state)
@@ -643,15 +615,20 @@ class ModulusModel():
         # Divide paths up into training and validation data
         x_train, x_val = [], []
         y_train, y_val = [], []
+        self.object_names = []
         for file_path in paths_to_files:
             file_name = os.path.basename(file_path)
             object_name = file_name.split('__')[0]
+            if object_name in self.exclude: continue
+
             if object_name in objects_train:
+                self.object_names.append(object_name)
                 x_train.append(file_path)
-                y_train.append(self.log_normalize(object_to_modulus[object_name]))
+                y_train.append(self.log_normalize(self.object_to_modulus[object_name]))
             elif object_name in objects_val:
+                self.object_names.append(object_name)
                 x_val.append(file_path)
-                y_val.append(self.log_normalize(object_to_modulus[object_name]))
+                y_val.append(self.log_normalize(self.object_to_modulus[object_name]))
 
         # Create tensor's on device to send to dataset
         empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device)
@@ -666,14 +643,14 @@ class ModulusModel():
     
         # Construct datasets
         kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
-        self.train_dataset  = CustomDataset(self.config, x_train, y_train, 
+        self.train_dataset  = CustomDataset(self.config, x_train, y_train,
                                             self.normalization_values,
                                             frame_tensor=empty_frame_tensor, 
                                             force_tensor=empty_force_tensor,
                                             width_tensor=empty_width_tensor,
                                             estimation_tensor=empty_estimation_tensor,
                                             label_tensor=empty_label_tensor)
-        self.val_dataset    = CustomDataset(self.config, x_val, y_val, 
+        self.val_dataset    = CustomDataset(self.config, x_val, y_val,
                                             self.normalization_values,
                                             frame_tensor=empty_frame_tensor, 
                                             force_tensor=empty_force_tensor,
@@ -695,14 +672,8 @@ class ModulusModel():
         self.decoder.train()
 
         train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
-        for x_frames, x_forces, x_widths, x_estimations, y in self.train_loader:
+        for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
-                
-            x_frames = x_frames.to(self.device)
-            x_forces = x_forces.to(self.device)
-            x_widths = x_widths.to(self.device)
-            x_estimations = x_estimations.to(self.device)
-            y = y.to(self.device)
 
             # Concatenate features across frames into a single vector
             features = []
@@ -729,10 +700,15 @@ class ModulusModel():
             train_loss += loss.item()
             batch_count += 1
 
+            # Calculate performance metrics
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
-            train_log_acc += (abs_log_diff <= 0.5).sum().item()
             train_avg_log_diff += abs_log_diff.sum().item()
-            train_pct_with_100_factor_err += (abs_log_diff >= 2).sum().item() 
+            for i in range(self.batch_size):
+                if (abs_log_diff <= 0.5).squeeze().tolist():
+                    train_log_acc += 1
+                if (abs_log_diff >= 2).squeeze().tolist():
+                    train_pct_with_100_factor_err += 1
+                    self.poorly_predicted[object_names[i]] = True
 
         # Return loss
         train_loss /= batch_count
@@ -753,14 +729,8 @@ class ModulusModel():
         self.decoder.eval()
 
         val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
-        for x_frames, x_forces, x_widths, x_estimations, y in self.val_loader:
-                
-            x_frames = x_frames.to(self.device)
-            x_forces = x_forces.to(self.device)
-            x_widths = x_widths.to(self.device)
-            x_estimations = x_estimations.to(self.device)
-            y = y.to(self.device)
-
+        for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
+            
             # Concatenate features across frames into a single vector
             features = []
             for i in range(N_FRAMES):
@@ -787,6 +757,24 @@ class ModulusModel():
             val_log_acc += (abs_log_diff <= 0.5).sum().item()
             val_avg_log_diff += abs_log_diff.sum().item()
             val_pct_with_100_factor_err += (abs_log_diff >= 2).sum().item() 
+            
+            # Calculate performance metrics
+            abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
+            val_avg_log_diff += abs_log_diff.sum().item()
+            for i in range(self.batch_size):
+                if (abs_log_diff <= 0.5).squeeze().tolist():
+                    val_log_acc += 1
+                    self.material_log_acc[self.object_to_material[object_names[i]]][0] += 1
+                    self.material_log_acc[self.object_to_material[object_names[i]]][1] += 1
+                    self.shape_log_acc[self.object_to_shape[object_names[i]]][0] += 1
+                    self.shape_log_acc[self.object_to_shape[object_names[i]]][1] += 1
+                else:
+                    self.material_log_acc[self.object_to_material[object_names[i]]][1] += 1
+                    self.shape_log_acc[self.object_to_shape[object_names[i]]][1] += 1
+
+                if (abs_log_diff >= 2).squeeze().tolist():
+                    val_pct_with_100_factor_err += 1
+                    self.poorly_predicted[object_names[i]] = True
         
         # Return loss and accuracy
         val_loss /= batch_count
@@ -797,39 +785,59 @@ class ModulusModel():
         return val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err
 
     def _save_model(self):
-        model_dir = './model'
-        if not os.path.exists(model_dir):
-            os.mkdir(model_dir)
-        if not os.path.exists(f'{model_dir}/{self.run_name}'):
-            os.mkdir(f'{model_dir}/{self.run_name}')
+        if not os.path.exists(f'./model/{self.run_name}'):
+            os.mkdir(f'./model/{self.run_name}')
         else:
-            if os.path.exists(f'{model_dir}/{self.run_name}/config.json'):
-                os.remove(f'{model_dir}/{self.run_name}/config.json')
-            if os.path.exists(f'{model_dir}/{self.run_name}/video_encoder.pth'):
-                os.remove(f'{model_dir}/{self.run_name}/video_encoder.pth')
-            if os.path.exists(f'{model_dir}/{self.run_name}/force_encoder.pth'):
-                os.remove(f'{model_dir}/{self.run_name}/force_encoder.pth')
-            if os.path.exists(f'{model_dir}/{self.run_name}/width_encoder.pth'):
-                os.remove(f'{model_dir}/{self.run_name}/width_encoder.pth')
-            if os.path.exists(f'{model_dir}/{self.run_name}/estimation_encoder.pth'):
-                os.remove(f'{model_dir}/{self.run_name}/estimation_encoder.pth')
-            if os.path.exists(f'{model_dir}/{self.run_name}/decoder.pth'):
-                os.remove(f'{model_dir}/{self.run_name}/decoder.pth')
+            if os.path.exists(f'./model/{self.run_name}/config.json'):
+                os.remove(f'./model/{self.run_name}/config.json')
+            if os.path.exists(f'./model/{self.run_name}/poorly_predicted.json'):
+                os.remove(f'./model/{self.run_name}/poorly_predicted.json')
+            if os.path.exists(f'./model/{self.run_name}/material_log_acc.json'):
+                os.remove(f'./model/{self.run_name}/material_log_acc.json')
+            if os.path.exists(f'./model/{self.run_name}/shape_log_acc.json'):
+                os.remove(f'./model/{self.run_name}/shape_log_acc.json')
+            if os.path.exists(f'./model/{self.run_name}/video_encoder.pth'):
+                os.remove(f'./model/{self.run_name}/video_encoder.pth')
+            if os.path.exists(f'./model/{self.run_name}/force_encoder.pth'):
+                os.remove(f'./model/{self.run_name}/force_encoder.pth')
+            if os.path.exists(f'./model/{self.run_name}/width_encoder.pth'):
+                os.remove(f'./model/{self.run_name}/width_encoder.pth')
+            if os.path.exists(f'./model/{self.run_name}/estimation_encoder.pth'):
+                os.remove(f'./model/{self.run_name}/estimation_encoder.pth')
+            if os.path.exists(f'./model/{self.run_name}/decoder.pth'):
+                os.remove(f'./model/{self.run_name}/decoder.pth')
 
         # Save configuration dictionary and all files for the model(s)
-        with open(f'{model_dir}/{self.run_name}/config.json', 'w') as json_file:
+        with open(f'./model/{self.run_name}/config.json', 'w') as json_file:
             json.dump(self.config, json_file)
-        torch.save(self.video_encoder.state_dict(), f'{model_dir}/{self.run_name}/video_encoder.pth')
-        if self.use_force: torch.save(self.force_encoder.state_dict(), f'{model_dir}/{self.run_name}/force_encoder.pth')
-        if self.use_width: torch.save(self.width_encoder.state_dict(), f'{model_dir}/{self.run_name}/width_encoder.pth')
-        if self.use_estimation: torch.save(self.estimation_encoder.state_dict(), f'{model_dir}/{self.run_name}/estimation_encoder.pth')
-        torch.save(self.decoder.state_dict(), f'{model_dir}/{self.run_name}/decoder.pth')
+        torch.save(self.video_encoder.state_dict(), f'./model/{self.run_name}/video_encoder.pth')
+        if self.use_force: torch.save(self.force_encoder.state_dict(), f'./model/{self.run_name}/force_encoder.pth')
+        if self.use_width: torch.save(self.width_encoder.state_dict(), f'./model/{self.run_name}/width_encoder.pth')
+        if self.use_estimation: torch.save(self.estimation_encoder.state_dict(), f'./model/{self.run_name}/estimation_encoder.pth')
+        torch.save(self.decoder.state_dict(), f'./model/{self.run_name}/decoder.pth')
+
+        # Save performance data
+        with open(f'./model/{self.run_name}/poorly_predicted.json', 'w') as json_file:
+            json.dump(self.poorly_predicted, json_file)
+        with open(f'./model/{self.run_name}/material_log_acc.json', 'w') as json_file:
+            json.dump(self.material_log_acc, json_file)
+        with open(f'./model/{self.run_name}/shape_log_acc.json', 'w') as json_file:
+            json.dump(self.shape_log_acc, json_file)
         return
 
     def train(self):
         learning_rate = self.learning_rate 
         min_val_loss = 1e100
         for epoch in range(self.epochs):
+
+            # Create some data structures for tracking performance
+            self.poorly_predicted = {}
+            self.material_log_acc = {}
+            self.shape_log_acc = {}
+            for object_name in self.object_names:
+                self.poorly_predicted[object_name] = False
+                self.material_log_acc[self.object_to_material[object_name]] = [0, 0]
+                self.shape_log_acc[self.object_to_shape[object_name]] = [0, 0]
 
             # Train batch
             train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err = self._train_epoch()
@@ -881,8 +889,6 @@ class ModulusModel():
 
 if __name__ == "__main__":
 
-    maybe_exclude = ['apple', 'orange', 'strawberry']
-
     # Training and model settings
     config = {
         # Data parameters
@@ -895,15 +901,16 @@ if __name__ == "__main__":
         'use_width': True,
         'use_estimation': False,
         'use_transformations': True,
-        'exclude': ['playdoh', 'silly_putty', 'racquetball', 'blue_sponge_dry', 'blue_sponge_wet'],
+        'exclude': ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
+                    'apple', 'orange', 'strawberry'],
 
         # Logging on/off
         'use_wandb': True,
         # 'run_name': 'Diff128_F16_W16_NoTransforms_Markers',
-        'run_name': 'SentToDeviceInLoop',
+        'run_name': 'ExtraLayerInDecoder',
 
         # Training and model parameters
-        'epochs'            : 100,
+        'epochs'            : 120,
         'batch_size'        : 32,
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 16,
@@ -918,8 +925,11 @@ if __name__ == "__main__":
 
     if config['use_estimation']: raise NotImplementedError()
 
-    # for i in range(3):
+    for LR in ['1e-5', '1e-6', '1e-7']:
+        config['run_name'] = f'LR={LR}'
+        config['learning_rate'] = eval(LR)
 
-    # Train the model over some data
-    train_modulus = ModulusModel(config, device=device)
-    train_modulus.train()
+        for i in range(3):
+            # Train the model over some data
+            train_modulus = ModulusModel(config, device=device)
+            train_modulus.train()
