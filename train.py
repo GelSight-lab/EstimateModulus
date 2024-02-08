@@ -235,7 +235,7 @@ class EncoderCNN(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[512, 512, 256],
+                FC_layer_nodes=[512, 512, 256, 64],
                 drop_p=0.5,
                 output_dim=6):
         super(DecoderFC, self).__init__()
@@ -245,12 +245,13 @@ class DecoderFC(nn.Module):
         self.drop_p = drop_p
         self.output_dim = output_dim
 
-        assert len(FC_layer_nodes) == 3
+        assert len(FC_layer_nodes) == 4
 
         self.fc1 = nn.Linear(self.FC_input_size, self.FC_layer_nodes[0])
         self.fc2 = nn.Linear(self.FC_layer_nodes[0], self.FC_layer_nodes[1])
         self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
-        self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.output_dim)
+        self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.FC_layer_nodes[3])
+        self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.output_dim)
         self.drop = nn.Dropout(self.drop_p)
 
     def forward(self, x):
@@ -262,13 +263,13 @@ class DecoderFC(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x)
-        # x = F.tanh(x)
-        x = F.silu(x)
+        x = F.tanh(x)
         x = self.drop(x)
         x = self.fc4(x)
-        # return torch.sigmoid(x)
-        # return 10*torch.sigmoid(x)
-        return torch.relu(x)
+        x = F.tanh(x)
+        x = self.drop(x)
+        x = self.fc5(x)
+        return torch.sigmoid(x)
  
 
 class ForceFC(nn.Module):
@@ -563,15 +564,13 @@ class ModulusModel():
     def log_normalize(self, x, x_max=None, x_min=None):
         if x_max is None: x_max = self.normalization_values['max_modulus']
         if x_min is None: x_min = self.normalization_values['min_modulus']
-        # return (np.log10(x) - np.log10(x_min)) / (np.log10(x_max) - np.log10(x_min))
-        return np.log10(x) - np.log10(x_min)
+        return (np.log10(x) - np.log10(x_min)) / (np.log10(x_max) - np.log10(x_min))
     
     # Unnormalize labels from maximum on log scale
     def log_unnormalize(self, x_normal, x_max=None, x_min=None):
         if x_max is None: x_max = self.normalization_values['max_modulus']
         if x_min is None: x_min = self.normalization_values['min_modulus']
-        # return x_min * (x_max/x_min)**(x_normal)
-        return 10**(x_normal + np.log10(x_min))
+        return x_min * (x_max/x_min)**(x_normal)
 
     # Create data loaders based on configuration
     def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, training_data_folder_name='training_data'):
@@ -854,7 +853,8 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Diff128_F16_W16_NoTransforms_Markers',
+        # 'run_name': 'Diff128_F16_W16_NoTransforms_Markers',
+        'run_name': 'ExtraLayerInDecoder',
 
         # Training and model parameters
         'epochs'            : 100,
