@@ -148,7 +148,7 @@ class EncoderCNN(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[512, 512, 128], # 64]
+                FC_layer_nodes=[256, 256, 64], # [512, 512, 128], # 64]
                 drop_p=0.5,
                 output_dim=6):
         super(DecoderFC, self).__init__()
@@ -169,7 +169,6 @@ class DecoderFC(nn.Module):
         self.drop = nn.Dropout(self.drop_p)
 
     def forward(self, x):
-        x = torch.cat(x, -1)
         x = self.fc1(x)
         x = F.silu(x)
         x = self.drop(x)
@@ -177,7 +176,7 @@ class DecoderFC(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x)
-        x = F.tanh(x)
+        x = F.silu(x) # F.tanh(x)
         x = self.drop(x)
         x = self.fc4(x)
         # x = F.tanh(x)

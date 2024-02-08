@@ -100,6 +100,7 @@ def plot_performance(plot_title, prediction_dict, linear_scaling, label_dict):
     plt.rcParams['font.family'] = 'Times New Roman'
     plt.figure()
     plt.plot([100, 10**12], [100, 10**12], 'k--', label='_')
+    plt.fill_between([100, 10**12], [10**(1.5), 10**(11.5)], [10**(2.5), 10**(12.5)], alpha=0.2)
     plt.xscale('log')
     plt.yscale('log')
 
