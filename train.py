@@ -212,14 +212,14 @@ class ModulusModel():
             self.estimation_encoder.to(self.device)
         self.decoder.to(self.device)
 
-        print('Summaries...')
-        summary(self.video_encoder, (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), device=device)
-        print('\nIn comparison, ResNet looks like this...')
-        summary(torchvision.models.resnet18(), (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]))
-        if self.use_force:
-            summary(self.force_encoder, (self.batch_size, 1), device=device)
-        summary(self.decoder, (self.batch_size, decoder_input_size), device=device)
-        print('Done.')
+        # print('Summaries...')
+        # summary(self.video_encoder, (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), device=device)
+        # print('\nIn comparison, ResNet looks like this...')
+        # summary(torchvision.models.resnet18(), (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]))
+        # if self.use_force:
+        #     summary(self.force_encoder, (self.batch_size, 1), device=device)
+        # summary(self.decoder, (self.batch_size, decoder_input_size), device=device)
+        # print('Done.')
 
         # Concatenate parameters of all models
         self.params         = list(self.video_encoder.parameters())
@@ -628,7 +628,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'LargerCNNArch',   
+        'run_name': 'LargerCNNArch_LR=1e-4',   
 
         # Training and model parameters
         'epochs'            : 60,
