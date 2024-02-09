@@ -650,6 +650,8 @@ if __name__ == "__main__":
     if config['use_estimation']: raise NotImplementedError()
 
     for i in range(3):
+        config['run_name'] = f'NormWidth_Smaller_Nframes=3_LR=1e-5_t={str(i)}'
+
         # Train the model over some data
         train_modulus = ModulusModel(config, device=device)
         train_modulus.train()
