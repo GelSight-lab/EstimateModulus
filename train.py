@@ -118,7 +118,6 @@ class CustomDataset(Dataset):
                 self.x_frames_other /= self.normalization_values['max_depth']
 
 
-
         # Flip the data if desired
         if self.use_transformations and self.flip_horizontal[idx]:
             self.x_frames = torch.flip(self.x_frames, dims=(2,))
@@ -201,6 +200,7 @@ class ModulusModel():
 
         # Initialize models based on config
         self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
+        self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
         self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
         self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
         self.estimation_encoder = EstimationFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
@@ -424,7 +424,7 @@ class ModulusModel():
                 features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
                 
-                features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
+                features.append(self.other_video_encoder(x_frames_other[:, i, :, :, :]))
                 
 
                 # Execute FC layers on other data and append
@@ -485,7 +485,7 @@ class ModulusModel():
                 features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
                 
-                features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
+                features.append(self.other_video_encoder(x_frames_other[:, i, :, :, :]))
 
 
                 # Execute FC layers on other data and append
@@ -660,7 +660,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'BothRGBFrames_NormWidth',   
+        'run_name': 'BothRGBFrames_SeparateModels_NormWidth',   
 
         # Training and model parameters
         'epochs'            : 150,
