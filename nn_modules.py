@@ -21,8 +21,8 @@ class EncoderCNN(nn.Module):
                  img_x=200,
                  img_y=200,
                  input_channels=1,
-                 fc_hidden1=128,
-                 fc_hidden2=128,
+                 fc_hidden1=256,
+                 fc_hidden2=64,
                  drop_p=0.5,
                  CNN_embed_dim=128):
         super(EncoderCNN, self).__init__()
@@ -131,7 +131,7 @@ class EncoderCNN(nn.Module):
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
-        # x = self.conv5(x)
+        x = self.conv5(x)
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)  # Flatten the output of conv
         x = self.drop(x)
