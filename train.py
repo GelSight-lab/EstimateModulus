@@ -662,19 +662,19 @@ if __name__ == "__main__":
         'use_transformations': True,
         'exclude': ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'yellow_foam_brick', 'green_foam_brick', 
-                    'apple', 'orange', 'strawberry'],
+                    'apple', 'orange', 'strawberry', 'lacrosse_ball'],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'SuperSmall_Nframes=3_LR=1e-4-SchedulerOff',   
+        'run_name': 'Nframes=3_LR=1e-3_SchedulerOff',   
 
         # Training and model parameters
         'epochs'            : 150,
         'batch_size'        : 32,
-        'img_feature_size'  : 32,
-        'fwe_feature_size'  : 4,
+        'img_feature_size'  : 64,
+        'fwe_feature_size'  : 8,
         'val_pct'           : 0.2,
-        'learning_rate'     : 1e-4,
+        'learning_rate'     : 1e-3,
         'gamma'             : None,
         'lr_step_size'      : None,
         'random_state'      : 40,

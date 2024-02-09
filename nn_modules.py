@@ -93,22 +93,22 @@ class EncoderCNN(nn.Module):
             nn.SiLU(inplace=True),
         )
 
-        # self.conv5 = nn.Sequential(
-        #     nn.Conv2d(in_channels=self.ch4,
-        #               out_channels=self.ch5,
-        #               kernel_size=self.k5,
-        #               stride=self.s5,
-        #               padding=self.pd5),
-        #     nn.BatchNorm2d(self.ch5),
-        #     nn.SiLU(inplace=True),
-        # )
+        self.conv5 = nn.Sequential(
+            nn.Conv2d(in_channels=self.ch4,
+                      out_channels=self.ch5,
+                      kernel_size=self.k5,
+                      stride=self.s5,
+                      padding=self.pd5),
+            nn.BatchNorm2d(self.ch5),
+            nn.SiLU(inplace=True),
+        )
 
         self.drop = nn.Dropout(self.drop_p)
         # self.pool = nn.MaxPool2d(2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         self.fc1 = nn.Linear(
-            self.ch4, # self.ch5 * self.conv5_outshape[0] * self.conv5_outshape[1],
+            self.ch5, # self.ch5 * self.conv5_outshape[0] * self.conv5_outshape[1],
             self.fc_hidden1
         ) # Fully connected layer, output k classes
         self.fc2 = nn.Linear(
@@ -131,7 +131,7 @@ class EncoderCNN(nn.Module):
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
-        # x = self.conv5(x)
+        x = self.conv5(x)
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)  # Flatten the output of conv
         x = self.drop(x)
@@ -148,7 +148,7 @@ class EncoderCNN(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[256, 256, 64], # 64]
+                FC_layer_nodes=[256, 256, 128, 64],
                 drop_p=0.5,
                 output_dim=6):
         super(DecoderFC, self).__init__()
@@ -163,9 +163,9 @@ class DecoderFC(nn.Module):
         self.fc1 = nn.Linear(self.FC_input_size, self.FC_layer_nodes[0])
         self.fc2 = nn.Linear(self.FC_layer_nodes[0], self.FC_layer_nodes[1])
         self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
-        self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.output_dim)
-        # self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.FC_layer_nodes[3])
-        # self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.output_dim)
+        # self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.output_dim)
+        self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.FC_layer_nodes[3])
+        self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.output_dim)
         self.drop = nn.Dropout(self.drop_p)
 
     def forward(self, x):
@@ -179,9 +179,9 @@ class DecoderFC(nn.Module):
         x = F.silu(x) # F.tanh(x)
         x = self.drop(x)
         x = self.fc4(x)
-        # x = F.tanh(x)
-        # x = self.drop(x)
-        # x = self.fc5(x)
+        x = F.silu(x)
+        x = self.drop(x)
+        x = self.fc5(x)
         return torch.sigmoid(x)
  
 class ForceFC(nn.Module):
