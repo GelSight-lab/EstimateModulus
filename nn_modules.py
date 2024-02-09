@@ -148,7 +148,7 @@ class EncoderCNN(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[256, 256, 64], # 64]
+                FC_layer_nodes=[512, 256, 128], # 64]
                 drop_p=0.5,
                 output_dim=6):
         super(DecoderFC, self).__init__()
