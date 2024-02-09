@@ -21,7 +21,7 @@ class EncoderCNN(nn.Module):
                  img_x=200,
                  img_y=200,
                  input_channels=1,
-                 fc_hidden1=256,
+                 fc_hidden1=128,
                  fc_hidden2=64,
                  drop_p=0.5,
                  CNN_embed_dim=128):
@@ -51,8 +51,8 @@ class EncoderCNN(nn.Module):
                                                  self.k3, self.s3)
         self.conv4_outshape = conv2D_output_size(self.conv3_outshape, self.pd4,
                                                  self.k4, self.s4)
-        self.conv5_outshape = conv2D_output_size(self.conv4_outshape, self.pd5,
-                                                 self.k5, self.s5)
+        # self.conv5_outshape = conv2D_output_size(self.conv4_outshape, self.pd5,
+        #                                          self.k5, self.s5)
 
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels=input_channels,
@@ -93,22 +93,22 @@ class EncoderCNN(nn.Module):
             nn.SiLU(inplace=True),
         )
 
-        self.conv5 = nn.Sequential(
-            nn.Conv2d(in_channels=self.ch4,
-                      out_channels=self.ch5,
-                      kernel_size=self.k5,
-                      stride=self.s5,
-                      padding=self.pd5),
-            nn.BatchNorm2d(self.ch5),
-            nn.SiLU(inplace=True),
-        )
+        # self.conv5 = nn.Sequential(
+        #     nn.Conv2d(in_channels=self.ch4,
+        #               out_channels=self.ch5,
+        #               kernel_size=self.k5,
+        #               stride=self.s5,
+        #               padding=self.pd5),
+        #     nn.BatchNorm2d(self.ch5),
+        #     nn.SiLU(inplace=True),
+        # )
 
         self.drop = nn.Dropout(self.drop_p)
         # self.pool = nn.MaxPool2d(2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         self.fc1 = nn.Linear(
-            self.ch5, # self.ch5 * self.conv5_outshape[0] * self.conv5_outshape[1],
+            self.ch4, # self.ch5 * self.conv5_outshape[0] * self.conv5_outshape[1],
             self.fc_hidden1
         ) # Fully connected layer, output k classes
         self.fc2 = nn.Linear(
@@ -131,7 +131,7 @@ class EncoderCNN(nn.Module):
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
-        x = self.conv5(x)
+        # x = self.conv5(x)
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)  # Flatten the output of conv
         x = self.drop(x)
@@ -185,49 +185,58 @@ class DecoderFC(nn.Module):
         return torch.sigmoid(x)
  
 class ForceFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim=16):
+    def __init__(self, hidden_size=16, output_dim=16, drop_p=0.5):
         super(ForceFC, self).__init__()
 
         self.hidden_size = hidden_size
         self.output_dim = output_dim
+        self.drop_p = drop_p
 
         self.fc1 = nn.Linear(1, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
+        self.drop = nn.Dropout(self.drop_p)
 
     def forward(self, x):
         x = self.fc1(x)
         x = F.silu(x)
+        x = self.drop(x)
         x = self.fc2(x)
         return x
     
 class WidthFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim=16):
+    def __init__(self, hidden_size=16, output_dim=16, drop_p=0.5):
         super(WidthFC, self).__init__()
 
         self.hidden_size = hidden_size
         self.output_dim = output_dim
+        self.drop_p = drop_p
 
         self.fc1 = nn.Linear(1, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
+        self.drop = nn.Dropout(self.drop_p)
 
     def forward(self, x):
         x = self.fc1(x)
         x = F.silu(x)
+        x = self.drop(x)
         x = self.fc2(x)
         return x
  
 class EstimationFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim=16):
+    def __init__(self, hidden_size=16, output_dim=16, drop_p=0.5):
         super(EstimationFC, self).__init__()
 
         self.hidden_size = hidden_size
         self.output_dim = output_dim
+        self.drop_p = drop_p
 
         self.fc1 = nn.Linear(1, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
+        self.drop = nn.Dropout(self.drop_p)
 
     def forward(self, x):
         x = self.fc1(x)
         x = F.silu(x)
+        x = self.drop(x)
         x = self.fc2(x)
         return x

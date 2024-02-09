@@ -228,12 +228,13 @@ class ModulusModel():
         self.decoder.to(self.device)
 
         print('Summaries...')
-        summary(self.video_encoder, (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), device=device)
+        col_names = ("input_size", "output_size", "num_params", "params_percent")
+        summary(self.video_encoder, (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), col_names=col_names, device=device)
         print('\nIn comparison, ResNet looks like this...')
-        summary(torchvision.models.resnet18(), (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]))
+        summary(torchvision.models.resnet18(), (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), col_names=col_names)
         if self.use_force:
-            summary(self.force_encoder, (self.batch_size, 1), device=device)
-        summary(self.decoder, (self.batch_size, decoder_input_size), device=device)
+            summary(self.force_encoder, (self.batch_size, 1), col_names=col_names, device=device)
+        summary(self.decoder, (self.batch_size, decoder_input_size), col_names=col_names, device=device)
         print('Done.')
 
         # Concatenate parameters of all models

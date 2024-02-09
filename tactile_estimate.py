@@ -688,6 +688,9 @@ class EstimateModulus():
         # Fit for E_star
         E_star = self.linear_coeff_fit(x_data, y_data)**(3/2)
 
+        if math.isnan(self.Estar_to_E(E_star)[0]) or self.Estar_to_E(E_star)[0] <= 0:
+            print('Bad prediction!')
+
         return E_star
     
     def Estar_to_E(self, E_star):
