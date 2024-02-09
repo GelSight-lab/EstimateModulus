@@ -662,13 +662,13 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'BothRGBFrames_SeparateModels_NormWidth',   
+        'run_name': 'EVERYTHINGSMALL_BothRGBFrames_SeparateModels_NormWidth',   
 
         # Training and model parameters
         'epochs'            : 150,
         'batch_size'        : 32,
-        'img_feature_size'  : 64,
-        'fwe_feature_size'  : 16,
+        'img_feature_size'  : 32,
+        'fwe_feature_size'  : 8,
         'val_pct'           : 0.2,
         'learning_rate'     : 1e-4,
         'gamma'             : 0.5,
@@ -681,8 +681,6 @@ if __name__ == "__main__":
     if config['use_estimation']: raise NotImplementedError()
 
     for i in range(3):
-        # config['run_name'] = f'NormWidth_Smaller_Nframes=3_LR=1e-5_t={str(i)}'
-
         # Train the model over some data
         train_modulus = ModulusModel(config, device=device)
         train_modulus.train()
