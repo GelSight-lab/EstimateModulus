@@ -666,7 +666,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'SuperSmall_Nframes=3_LR=1e-3',   
+        'run_name': 'SuperSmall_Nframes=3_LR=1e-4-SchedulerOff',   
 
         # Training and model parameters
         'epochs'            : 150,
@@ -674,9 +674,9 @@ if __name__ == "__main__":
         'img_feature_size'  : 32,
         'fwe_feature_size'  : 4,
         'val_pct'           : 0.2,
-        'learning_rate'     : 1e-3,
-        'gamma'             : 0.75,
-        'lr_step_size'      : 30,
+        'learning_rate'     : 1e-4,
+        'gamma'             : None,
+        'lr_step_size'      : None,
         'random_state'      : 40,
     }
     assert config['img_style'] in ['diff', 'depth']
