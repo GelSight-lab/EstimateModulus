@@ -21,8 +21,8 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
-N_FRAMES = 5
+DATA_DIR = '/media/mike/Elements/data'
+N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
 # Get the tree of all video files from a directory in place
@@ -166,8 +166,8 @@ class ModulusModel():
 
         # Create max values for scaling
         self.normalization_values = { # Based on acquired data maximums
-            'max_modulus': 0,
-            'min_modulus': 1e10,
+            'max_modulus': 1e3,
+            'min_modulus': 1e12,
             'max_depth': 7.0,
             'max_width': 0.08,
             'max_force': 60.0,
@@ -305,7 +305,7 @@ class ModulusModel():
         return x_min * (x_max/x_min)**(x_normal)
 
     # Create data loaders based on configuration
-    def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, csv_shape_column=2, csv_material_column=3, training_data_folder_name='training_data'):
+    def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, csv_shape_column=2, csv_material_column=3, training_data_folder_name='training_data__Nframes=3'):
         # Read CSV files with objects and labels tabulated
         self.object_to_modulus = {}
         self.object_to_shape = {}
@@ -631,7 +631,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'LargerCNNArch_LR=1e-4',   
+        'run_name': 'Nframes=3',   
 
         # Training and model parameters
         'epochs'            : 60,
@@ -649,7 +649,7 @@ if __name__ == "__main__":
 
     if config['use_estimation']: raise NotImplementedError()
 
-    for i in range(2):
+    for i in range(3):
         # Train the model over some data
         train_modulus = ModulusModel(config, device=device)
         train_modulus.train()

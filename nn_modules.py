@@ -176,7 +176,7 @@ class DecoderFC(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x)
-        x = F.relu(x) # F.tanh(x)
+        x = F.silu(x) # F.tanh(x)
         x = self.drop(x)
         x = self.fc4(x)
         # x = F.tanh(x)
