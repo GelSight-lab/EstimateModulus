@@ -125,7 +125,7 @@ class CustomDataset(Dataset):
         if self.use_width:
             with open(self.base_name + '_widths.pkl', 'rb') as file:
                 self.x_widths[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
-                self.x_widths /= self.normalization_values['max_width']
+                self.x_widths /= self.x_widths.max() # self.normalization_values['max_width']
         
         # Unpack modulus estimations
         if self.use_estimation:
@@ -631,15 +631,15 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Nframes=3',   
+        'run_name': 'NormWidth_Smaller_Nframes=3_LR=1e-5',   
 
         # Training and model parameters
-        'epochs'            : 100,
+        'epochs'            : 150,
         'batch_size'        : 32,
-        'img_feature_size'  : 128,
+        'img_feature_size'  : 64,
         'fwe_feature_size'  : 16,
         'val_pct'           : 0.2,
-        'learning_rate'     : 1e-4,
+        'learning_rate'     : 1e-5,
         'gamma'             : 0.5,
         'lr_step_size'      : 20,
         'random_state'      : 40,

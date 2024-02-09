@@ -21,10 +21,10 @@ class EncoderCNN(nn.Module):
                  img_x=200,
                  img_y=200,
                  input_channels=1,
-                 fc_hidden1=512,
-                 fc_hidden2=512,
+                 fc_hidden1=256,
+                 fc_hidden2=256,
                  drop_p=0.5,
-                 CNN_embed_dim=512):
+                 CNN_embed_dim=128):
         super(EncoderCNN, self).__init__()
 
         self.img_x = img_x
@@ -148,7 +148,7 @@ class EncoderCNN(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[512, 512, 128], # 64]
+                FC_layer_nodes=[256, 256, 64], # 64]
                 drop_p=0.5,
                 output_dim=6):
         super(DecoderFC, self).__init__()
