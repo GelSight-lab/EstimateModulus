@@ -21,7 +21,7 @@ class EncoderCNN(nn.Module):
                  img_x=200,
                  img_y=200,
                  input_channels=1,
-                 fc_hidden1=128,
+                 fc_hidden1=256,
                  fc_hidden2=64,
                  drop_p=0.5,
                  CNN_embed_dim=128):
