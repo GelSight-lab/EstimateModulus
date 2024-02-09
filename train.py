@@ -207,7 +207,7 @@ class ModulusModel():
         self.estimation_encoder = EstimationFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
 
         # Compute the size of the input to the decoder based on config
-        decoder_input_size = 2 * self.n_frames * self.img_feature_size
+        decoder_input_size = self.n_frames * self.img_feature_size
         # decoder_input_size = self.n_frames * self.img_feature_size
         if self.use_force: 
             decoder_input_size += self.n_frames * self.fwe_feature_size
