@@ -634,7 +634,7 @@ if __name__ == "__main__":
         'run_name': 'Nframes=3',   
 
         # Training and model parameters
-        'epochs'            : 60,
+        'epochs'            : 100,
         'batch_size'        : 32,
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 16,
