@@ -17,7 +17,7 @@ for run_name in run_names:
 
     pp_count = 0
     for obj in pp.keys():
-        if pp[obj] == False:
+        if pp[obj][0] / pp[obj][1] < 0.5:
             poorly_predicted_in_all[key] = False
         else:
             pp_count += 1

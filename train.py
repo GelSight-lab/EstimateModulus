@@ -456,7 +456,8 @@ class ModulusModel():
                     train_log_acc += 1
                 if abs_log_diff[i] >= 2:
                     train_pct_with_100_factor_err += 1
-                    self.poorly_predicted[object_names[i]] = True
+                    self.poorly_predicted[object_names[i]][0] += 1
+                self.poorly_predicted[object_names[i]][1] += 1
 
         # Return loss
         train_loss /= batch_count
@@ -522,7 +523,8 @@ class ModulusModel():
 
                 if abs_log_diff[i] >= 2:
                     val_pct_with_100_factor_err += 1
-                    self.poorly_predicted[object_names[i]] = True
+                    self.poorly_predicted[object_names[i]][0] += 1
+                self.poorly_predicted[object_names[i]][1] += 1
         
         # Return loss and accuracy
         val_loss /= batch_count
@@ -583,7 +585,7 @@ class ModulusModel():
             self.material_log_acc = {}
             self.shape_log_acc = {}
             for object_name in self.object_names:
-                self.poorly_predicted[object_name] = False
+                self.poorly_predicted[object_name] = [0, 0]
                 self.material_log_acc[self.object_to_material[object_name]] = [0, 0]
                 self.shape_log_acc[self.object_to_shape[object_name]] = [0, 0]
 
