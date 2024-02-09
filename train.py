@@ -218,6 +218,7 @@ class ModulusModel():
 
         # Send models to device
         self.video_encoder.to(self.device)
+        self.other_video_encoder.to(self.device)
         if self.use_force:
             self.force_encoder.to(self.device)
         if self.use_width:
@@ -237,6 +238,7 @@ class ModulusModel():
 
         # Concatenate parameters of all models
         self.params         = list(self.video_encoder.parameters())
+        self.params         += list(self.other_video_encoder.parameters())
         if self.use_force: 
             self.params += list(self.force_encoder.parameters())
         if self.use_width: 
