@@ -675,8 +675,8 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 4,
         'val_pct'           : 0.2,
         'learning_rate'     : 1e-3,
-        'gamma'             : 0.5,
-        'lr_step_size'      : 20,
+        'gamma'             : 0.75,
+        'lr_step_size'      : 30,
         'random_state'      : 40,
     }
     assert config['img_style'] in ['diff', 'depth']
