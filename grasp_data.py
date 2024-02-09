@@ -192,22 +192,23 @@ class GraspData():
         return
 
     # Clip a press sequence to only the loading sequence (positive force)
-    def clip_to_press(self, force_threshold=FORCE_THRESHOLD, pct_peak_threshold=0.975):
+    def clip_to_press(self, force_threshold=FORCE_THRESHOLD, start_offset=0, peak_offset=0, pct_peak_threshold=0.975):
         # Find initial and peak force over press
         i_start = max(np.argmax(self.forces() >= force_threshold)-1, 0)
         i_peak = np.argmax(self.forces())
 
         # Grab index before below 97.5% of peak
         i_end = i_peak
-        for i in range(len(self.forces())):
-            if i > i_peak and self.forces()[i] <= pct_peak_threshold*self.forces()[i_peak]:
-                i_end = i-1
-                break
+        if pct_peak_threshold < 1:
+            for i in range(len(self.forces())):
+                if i > i_peak and self.forces()[i] < pct_peak_threshold*self.forces()[i_peak]:
+                    i_end = i-1
+                    break
 
         if i_start >= i_end:
             warnings.warn("No press detected! Cannot clip.", Warning)
         else:
-            self.clip(i_start, i_end+1)
+            self.clip(i_start + start_offset, i_end + peak_offset + 1)
         return
     
     # Linearly interpolate gripper widths wherever measurements are equal
@@ -253,7 +254,7 @@ class GraspData():
             plt.plot(other_max_depths / other_max_depths.max(), label="Other Normalized Max Depths")
         plt.xlabel('Index [/]')
         plt.legend()
-        plt.show()
+        plt.show(block=False)
         return
 
     # Plot video for your viewing pleasure
