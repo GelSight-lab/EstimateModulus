@@ -83,7 +83,7 @@ class CustomDataset(Dataset):
         # Define attributes to use to conserve memory
         self.base_name      = ''
         self.x_frames       = frame_tensor
-        self.x_frames_other = frame_tensor
+        # self.x_frames_other = frame_tensor
         self.x_forces       = force_tensor
         self.x_widths       = width_tensor
         self.x_estimations  = estimation_tensor
@@ -110,21 +110,21 @@ class CustomDataset(Dataset):
                 self.x_frames /= self.normalization_values['max_depth']
 
 
-        with open(self.input_paths[idx].replace('_other', ''), 'rb') as file:
-            if self.img_style == 'diff':
-                self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
-            elif self.img_style == 'depth':
-                self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
-                self.x_frames_other /= self.normalization_values['max_depth']
+        # with open(self.input_paths[idx].replace('_other', ''), 'rb') as file:
+        #     if self.img_style == 'diff':
+        #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
+        #     elif self.img_style == 'depth':
+        #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
+        #         self.x_frames_other /= self.normalization_values['max_depth']
 
 
         # Flip the data if desired
         if self.use_transformations and self.flip_horizontal[idx]:
             self.x_frames = torch.flip(self.x_frames, dims=(2,))
-            self.x_frames_other = torch.flip(self.x_frames_other, dims=(2,))
+            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(2,))
         if self.use_transformations and self.flip_vertical[idx]:
             self.x_frames = torch.flip(self.x_frames, dims=(3,))
-            self.x_frames_other = torch.flip(self.x_frames_other, dims=(3,))
+            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(3,))
 
         # Unpack force measurements
         self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
@@ -146,7 +146,8 @@ class CustomDataset(Dataset):
         # Unpack label
         self.y_label[0] = self.modulus_labels[idx]
 
-        return self.x_frames.clone(), self.x_frames_other.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
+        # return self.x_frames.clone(), self.x_frames_other.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
+        return self.x_frames.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
 
 
 class ModulusModel():
@@ -200,7 +201,7 @@ class ModulusModel():
 
         # Initialize models based on config
         self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
-        self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
+        # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
         self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
         self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
         self.estimation_encoder = EstimationFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
@@ -218,7 +219,7 @@ class ModulusModel():
 
         # Send models to device
         self.video_encoder.to(self.device)
-        self.other_video_encoder.to(self.device)
+        # self.other_video_encoder.to(self.device)
         if self.use_force:
             self.force_encoder.to(self.device)
         if self.use_width:
@@ -239,7 +240,7 @@ class ModulusModel():
 
         # Concatenate parameters of all models
         self.params         = list(self.video_encoder.parameters())
-        self.params         += list(self.other_video_encoder.parameters())
+        # self.params         += list(self.other_video_encoder.parameters())
         if self.use_force: 
             self.params += list(self.force_encoder.parameters())
         if self.use_width: 
@@ -416,7 +417,7 @@ class ModulusModel():
         self.decoder.train()
 
         train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
-        for x_frames, x_frames_other, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
+        for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
 
             # Concatenate features across frames into a single vector
@@ -427,7 +428,7 @@ class ModulusModel():
                 features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
                 
-                features.append(self.other_video_encoder(x_frames_other[:, i, :, :, :]))
+                # features.append(self.other_video_encoder(x_frames_other[:, i, :, :, :]))
                 
 
                 # Execute FC layers on other data and append
@@ -479,7 +480,7 @@ class ModulusModel():
         self.decoder.eval()
 
         val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
-        for x_frames, x_frames_other, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
+        for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
             
             # Concatenate features across frames into a single vector
             features = []
@@ -489,7 +490,7 @@ class ModulusModel():
                 features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
                 
-                features.append(self.other_video_encoder(x_frames_other[:, i, :, :, :]))
+                # features.append(self.other_video_encoder(x_frames_other[:, i, :, :, :]))
 
 
                 # Execute FC layers on other data and append
@@ -665,7 +666,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'EVERYTHINGSMALL_BothRGBFrames_SeparateModels_NormWidth',   
+        'run_name': 'SuperSmall_Nframes=3_LR=1e-3',   
 
         # Training and model parameters
         'epochs'            : 150,
@@ -673,7 +674,7 @@ if __name__ == "__main__":
         'img_feature_size'  : 32,
         'fwe_feature_size'  : 4,
         'val_pct'           : 0.2,
-        'learning_rate'     : 1e-4,
+        'learning_rate'     : 1e-3,
         'gamma'             : 0.5,
         'lr_step_size'      : 20,
         'random_state'      : 40,
