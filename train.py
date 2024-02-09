@@ -122,8 +122,10 @@ class CustomDataset(Dataset):
         # Flip the data if desired
         if self.use_transformations and self.flip_horizontal[idx]:
             self.x_frames = torch.flip(self.x_frames, dims=(2,))
+            self.x_frames_other = torch.flip(self.x_frames_other, dims=(2,))
         if self.use_transformations and self.flip_vertical[idx]:
             self.x_frames = torch.flip(self.x_frames, dims=(3,))
+            self.x_frames_other = torch.flip(self.x_frames_other, dims=(3,))
 
         # Unpack force measurements
         self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
@@ -677,7 +679,7 @@ if __name__ == "__main__":
     if config['use_estimation']: raise NotImplementedError()
 
     for i in range(3):
-        config['run_name'] = f'NormWidth_Smaller_Nframes=3_LR=1e-5_t={str(i)}'
+        # config['run_name'] = f'NormWidth_Smaller_Nframes=3_LR=1e-5_t={str(i)}'
 
         # Train the model over some data
         train_modulus = ModulusModel(config, device=device)
