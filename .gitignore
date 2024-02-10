@@ -3,3 +3,4 @@ data/
 data.zip
 wandb/
 model/
+visually_inspect.py

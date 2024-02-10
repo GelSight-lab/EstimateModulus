@@ -1,41 +1,74 @@
-
+import csv
 import json
 
 run_names = [
-    '4LayerDecoder_Nframes=3_LR=1e-4_SchedulerOff', '4LayerDecoder_Nframes=3_LR=1e-3_SchedulerOff', 
+    '', 
 ]
 
-with open(f'./model/{run_names[0]}/poorly_predicted.json', 'r') as file:
-    run0_dict = json.load(file)
-poorly_predicted_in_all = {}
-for key in run0_dict.keys():
-    poorly_predicted_in_all[key] = True
+# Read CSV files with objects and labels tabulated
+object_to_modulus = {}
+object_to_shape = {}
+object_to_material = {}
+csv_file_path = './data/objects_and_labels.csv'
+with open(csv_file_path, 'r') as file:
+    csv_reader = csv.reader(file)
+    next(csv_reader) # Skip title row
+    for row in csv_reader:
+        if row[14] != '':
+            object_to_modulus[row[1]] = float(row[14])
+            object_to_shape[row[1]] = row[2]
+            object_to_material[row[1]] = row[3]
+
+shape_log_acc = { object_to_shape[obj]:[0, 0] for obj in object_to_shape.keys() }
+shape_log_diff = { object_to_shape[obj]:[0, 0] for obj in object_to_shape.keys() }
+material_log_acc = { object_to_material[obj]:[0, 0] for obj in object_to_material.keys() }
+material_log_diff = { object_to_material[obj]:[0, 0] for obj in object_to_material.keys() }
+poorly_predicted_pct = { obj:[0, 0] for obj in object_to_shape.keys() } # Over a factor of 100 off
 
 for run_name in run_names:
-    with open(f'./model/{run_name}/poorly_predicted.json', 'r') as file:
-        pp = json.load(file)
+    with open(f'./model/{run_name}/train_object_log_diff.json', 'r') as file:
+        train_object_log_diff = json.load(file)
+    with open(f'./model/{run_name}/val_object_log_diff.json', 'r') as file:
+        val_object_log_diff = json.load(file)
 
-    pp_count = 0
-    for obj in pp.keys():
-        if pp[obj][0] / pp[obj][1] < 0.25:
-            poorly_predicted_in_all[obj] = False
-        else:
-            pp_count += 1
-        print(obj, pp[obj][0]/pp[obj][1])
-    
-    with open(f'./model/{run_name}/material_log_acc.json', 'r') as file:
-        mat = json.load(file)
-    with open(f'./model/{run_name}/shape_log_acc.json', 'r') as file:
-        shap = json.load(file)
+    for obj in train_object_log_diff.keys():
+        for log_diff in train_object_log_diff[obj]:
+            shape_log_diff[object_to_shape[obj]][0] += log_diff
+            shape_log_diff[object_to_shape[obj]][1] += 1
+            material_log_diff[object_to_material[obj]][0] += log_diff
+            material_log_diff[object_to_material[obj]][1] += 1
+            
+            if log_diff <= 0.5:
+                shape_log_acc[object_to_shape[obj]][0] += 1
+            shape_log_acc[object_to_shape[obj]][1] += 1
+            if log_diff <= 0.5:
+                material_log_acc[object_to_material[obj]][0] += 1
+            material_log_acc[object_to_material[obj]][1] += 1
 
-    print(run_name)
-    print('% POORLY PREDICTED:', pp_count / len(pp.keys()))
-    print('MATERIAL PERFORMANCE:', mat)
-    print('SHAPE PERFORMANCE:',shap)
-    print('\n')
+            if log_diff >= 2:
+                poorly_predicted_pct[obj][0] += 1
+            poorly_predicted_pct[obj][1] += 1
+            
+    for obj in val_object_log_diff.keys():
+        for log_diff in val_object_log_diff[obj]:
+            if log_diff >= 2:
+                poorly_predicted_pct[obj][0] += 1
+            poorly_predicted_pct[obj][1] += 1
 
-print('Poorly predicted in all:')
-for obj in poorly_predicted_in_all:
-    if poorly_predicted_in_all[obj]:
-        print(obj)
+
+shape_log_acc = { key:shape_log_acc[key][0]/shape_log_acc[key][1] for key in shape_log_acc.keys() }
+shape_log_diff = { key:shape_log_diff[key][0]/shape_log_diff[key][1] for key in shape_log_diff.keys() }
+material_log_acc = { key:material_log_acc[key][0]/material_log_acc[key][1] for key in material_log_acc.keys() }
+material_log_diff = { key:material_log_diff[key][0]/material_log_diff[key][1] for key in material_log_diff.keys() }
+poorly_predicted_pct = { key:poorly_predicted_pct[key][0]/poorly_predicted_pct[key][1] for key in poorly_predicted_pct.keys() } # Over a factor of 100 off
+
+print('shape_log_acc', shape_log_acc)
+print('\n')
+print('shape_log_diff', shape_log_diff)
+print('\n')
+print('material_log_acc', material_log_acc)
+print('\n')
+print('material_log_diff', material_log_diff)
+print('\n')
+print('poorly_predicted %', poorly_predicted_pct)
 print('\n')

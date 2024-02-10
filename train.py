@@ -21,7 +21,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -257,8 +257,6 @@ class ModulusModel():
         # Load data
         self.object_names = []
         self.object_to_modulus = {}
-        self.object_to_shape = {}
-        self.object_to_material = {}
         self._load_data_paths()
 
         if self.use_wandb:
@@ -323,11 +321,9 @@ class ModulusModel():
         return x_min * (x_max/x_min)**(x_normal)
 
     # Create data loaders based on configuration
-    def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, csv_shape_column=2, csv_material_column=3, training_data_folder_name='training_data__Nframes=3'):
+    def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, training_data_folder_name=f'training_data__Nframes={N_FRAMES}'):
         # Read CSV files with objects and labels tabulated
         self.object_to_modulus = {}
-        self.object_to_shape = {}
-        self.object_to_material = {}
         csv_file_path = f'{self.data_dir}/{labels_csv_name}'
         with open(csv_file_path, 'r') as file:
             csv_reader = csv.reader(file)
@@ -338,10 +334,6 @@ class ModulusModel():
                     self.object_to_modulus[row[1]] = modulus
                     self.normalization_values['max_modulus'] = max(self.normalization_values['max_modulus'], modulus)
                     self.normalization_values['min_modulus'] = min(self.normalization_values['min_modulus'], modulus)
-
-                    # Snatch other relavent data too
-                    self.object_to_shape[row[1]] = row[csv_shape_column]
-                    self.object_to_material[row[1]] = row[csv_material_column]
 
         # Extract object names as keys from data
         object_names = self.object_to_modulus.keys()
@@ -365,12 +357,6 @@ class ModulusModel():
             file_name = os.path.basename(file_path)
             object_name = file_name.split('__')[0]
             if object_name in self.exclude: continue
-
-
-            if self.object_to_modulus[object_name] > 5*(10**9) and self.object_to_modulus[object_name] < 5*(10**10):
-                continue
-
-
 
             if object_name in objects_train:
                 self.object_names.append(object_name)
@@ -458,12 +444,11 @@ class ModulusModel():
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
             train_avg_log_diff += abs_log_diff.sum().item()
             for i in range(self.batch_size):
+                self.train_object_log_diff[object_names[i]].append(abs_log_diff[i])
                 if abs_log_diff[i] <= 0.5:
                     train_log_acc += 1
                 if abs_log_diff[i] >= 2:
                     train_pct_with_100_factor_err += 1
-                    self.poorly_predicted[object_names[i]][0] += 1
-                self.poorly_predicted[object_names[i]][1] += 1
 
         # Return loss
         train_loss /= batch_count
@@ -515,20 +500,11 @@ class ModulusModel():
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
             val_avg_log_diff += abs_log_diff.sum().item()
             for i in range(self.batch_size):
+                self.val_object_log_diff[object_names[i]].append(abs_log_diff[i])
                 if abs_log_diff[i] <= 0.5:
                     val_log_acc += 1
-                    self.material_log_acc[self.object_to_material[object_names[i]]][0] += 1
-                    self.material_log_acc[self.object_to_material[object_names[i]]][1] += 1
-                    self.shape_log_acc[self.object_to_shape[object_names[i]]][0] += 1
-                    self.shape_log_acc[self.object_to_shape[object_names[i]]][1] += 1
-                else:
-                    self.material_log_acc[self.object_to_material[object_names[i]]][1] += 1
-                    self.shape_log_acc[self.object_to_shape[object_names[i]]][1] += 1
-
                 if abs_log_diff[i] >= 2:
                     val_pct_with_100_factor_err += 1
-                    self.poorly_predicted[object_names[i]][0] += 1
-                self.poorly_predicted[object_names[i]][1] += 1
         
         # Return loss and accuracy
         val_loss /= batch_count
@@ -544,12 +520,10 @@ class ModulusModel():
         else:
             if os.path.exists(f'./model/{self.run_name}/config.json'):
                 os.remove(f'./model/{self.run_name}/config.json')
-            if os.path.exists(f'./model/{self.run_name}/poorly_predicted.json'):
-                os.remove(f'./model/{self.run_name}/poorly_predicted.json')
-            if os.path.exists(f'./model/{self.run_name}/material_log_acc.json'):
-                os.remove(f'./model/{self.run_name}/material_log_acc.json')
-            if os.path.exists(f'./model/{self.run_name}/shape_log_acc.json'):
-                os.remove(f'./model/{self.run_name}/shape_log_acc.json')
+            if os.path.exists(f'./model/{self.run_name}/train_object_log_diff.json'):
+                os.remove(f'./model/{self.run_name}/train_object_log_diff.json')
+            if os.path.exists(f'./model/{self.run_name}/val_object_log_diff.json'):
+                os.remove(f'./model/{self.run_name}/val_object_log_diff.json')
             if os.path.exists(f'./model/{self.run_name}/video_encoder.pth'):
                 os.remove(f'./model/{self.run_name}/video_encoder.pth')
             if os.path.exists(f'./model/{self.run_name}/force_encoder.pth'):
@@ -571,12 +545,10 @@ class ModulusModel():
         torch.save(self.decoder.state_dict(), f'./model/{self.run_name}/decoder.pth')
 
         # Save performance data
-        with open(f'./model/{self.run_name}/poorly_predicted.json', 'w') as json_file:
-            json.dump(self.poorly_predicted, json_file)
-        with open(f'./model/{self.run_name}/material_log_acc.json', 'w') as json_file:
-            json.dump(self.material_log_acc, json_file)
-        with open(f'./model/{self.run_name}/shape_log_acc.json', 'w') as json_file:
-            json.dump(self.shape_log_acc, json_file)
+        with open(f'./model/{self.run_name}/train_object_log_diff.json', 'w') as json_file:
+            json.dump(self.train_object_log_diff, json_file)
+        with open(f'./model/{self.run_name}/val_object_log_diff.json', 'w') as json_file:
+            json.dump(self.val_object_log_diff, json_file)
         return
 
     def train(self):
@@ -585,13 +557,11 @@ class ModulusModel():
         for epoch in range(self.epochs):
 
             # Create some data structures for tracking performance
-            self.poorly_predicted = {}
-            self.material_log_acc = {}
-            self.shape_log_acc = {}
+            self.train_object_log_diff = {}
+            self.val_object_log_diff = {}
             for object_name in self.object_names:
-                self.poorly_predicted[object_name] = [0, 0]
-                self.material_log_acc[self.object_to_material[object_name]] = [0, 0]
-                self.shape_log_acc[self.object_to_shape[object_name]] = [0, 0]
+                self.train_object_log_diff[object_name] = []
+                self.val_object_log_diff[object_name] = []
 
             # Train batch
             train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err = self._train_epoch()
@@ -668,7 +638,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'RemoveWoodenObjects',   
+        'run_name': 'Base',   
 
         # Training and model parameters
         'epochs'            : 100,
