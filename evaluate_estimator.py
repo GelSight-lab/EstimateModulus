@@ -120,12 +120,23 @@ def plot_performance(plot_title, prediction_dict, linear_scaling, label_dict):
 
 if __name__ == '__main__':
 
-    naive_estimates         = {}
-    hertz_estimates         = {}
-    MDR_estimates           = {}
-    stochastic_estimates    = {}
+    empty_estimate_dict     = { obj:0 for obj in object_to_modulus.keys() }
+    naive_estimates         = []
+    naive_configs           = []
+    hertz_estimates         = []
+    hertz_configs           = []
+    MDR_estimates           = []
+    MDR_configs             = []
+    stochastic_estimates    = []
+
+    for object_name in object_to_modulus.keys():
+
+        # Go to directory for each method
+        # If not enough dictionaries, add one
 
 
+
+    # Out of loop, evaluate each set of estimates and pick the best
 
     # # Find a linear scaling for each set of predictions to minimize error
     # naive_scaling       = scale_predictions(naive_estimates, object_to_modulus)

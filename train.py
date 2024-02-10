@@ -121,10 +121,10 @@ class CustomDataset(Dataset):
         # Flip the data if desired
         if self.use_transformations and self.flip_horizontal[idx]:
             self.x_frames = torch.flip(self.x_frames, dims=(2,))
-            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(2,))
+            self.x_frames_other = torch.flip(self.x_frames_other, dims=(2,))
         if self.use_transformations and self.flip_vertical[idx]:
             self.x_frames = torch.flip(self.x_frames, dims=(3,))
-            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(3,))
+            self.x_frames_other = torch.flip(self.x_frames_other, dims=(3,))
 
         # Unpack force measurements
         self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
@@ -228,15 +228,15 @@ class ModulusModel():
             self.estimation_encoder.to(self.device)
         self.decoder.to(self.device)
 
-        print('Summaries...')
-        col_names = ("input_size", "output_size", "num_params", "params_percent")
-        summary(self.video_encoder, (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), col_names=col_names, device=device)
-        print('\nIn comparison, ResNet looks like this...')
-        summary(torchvision.models.resnet18(), (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), col_names=col_names)
-        if self.use_force:
-            summary(self.force_encoder, (self.batch_size, 1), col_names=col_names, device=device)
-        summary(self.decoder, (self.batch_size, decoder_input_size), col_names=col_names, device=device)
-        print('Done.')
+        # print('Summaries...')
+        # col_names = ("input_size", "output_size", "num_params", "params_percent")
+        # summary(self.video_encoder, (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), col_names=col_names, device=device)
+        # print('\nIn comparison, ResNet looks like this...')
+        # summary(torchvision.models.resnet18(), (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), col_names=col_names)
+        # if self.use_force:
+        #     summary(self.force_encoder, (self.batch_size, 1), col_names=col_names, device=device)
+        # summary(self.decoder, (self.batch_size, decoder_input_size), col_names=col_names, device=device)
+        # print('Done.')
 
         # Concatenate parameters of all models
         self.params         = list(self.video_encoder.parameters())
