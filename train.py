@@ -469,7 +469,7 @@ class ModulusModel():
                     # self.train_object_performance[object_names[i]]['total_log_acc'] += 1
                     train_log_acc += 1
                 if abs_log_diff[i] >= 2:
-                    self.train_object_performance[object_names[i]]['total_poorly_predicted'] += 1
+                    # self.train_object_performance[object_names[i]]['total_poorly_predicted'] += 1
                     train_pct_with_100_factor_err += 1
                     
 
