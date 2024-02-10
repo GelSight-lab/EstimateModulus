@@ -208,7 +208,7 @@ class ModulusModel():
 
         # Compute the size of the input to the decoder based on config
         decoder_input_size = self.n_frames * self.img_feature_size
-        decoder_input_size += self.n_frames * self.img_feature_size
+        # decoder_input_size += self.n_frames * self.img_feature_size
         if self.use_force: 
             decoder_input_size += self.n_frames * self.fwe_feature_size
         if self.use_width: 
