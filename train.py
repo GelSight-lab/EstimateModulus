@@ -673,7 +673,7 @@ if __name__ == "__main__":
         'batch_size'        : 32,
         'img_feature_size'  : 64,
         'fwe_feature_size'  : 8,
-        'val_pct'           : 0.2,
+        'val_pct'           : 0.15,
         'learning_rate'     : 1e-3,
         'gamma'             : None,
         'lr_step_size'      : None,
