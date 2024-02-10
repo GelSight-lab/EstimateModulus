@@ -51,8 +51,8 @@ class EncoderCNN(nn.Module):
                                                  self.k3, self.s3)
         self.conv4_outshape = conv2D_output_size(self.conv3_outshape, self.pd4,
                                                  self.k4, self.s4)
-        # self.conv5_outshape = conv2D_output_size(self.conv4_outshape, self.pd5,
-        #                                          self.k5, self.s5)
+        self.conv5_outshape = conv2D_output_size(self.conv4_outshape, self.pd5,
+                                                 self.k5, self.s5)
 
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels=input_channels,
@@ -158,7 +158,7 @@ class DecoderFC(nn.Module):
         self.drop_p = drop_p
         self.output_dim = output_dim
 
-        assert len(FC_layer_nodes) == 4
+        assert len(FC_layer_nodes) == 3
 
         self.fc1 = nn.Linear(self.FC_input_size, self.FC_layer_nodes[0])
         self.fc2 = nn.Linear(self.FC_layer_nodes[0], self.FC_layer_nodes[1])
