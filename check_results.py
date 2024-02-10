@@ -17,10 +17,11 @@ for run_name in run_names:
 
     pp_count = 0
     for obj in pp.keys():
-        if pp[obj][0] / pp[obj][1] < 0.5:
+        if pp[obj][0] / pp[obj][1] < 0.25:
             poorly_predicted_in_all[obj] = False
         else:
             pp_count += 1
+        print(obj, pp[obj][0]/pp[obj][1])
     
     with open(f'./model/{run_name}/material_log_acc.json', 'r') as file:
         mat = json.load(file)
