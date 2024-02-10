@@ -195,15 +195,15 @@ if __name__ == '__main__':
             estimator.clip_to_press()
             assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
 
-            # Save maximum depths
-            max_depths[os.path.splitext(file_name)[0]] = (np.argmax(estimator.max_depths()), estimator.max_depths().max(), -1, estimator.max_depths()[-1])
+            # # Save maximum depths
+            # max_depths[os.path.splitext(file_name)[0]] = (np.argmax(estimator.max_depths()), estimator.max_depths().max(), -1, estimator.max_depths()[-1])
 
-            # Skip those with shallow depths
-            if estimator.max_depths().max() <= 10*estimator.depth_threshold:
-                skipped_files.append(os.path.splitext(file_name)[0])
-                print('Skipped.')
-                print('\n')
-                continue
+            # # Skip those with shallow depths
+            # if estimator.max_depths().max() <= 10*estimator.depth_threshold:
+            #     skipped_files.append(os.path.splitext(file_name)[0])
+            #     print('Skipped.')
+            #     print('\n')
+            #     continue
 
             # Remove stagnant gripper values across measurement frames
             estimator.interpolate_gripper_widths()
@@ -276,64 +276,64 @@ if __name__ == '__main__':
         plt.show()
         print('Done.')
 
-    # Find a linear scaling for each set of predictions to minimize error
-    naive_scaling       = scale_predictions(naive_estimates, object_to_modulus)
-    hertz_scaling       = scale_predictions(hertz_estimates, object_to_modulus)
-    MDR_scaling         = scale_predictions(MDR_estimates, object_to_modulus)
-    stochastic_scaling  = scale_predictions(stochastic_estimates, object_to_modulus)
+    # # Find a linear scaling for each set of predictions to minimize error
+    # naive_scaling       = scale_predictions(naive_estimates, object_to_modulus)
+    # hertz_scaling       = scale_predictions(hertz_estimates, object_to_modulus)
+    # MDR_scaling         = scale_predictions(MDR_estimates, object_to_modulus)
+    # stochastic_scaling  = scale_predictions(stochastic_estimates, object_to_modulus)
     
-    with open(f'{DATA_DIR}/evaluate_estimator/max_depths.json', 'w') as json_file:
-        json.dump(max_depths, json_file)
+    # with open(f'{DATA_DIR}/evaluate_estimator/max_depths.json', 'w') as json_file:
+    #     json.dump(max_depths, json_file)
 
-    print('All skipped files:', skipped_files)
+    # print('All skipped files:', skipped_files)
 
-    # Compute average loss / average log difference / log accuracy for each
-    naive_stats         = compute_estimation_stats(naive_estimates, naive_scaling, object_to_modulus)
-    hertz_stats         = compute_estimation_stats(hertz_estimates, hertz_scaling, object_to_modulus)
-    MDR_stats           = compute_estimation_stats(MDR_estimates, MDR_scaling, object_to_modulus)
-    stochastic_stats    = compute_estimation_stats(stochastic_estimates, stochastic_scaling, object_to_modulus)
+    # # Compute average loss / average log difference / log accuracy for each
+    # naive_stats         = compute_estimation_stats(naive_estimates, naive_scaling, object_to_modulus)
+    # hertz_stats         = compute_estimation_stats(hertz_estimates, hertz_scaling, object_to_modulus)
+    # MDR_stats           = compute_estimation_stats(MDR_estimates, MDR_scaling, object_to_modulus)
+    # stochastic_stats    = compute_estimation_stats(stochastic_estimates, stochastic_scaling, object_to_modulus)
 
-    # Create path to save all generate data in
-    if not os.path.exists(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}'):
-        os.mkdir(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}')
+    # # Create path to save all generate data in
+    # if not os.path.exists(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}'):
+    #     os.mkdir(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}')
 
-    # Save run data for each method
-    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/naive_config.json', 'w') as json_file:
-        json.dump(naive_config, json_file)
-    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/naive_estimates.json', 'w') as json_file:
-        json.dump(naive_estimates, json_file)
-    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/naive_stats.json', 'w') as json_file:
-        json.dump(naive_stats, json_file)
-    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/hertz_config.json', 'w') as json_file:
-        json.dump(hertz_config, json_file)
-    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/hertz_estimates.json', 'w') as json_file:
-        json.dump(hertz_estimates, json_file)
-    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/hertz_stats.json', 'w') as json_file:
-        json.dump(hertz_stats, json_file)
-    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/MDR_config.json', 'w') as json_file:
-        json.dump(MDR_config, json_file)
-    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/MDR_estimates.json', 'w') as json_file:
-        json.dump(MDR_estimates, json_file)
-    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/MDR_stats.json', 'w') as json_file:
-        json.dump(MDR_stats, json_file)
-    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/stochastic_config.json', 'w') as json_file:
-        json.dump(stochastic_config, json_file)
-    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/stochastic_estimates.json', 'w') as json_file:
-        json.dump(stochastic_estimates, json_file)
-    with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/stochastic_stats.json', 'w') as json_file:
-        json.dump(stochastic_stats, json_file)
+    # # Save run data for each method
+    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/naive_config.json', 'w') as json_file:
+    #     json.dump(naive_config, json_file)
+    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/naive_estimates.json', 'w') as json_file:
+    #     json.dump(naive_estimates, json_file)
+    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/naive_stats.json', 'w') as json_file:
+    #     json.dump(naive_stats, json_file)
+    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/hertz_config.json', 'w') as json_file:
+    #     json.dump(hertz_config, json_file)
+    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/hertz_estimates.json', 'w') as json_file:
+    #     json.dump(hertz_estimates, json_file)
+    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/hertz_stats.json', 'w') as json_file:
+    #     json.dump(hertz_stats, json_file)
+    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/MDR_config.json', 'w') as json_file:
+    #     json.dump(MDR_config, json_file)
+    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/MDR_estimates.json', 'w') as json_file:
+    #     json.dump(MDR_estimates, json_file)
+    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/MDR_stats.json', 'w') as json_file:
+    #     json.dump(MDR_stats, json_file)
+    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/stochastic_config.json', 'w') as json_file:
+    #     json.dump(stochastic_config, json_file)
+    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/stochastic_estimates.json', 'w') as json_file:
+    #     json.dump(stochastic_estimates, json_file)
+    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/stochastic_stats.json', 'w') as json_file:
+    #     json.dump(stochastic_stats, json_file)
 
-    print('NAIVE CONFIG:\n', naive_config)
-    print('NAIVE METHOD:\n', naive_stats, '\n')
-    print('HERTZ CONFIG:\n', hertz_config)
-    print('HERTZ METHOD:\n', hertz_stats, '\n')
-    print('MDR CONFIG:\n', MDR_config)
-    print('MDR METHOD:\n', MDR_stats, '\n')
-    print('STOCHASTIC CONFIG:\n', stochastic_config)
-    print('STOCHASTIC METHOD:\n', stochastic_stats, '\n')
+    # print('NAIVE CONFIG:\n', naive_config)
+    # print('NAIVE METHOD:\n', naive_stats, '\n')
+    # print('HERTZ CONFIG:\n', hertz_config)
+    # print('HERTZ METHOD:\n', hertz_stats, '\n')
+    # print('MDR CONFIG:\n', MDR_config)
+    # print('MDR METHOD:\n', MDR_stats, '\n')
+    # print('STOCHASTIC CONFIG:\n', stochastic_config)
+    # print('STOCHASTIC METHOD:\n', stochastic_stats, '\n')
 
-    # Create plots showing how well each method does
-    compute_estimation_stats('Naive Elasticity Method', naive_estimates, naive_scaling, object_to_modulus)
-    compute_estimation_stats('Hertzian Method', hertz_estimates, hertz_scaling, object_to_modulus)
-    compute_estimation_stats('MDR', MDR_estimates, MDR_scaling, object_to_modulus)
-    compute_estimation_stats('Stochastic Method', stochastic_estimates, stochastic_scaling, object_to_modulus)
+    # # Create plots showing how well each method does
+    # compute_estimation_stats('Naive Elasticity Method', naive_estimates, naive_scaling, object_to_modulus)
+    # compute_estimation_stats('Hertzian Method', hertz_estimates, hertz_scaling, object_to_modulus)
+    # compute_estimation_stats('MDR', MDR_estimates, MDR_scaling, object_to_modulus)
+    # compute_estimation_stats('Stochastic Method', stochastic_estimates, stochastic_scaling, object_to_modulus)

@@ -397,6 +397,9 @@ class EstimateModulus():
         # Precompute peak depths based on percentile
         peak_depths = self.top_percentile_depths(depth_images=depth_images)
         
+        dL_log = []
+        cA_log = []
+
         contact_areas, a = [], []
         x_data, y_data, d = [], [], []
         for i in range(len(depth_images)):
@@ -432,6 +435,8 @@ class EstimateModulus():
             a_i = np.sqrt(contact_area_i / np.pi)
 
             dL = -(self.gripper_widths()[i] + 2*d_i - L0)
+            dL_log.append(dL)
+            cA_log.append(contact_area_i)
             if dL >= 0 and contact_area_i >= 3e-5:
                 x_data.append(dL/L0) # Strain
                 y_data.append(abs(self.forces()[i]) / contact_area_i) # Stress
@@ -439,8 +444,8 @@ class EstimateModulus():
                 a.append(a_i)
                 d.append(d_i)
 
-                if abs(self.forces()[i]) / contact_area_i >= 5e5:
-                    print('STRESS IS HIGH!')
+                # if abs(self.forces()[i]) / contact_area_i >= 5e5:
+                #     print('STRESS IS HIGH!')
 
         # Save stuff for plotting
         self._x_data = np.array(x_data)
@@ -452,8 +457,8 @@ class EstimateModulus():
         # Fit to modulus
         E = self.linear_coeff_fit(x_data, y_data)
 
-        if math.isnan(E) or E <= 0:
-            print('Bad prediction!')
+        # if math.isnan(E) or E <= 0:
+        #     print('Bad prediction!')
 
         return E
     
@@ -651,8 +656,8 @@ class EstimateModulus():
 
             if use_apparent_deformation:
                 # Use apparent deformation and contact area to compute object radius
-                R_i = a_i**2 / apparent_d_i
                 if apparent_d_i <= 1e-4: continue
+                R_i = a_i**2 / apparent_d_i
             elif use_ellipse_mask:
                 # Compute circle radius using ellipse fit
                 ellipse = fit_ellipse_from_float(depth_images[i], plot_result=False)
@@ -688,8 +693,8 @@ class EstimateModulus():
         # Fit for E_star
         E_star = self.linear_coeff_fit(x_data, y_data)**(3/2)
 
-        if math.isnan(self.Estar_to_E(E_star)[0]) or self.Estar_to_E(E_star)[0] <= 0:
-            print('Bad prediction!')
+        # if math.isnan(self.Estar_to_E(E_star)[0]) or self.Estar_to_E(E_star)[0] <= 0:
+        #     print('Bad prediction!')
 
         return E_star
     
