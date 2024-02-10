@@ -367,7 +367,8 @@ class ModulusModel():
             if object_name in self.exclude: continue
 
 
-            if self.object_to_modulus[object_name] > 2*(10**10): continue
+            if self.object_to_modulus[object_name] > 5*(10**9) and self.object_to_modulus[object_name] < 5*(10**10):
+                continue
 
 
 
@@ -667,7 +668,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'MaxModulus_10',   
+        'run_name': 'RemoveWoodenObjects',   
 
         # Training and model parameters
         'epochs'            : 100,
