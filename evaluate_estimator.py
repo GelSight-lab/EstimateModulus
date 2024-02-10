@@ -21,9 +21,6 @@ grasp_data          = GraspData(wedge_video=wedge_video, other_wedge_video=other
 DATA_DIR = './data'
 RUN_NAME = 'THRESHOLD'
 
-USE_MARKER_FINGER = False
-PLOT_DATA = False
-
 # Objects to exclude from evaluation
 EXCLUDE = ['playdoh', 'silly_putty', 'silly_puty', 'racquetball']
 
@@ -123,158 +120,12 @@ def plot_performance(plot_title, prediction_dict, linear_scaling, label_dict):
 
 if __name__ == '__main__':
 
-    if PLOT_DATA:
-        # Set up raw data plot
-        fig1 = plt.figure(1)
-        sp1 = fig1.add_subplot(211)
-        sp1.set_xlabel('Measured Sensor Deformation (d) [m]')
-        sp1.set_ylabel('Force [N]')
-        
-        # Set up stress / strain axes for naive method
-        fig2 = plt.figure(2)
-        sp2 = fig2.add_subplot(211)
-        sp2.set_xlabel('Strain (dL/L) [/]')
-        sp2.set_ylabel('Stress (F/A) [Pa]')
-
-    # Define settings configuration for each estimator method
-    naive_config = {
-        'contact_mask': None,
-        'use_mean': False,
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
-        'use_lower_resolution_depth': True,
-    }
-    hertz_config = {
-        'contact_mask': None,
-        'use_ellipse_mask': False, 
-        'fit_mask_to_ellipse': False,
-        'use_lower_resolution_depth': True,
-    }
-    MDR_config = {
-        'contact_mask': None,
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
-        'use_apparent_deformation': True,
-        'use_lower_resolution_depth': True,
-        'use_mean_radius': False
-    }
-    stochastic_config = {}
-
     naive_estimates         = {}
     hertz_estimates         = {}
     MDR_estimates           = {}
     stochastic_estimates    = {}
 
-    max_depths = {}
-    skipped_files = []
 
-    estimator = EstimateModulus(grasp_data=grasp_data, use_gripper_width=True, use_other_video=USE_MARKER_FINGER)
-
-    objects = sorted(os.listdir(f'{DATA_DIR}/raw_data'))
-    for object_name in objects:
-        if PLOT_DATA: plotting_color = random_hex_color()
-
-        # Create list of estimates for each trial of each object
-        naive_estimates[object_name]        = []
-        hertz_estimates[object_name]        = []
-        MDR_estimates[object_name]          = []
-        stochastic_estimates[object_name]   = []
-
-        data_files = sorted(os.listdir(f'{DATA_DIR}/raw_data/{object_name}'))
-        for file_name in data_files:
-            if os.path.splitext(file_name)[1] != '.avi' or file_name.count("_other") > 0:
-                continue
-
-            print(f'Working on {os.path.splitext(file_name)[0]}...')
-
-            # Load data into estimator
-            estimator._reset_data()
-            estimator.load_from_file(f"{DATA_DIR}/raw_data/{object_name}/{os.path.splitext(file_name)[0]}", auto_clip=False)
-
-            # Clip to loading sequence
-            estimator.clip_to_press()
-            assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
-
-            # # Save maximum depths
-            # max_depths[os.path.splitext(file_name)[0]] = (np.argmax(estimator.max_depths()), estimator.max_depths().max(), -1, estimator.max_depths()[-1])
-
-            # # Skip those with shallow depths
-            # if estimator.max_depths().max() <= 10*estimator.depth_threshold:
-            #     skipped_files.append(os.path.splitext(file_name)[0])
-            #     print('Skipped.')
-            #     print('\n')
-            #     continue
-
-            # Remove stagnant gripper values across measurement frames
-            estimator.interpolate_gripper_widths()
-
-            # Fit using naive estimator
-            E_naive = estimator.fit_modulus_naive(
-                                    contact_mask=naive_config['contact_mask'],
-                                    use_mean=naive_config['use_mean'],
-                                    use_ellipse_mask=naive_config['use_ellipse_mask'],
-                                    fit_mask_to_ellipse=naive_config['fit_mask_to_ellipse'],
-                                    use_lower_resolution_depth=naive_config['use_lower_resolution_depth']
-                                )
-            naive_estimates[object_name].append(E_naive)
-            x_naive = estimator._x_data
-            y_naive = estimator._y_data
-
-            if not (E_naive > 0):
-                print('Negative or NaN modulus!')
-
-            # Fit using Hertzian estimator
-            E_hertz = estimator.fit_modulus_hertz(
-                                    contact_mask=hertz_config['contact_mask'],
-                                    use_ellipse_mask=hertz_config['use_ellipse_mask'],
-                                    fit_mask_to_ellipse=hertz_config['fit_mask_to_ellipse'],
-                                    use_lower_resolution_depth=hertz_config['use_lower_resolution_depth']
-                                )
-            hertz_estimates[object_name].append(E_hertz)
-
-            # Fit using MDR estimator
-            E_MDR = estimator.fit_modulus_MDR(
-                                    contact_mask=MDR_config['contact_mask'],
-                                    use_ellipse_mask=MDR_config['use_ellipse_mask'],
-                                    fit_mask_to_ellipse=MDR_config['fit_mask_to_ellipse'],
-                                    use_apparent_deformation=MDR_config['use_apparent_deformation'],
-                                    use_lower_resolution_depth=MDR_config['use_lower_resolution_depth'],
-                                    use_mean_radius=MDR_config['use_mean_radius'],
-                                )
-            MDR_estimates[object_name].append(E_MDR)
-
-            if E_MDR < 0:
-                print('Negative modulus!')
-
-            # Fit using the stochastic estimator
-            E_stochastic = estimator.fit_modulus_stochastic()
-            stochastic_estimates[object_name].append(E_stochastic)
-
-            print('Object:', os.path.splitext(file_name)[0])
-            print('E_naive:', E_naive)
-            print('E_hertz:', E_hertz)
-            print('E_MDR:', E_MDR)
-            print('E_stochastic:', E_stochastic)
-            print('\n')
-            
-            if PLOT_DATA:
-                # Plot raw data
-                plotting_label = object_name if file_name.count('t=0') > 0 else '_'
-                sp1.plot(estimator.max_depths(), estimator.forces(), ".", label=plotting_label, markersize=8, color=plotting_color)
-
-                # Plot naive fit
-                sp2.plot(x_naive, y_naive, ".", label=plotting_label, markersize=8, color=plotting_color)
-                sp2.plot(x_naive, E_naive*np.array(x_naive), "-", label=plotting_label, markersize=8, color=plotting_color)
-
-    if PLOT_DATA:
-        fig1.legend()
-        fig1.set_figwidth(10)
-        fig1.set_figheight(10)
-        fig2.legend()
-        fig2.set_figwidth(10)
-        fig2.set_figheight(10)
-        plt.show()
-        print('Done.')
 
     # # Find a linear scaling for each set of predictions to minimize error
     # naive_scaling       = scale_predictions(naive_estimates, object_to_modulus)

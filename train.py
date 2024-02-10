@@ -21,7 +21,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -83,7 +83,7 @@ class CustomDataset(Dataset):
         # Define attributes to use to conserve memory
         self.base_name      = ''
         self.x_frames       = frame_tensor
-        # self.x_frames_other = frame_tensor
+        self.x_frames_other = frame_tensor
         self.x_forces       = force_tensor
         self.x_widths       = width_tensor
         self.x_estimations  = estimation_tensor
@@ -110,12 +110,12 @@ class CustomDataset(Dataset):
                 self.x_frames /= self.normalization_values['max_depth']
 
 
-        # with open(self.input_paths[idx].replace('_other', ''), 'rb') as file:
-        #     if self.img_style == 'diff':
-        #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
-        #     elif self.img_style == 'depth':
-        #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
-        #         self.x_frames_other /= self.normalization_values['max_depth']
+        with open(self.input_paths[idx].replace('_other', ''), 'rb') as file:
+            if self.img_style == 'diff':
+                self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
+            elif self.img_style == 'depth':
+                self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
+                self.x_frames_other /= self.normalization_values['max_depth']
 
 
         # Flip the data if desired
@@ -146,8 +146,8 @@ class CustomDataset(Dataset):
         # Unpack label
         self.y_label[0] = self.modulus_labels[idx]
 
-        # return self.x_frames.clone(), self.x_frames_other.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
-        return self.x_frames.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
+        return self.x_frames.clone(), self.x_frames_other.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
+        # return self.x_frames.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
 
 
 class ModulusModel():
@@ -208,7 +208,7 @@ class ModulusModel():
 
         # Compute the size of the input to the decoder based on config
         decoder_input_size = self.n_frames * self.img_feature_size
-        # decoder_input_size = self.n_frames * self.img_feature_size
+        decoder_input_size += self.n_frames * self.img_feature_size
         if self.use_force: 
             decoder_input_size += self.n_frames * self.fwe_feature_size
         if self.use_width: 
@@ -409,7 +409,7 @@ class ModulusModel():
         self.decoder.train()
 
         train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
-        for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
+        for x_frames, x_frames_other, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
 
             # Concatenate features across frames into a single vector
@@ -419,7 +419,7 @@ class ModulusModel():
                 # Execute CNN on video frames
                 features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
-                # features.append(self.other_video_encoder(x_frames_other[:, i, :, :, :]))
+                features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
                 
                 # Execute FC layers on other data and append
                 if not (x_forces.max() == x_forces.min() == 0): # Force measurements
@@ -469,7 +469,7 @@ class ModulusModel():
         self.decoder.eval()
 
         val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
-        for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
+        for x_frames, x_frames_other, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
             
             # Concatenate features across frames into a single vector
             features = []
@@ -478,7 +478,7 @@ class ModulusModel():
                 # Execute CNN on video frames
                 features.append(self.video_encoder(x_frames[:, i, :, :, :]))
                 
-                # features.append(self.other_video_encoder(x_frames_other[:, i, :, :, :]))
+                features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
 
                 # Execute FC layers on other data and append
                 if not (x_forces.max() == x_forces.min() == 0): # Force measurements
@@ -638,7 +638,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Base',   
+        'run_name': '2Frames_Opposite_SameCNN',   
 
         # Training and model parameters
         'epochs'            : 100,
