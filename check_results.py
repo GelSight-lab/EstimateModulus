@@ -26,34 +26,28 @@ material_log_diff = { object_to_material[obj]:[0, 0] for obj in object_to_materi
 poorly_predicted_pct = { obj:[0, 0] for obj in object_to_shape.keys() } # Over a factor of 100 off
 
 for run_name in run_names:
-    with open(f'./model/{run_name}/train_object_log_diff.json', 'r') as file:
-        train_object_log_diff = json.load(file)
-    with open(f'./model/{run_name}/val_object_log_diff.json', 'r') as file:
-        val_object_log_diff = json.load(file)
+    with open(f'./model/{run_name}/train_object_performance.json', 'r') as file:
+        train_object_performance = json.load(file)
+    with open(f'./model/{run_name}/val_object_performance.json', 'r') as file:
+        val_object_performance = json.load(file)
 
-    for obj in train_object_log_diff.keys():
-        for log_diff in train_object_log_diff[obj]:
-            shape_log_diff[object_to_shape[obj]][0] += log_diff
-            shape_log_diff[object_to_shape[obj]][1] += 1
-            material_log_diff[object_to_material[obj]][0] += log_diff
-            material_log_diff[object_to_material[obj]][1] += 1
-            
-            if log_diff <= 0.5:
-                shape_log_acc[object_to_shape[obj]][0] += 1
-            shape_log_acc[object_to_shape[obj]][1] += 1
-            if log_diff <= 0.5:
-                material_log_acc[object_to_material[obj]][0] += 1
-            material_log_acc[object_to_material[obj]][1] += 1
+    for obj in train_object_performance.keys():
+        poorly_predicted_pct[obj][0] += train_object_performance[obj]['total_poorly_predicted']
+        poorly_predicted_pct[obj][1] += train_object_performance[obj]['count']
 
-            if log_diff >= 2:
-                poorly_predicted_pct[obj][0] += 1
-            poorly_predicted_pct[obj][1] += 1
-            
-    for obj in val_object_log_diff.keys():
-        for log_diff in val_object_log_diff[obj]:
-            if log_diff >= 2:
-                poorly_predicted_pct[obj][0] += 1
-            poorly_predicted_pct[obj][1] += 1
+    for obj in val_object_performance.keys():
+        shape_log_acc[object_to_shape[obj]][0] += val_object_performance[obj]['total_log_acc']
+        shape_log_acc[object_to_shape[obj]][1] += val_object_performance[obj]['count']
+        shape_log_diff[object_to_shape[obj]][0] += val_object_performance[obj]['total_log_diff']
+        shape_log_diff[object_to_shape[obj]][1] += val_object_performance[obj]['count']
+
+        material_log_acc[object_to_material[obj]][0] += val_object_performance[obj]['total_log_acc']
+        material_log_acc[object_to_material[obj]][1] += val_object_performance[obj]['count']
+        material_log_diff[object_to_material[obj]][0] += val_object_performance[obj]['total_log_diff']
+        material_log_diff[object_to_material[obj]][1] += val_object_performance[obj]['count']
+
+        poorly_predicted_pct[obj][0] += val_object_performance[obj]['total_poorly_predicted']
+        poorly_predicted_pct[obj][1] += val_object_performance[obj]['count']
 
 
 shape_log_acc = { key:shape_log_acc[key][0]/shape_log_acc[key][1] for key in shape_log_acc.keys() }
