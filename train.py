@@ -1,4 +1,5 @@
 import os
+import sys
 import pickle
 import csv
 import json
@@ -349,6 +350,14 @@ class ModulusModel():
         paths_to_files = []
         list_files(f'{self.data_dir}/{training_data_folder_name}', paths_to_files, self.config)
 
+        # Create some data structures for tracking performance
+        self.train_object_log_diff = {}
+        self.val_object_log_diff = {}
+        for object_name in objects_train:
+            self.train_object_log_diff[object_name] = []
+        for object_name in objects_val:
+            self.val_object_log_diff[object_name] = []
+
         # Divide paths up into training and validation data
         x_train, x_val = [], []
         y_train, y_val = [], []
@@ -556,11 +565,10 @@ class ModulusModel():
         max_val_log_acc = 0.0
         for epoch in range(self.epochs):
 
-            # Create some data structures for tracking performance
-            self.train_object_log_diff = {}
-            self.val_object_log_diff = {}
-            for object_name in self.object_names:
+            # Clean performance trackers
+            for object_name in self.train_object_log_diff.keys():
                 self.train_object_log_diff[object_name] = []
+            for object_name in self.val_object_log_diff.keys():
                 self.val_object_log_diff[object_name] = []
 
             # Train batch
