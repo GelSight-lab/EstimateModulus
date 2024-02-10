@@ -363,6 +363,11 @@ class ModulusModel():
         self.object_names = []
         for file_path in paths_to_files:
             file_name = os.path.basename(file_path)
+
+
+            if file_name.count('aug=0') == 0: continue
+
+
             object_name = file_name.split('__')[0]
             if object_name in self.exclude: continue
 
@@ -427,10 +432,8 @@ class ModulusModel():
                 # Execute CNN on video frames
                 features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
-                
                 # features.append(self.other_video_encoder(x_frames_other[:, i, :, :, :]))
                 
-
                 # Execute FC layers on other data and append
                 if not (x_forces.max() == x_forces.min() == 0): # Force measurements
                     features.append(self.force_encoder(x_forces[:, i, :]))
@@ -488,10 +491,8 @@ class ModulusModel():
                 
                 # Execute CNN on video frames
                 features.append(self.video_encoder(x_frames[:, i, :, :, :]))
-
                 
                 # features.append(self.other_video_encoder(x_frames_other[:, i, :, :, :]))
-
 
                 # Execute FC layers on other data and append
                 if not (x_forces.max() == x_forces.min() == 0): # Force measurements
@@ -662,14 +663,14 @@ if __name__ == "__main__":
         'use_transformations': True,
         'exclude': ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'yellow_foam_brick', 'green_foam_brick', 
-                    'apple', 'orange', 'strawberry', 'lacrosse_ball'],
+                    'apple', 'orange', 'strawberry', 'lacrosse_ball', 'rubber_washer_stack'],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': '4LayerDecoder_Nframes=3_LR=1e-4_SchedulerOff',   
+        'run_name': 'NoAug',   
 
         # Training and model parameters
-        'epochs'            : 200,
+        'epochs'            : 100,
         'batch_size'        : 32,
         'img_feature_size'  : 64,
         'fwe_feature_size'  : 8,
