@@ -2,7 +2,7 @@
 import json
 
 run_names = [
-    'LR=1e-4_t=0', 'LR=1e-4_t=1', 'LR=1e-5_t=0', 'LR=1e-5_t=1'
+    '4LayerDecoder_Nframes=3_LR=1e-4_SchedulerOff', '4LayerDecoder_Nframes=3_LR=1e-3_SchedulerOff', 
 ]
 
 with open(f'./model/{run_names[0]}/poorly_predicted.json', 'r') as file:
@@ -18,7 +18,7 @@ for run_name in run_names:
     pp_count = 0
     for obj in pp.keys():
         if pp[obj][0] / pp[obj][1] < 0.5:
-            poorly_predicted_in_all[key] = False
+            poorly_predicted_in_all[obj] = False
         else:
             pp_count += 1
     

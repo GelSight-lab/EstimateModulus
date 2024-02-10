@@ -204,7 +204,7 @@ for object_name in tqdm(objects):
         assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
 
         # Save maximum depths
-        max_depths[os.path.splitext(file_name)[0]] = (np.argmax(estimator.max_depths()), estimator.max_depths().max(), -1, estimator.max_depths()[-1])
+        max_depths[os.path.splitext(file_name)[0]] = (int(np.argmax(estimator.max_depths())), estimator.max_depths().max(), -1, estimator.max_depths()[-1])
 
         # Remove stagnant gripper values across measurement frames
         estimator.interpolate_gripper_widths()
