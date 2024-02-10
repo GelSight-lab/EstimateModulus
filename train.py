@@ -666,10 +666,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Nframes=3_LR=1e-3_SchedulerOff',   
+        'run_name': '4LayerDecoder_Nframes=3_LR=1e-3_SchedulerOff',   
 
         # Training and model parameters
-        'epochs'            : 150,
+        'epochs'            : 100,
         'batch_size'        : 32,
         'img_feature_size'  : 64,
         'fwe_feature_size'  : 8,
