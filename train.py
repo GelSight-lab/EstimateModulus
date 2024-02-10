@@ -363,13 +363,13 @@ class ModulusModel():
         self.object_names = []
         for file_path in paths_to_files:
             file_name = os.path.basename(file_path)
-
-
-            if file_name.count('aug=0') == 0: continue
-
-
             object_name = file_name.split('__')[0]
             if object_name in self.exclude: continue
+
+
+            if self.object_to_modulus[object_name] > 2*(10**10): continue
+
+
 
             if object_name in objects_train:
                 self.object_names.append(object_name)
@@ -667,7 +667,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoAug',   
+        'run_name': 'MaxModulus_10',   
 
         # Training and model parameters
         'epochs'            : 100,
