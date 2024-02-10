@@ -685,7 +685,9 @@ if __name__ == "__main__":
 
     if config['use_estimation']: raise NotImplementedError()
 
+    base_run_name = config['run_name']
     for i in range(3):
+        config['run_name'] = f'{base_run_name}_t={i}'
         # Train the model over some data
         train_modulus = ModulusModel(config, device=device)
         train_modulus.train()
