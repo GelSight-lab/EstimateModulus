@@ -22,7 +22,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -42,7 +42,7 @@ class CustomDataset(Dataset):
                  frame_tensor=torch.zeros((N_FRAMES, 3, WARPED_CROPPED_IMG_SIZE[0], WARPED_CROPPED_IMG_SIZE[1])),
                  force_tensor=torch.zeros((N_FRAMES, 1)),
                  width_tensor=torch.zeros((N_FRAMES, 1)),
-                 estimation_tensor=torch.zeros((N_FRAMES, 1)),
+                 estimation_tensor=torch.zeros((1, 1)),
                  label_tensor=torch.zeros((1, 1)),
         ):
         # Data parameters 
@@ -72,12 +72,12 @@ class CustomDataset(Dataset):
 
         if self.use_transformations:
             self.input_paths = 4*paths_to_files
-            self.modulus_labels = 4*labels
+            self.normalized_modulus_labels = 4*labels
             self.flip_horizontal = [i > 2*len(paths_to_files) for i in range(len(self.input_paths))]
             self.flip_vertical = [i % 2 == 1 for i in range(len(self.input_paths))]
         else:
             self.input_paths = paths_to_files
-            self.modulus_labels = labels
+            self.normalized_modulus_labels = labels
             self.flip_horizontal = [False for i in range(len(self.input_paths))]
             self.flip_vertical = [False for i in range(len(self.input_paths))]
 
@@ -91,7 +91,7 @@ class CustomDataset(Dataset):
         self.y_label        = label_tensor
     
     def __len__(self):
-        return len(self.modulus_labels)
+        return len(self.normalized_modulus_labels)
     
     def __getitem__(self, idx):
         self.x_frames       = self.x_frames.zero_()
@@ -110,14 +110,12 @@ class CustomDataset(Dataset):
                 self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
                 self.x_frames /= self.normalization_values['max_depth']
 
-
         # with open(self.input_paths[idx].replace('_other', ''), 'rb') as file:
         #     if self.img_style == 'diff':
         #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
         #     elif self.img_style == 'depth':
         #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
         #         self.x_frames_other /= self.normalization_values['max_depth']
-
 
         # Flip the data if desired
         if self.use_transformations and self.flip_horizontal[idx]:
@@ -142,10 +140,12 @@ class CustomDataset(Dataset):
         
         # Unpack modulus estimations
         if self.use_estimation:
-            raise NotImplementedError()
+            # Seed with the correct answer to test
+            self.x_estimations[0] = self.normalized_modulus_labels[idx]
+            # raise NotImplementedError()
         
         # Unpack label
-        self.y_label[0] = self.modulus_labels[idx]
+        self.y_label[0] = self.normalized_modulus_labels[idx]
 
         # return self.x_frames.clone(), self.x_frames_other.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
         return self.x_frames.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
@@ -215,7 +215,7 @@ class ModulusModel():
         if self.use_width: 
             decoder_input_size += self.n_frames * self.fwe_feature_size
         if self.use_estimation: 
-            decoder_input_size += self.n_frames * self.fwe_feature_size
+            decoder_input_size += self.fwe_feature_size
         self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1)
 
         # Send models to device
@@ -394,12 +394,12 @@ class ModulusModel():
         empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device)
         empty_force_tensor        = torch.zeros((self.n_frames, 1), device=device)
         empty_width_tensor        = torch.zeros((self.n_frames, 1), device=device)
-        empty_estimation_tensor   = torch.zeros((self.n_frames, 1), device=device)
+        empty_estimation_tensor   = torch.zeros((1, 1), device=device)
         empty_label_tensor        = torch.zeros((1), device=device)
 
-        if self.use_estimation:
-            print('MUST NORMALIZE ESTIMATIONS')
-            raise NotImplementedError
+        # if self.use_estimation:
+        #     print('MUST NORMALIZE ESTIMATIONS')
+        #     raise NotImplementedError
     
         # Construct datasets
         kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
@@ -445,12 +445,13 @@ class ModulusModel():
                 # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
                 
                 # Execute FC layers on other data and append
-                if not (x_forces.max() == x_forces.min() == 0): # Force measurements
+                if self.use_force: # Force measurements
                     features.append(self.force_encoder(x_forces[:, i, :]))
-                if not (x_widths.max() == x_widths.min() == 0): # Width measurements
+                if self.use_width: # Width measurements
                     features.append(self.width_encoder(x_widths[:, i, :]))
-                if not (x_estimations.max() == x_estimations.min() == 0): # Precomputed modulus estimation
-                    features.append(self.estimation_encoder(x_estimations[:, i, :]))
+
+            if self.use_estimation: # Precomputed modulus estimation
+                features.append(self.estimation_encoder(x_estimations[:, 0, :]))
 
             # Send aggregated features to the FC decoder
             features = torch.cat(features, -1)
@@ -507,12 +508,13 @@ class ModulusModel():
                 # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
 
                 # Execute FC layers on other data and append
-                if not (x_forces.max() == x_forces.min() == 0): # Force measurements
+                if self.use_force: # Force measurements
                     features.append(self.force_encoder(x_forces[:, i, :]))
-                if not (x_widths.max() == x_widths.min() == 0): # Width measurements
+                if self.use_width: # Width measurements
                     features.append(self.width_encoder(x_widths[:, i, :]))
-                if not (x_estimations.max() == x_estimations.min() == 0): # Precomputed modulus estimation
-                    features.append(self.estimation_encoder(x_estimations[:, i, :]))
+
+            if self.use_estimation: # Precomputed modulus estimation
+                features.append(self.estimation_encoder(x_estimations[:, 0, :]))
 
             # Send aggregated features to the FC decoder
             features = torch.cat(features, -1)
@@ -668,7 +670,7 @@ if __name__ == "__main__":
         'use_markers': True,
         'use_force': True,
         'use_width': True,
-        'use_estimation': False,
+        'use_estimation': True,
         'use_transformations': True,
         'exclude': ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'yellow_foam_brick', 'green_foam_brick', 
@@ -676,7 +678,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Nframes=3_Diff_RGB',   
+        'run_name': 'CorrectEstimationTest',   
 
         # Training and model parameters
         'epochs'            : 80,
@@ -691,8 +693,6 @@ if __name__ == "__main__":
     }
     assert config['img_style'] in ['diff', 'depth']
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
-
-    if config['use_estimation']: raise NotImplementedError()
 
     base_run_name = config['run_name']
     for i in range(2):

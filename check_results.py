@@ -71,11 +71,16 @@ for key in material_log_acc.keys():
     else:
         material_log_diff[key] = 0
 
+most_poorly_predicted = {}
 for key in poorly_predicted_pct.keys():
     if poorly_predicted_pct[key][1] > 0:
-        poorly_predicted_pct = poorly_predicted_pct[key][0] / poorly_predicted_pct[key][1] # Over a factor of 100 off
+        poorly_predicted_pct[key] = poorly_predicted_pct[key][0] / poorly_predicted_pct[key][1] # Over a factor of 100 off
     else:
-        poorly_predicted_pct = 0
+        poorly_predicted_pct[key] = 0
+
+    # Save the worst ones for display
+    if poorly_predicted_pct > 0.3:
+        most_poorly_predicted[key] = poorly_predicted_pct[key]
 
 print('shape_log_acc', shape_log_acc)
 print('\n')
@@ -86,4 +91,6 @@ print('\n')
 print('material_log_diff', material_log_diff)
 print('\n')
 print('poorly_predicted %', poorly_predicted_pct)
-print('\n')
+print('\n') 
+print('most_poorly_predicted %', most_poorly_predicted)
+print('\n') 
