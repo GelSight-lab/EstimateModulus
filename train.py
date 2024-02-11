@@ -84,7 +84,7 @@ class CustomDataset(Dataset):
         # Define attributes to use to conserve memory
         self.base_name      = ''
         self.x_frames       = frame_tensor
-        self.x_frames_other = frame_tensor
+        # self.x_frames_other = frame_tensor
         self.x_forces       = force_tensor
         self.x_widths       = width_tensor
         self.x_estimations  = estimation_tensor
@@ -118,19 +118,14 @@ class CustomDataset(Dataset):
         #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
         #         self.x_frames_other /= self.normalization_values['max_depth']
 
-        with open(self.input_paths[idx].replace('_diff_other', '_depth_other'), 'rb') as file:
-            self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
-            self.x_frames_other /= self.normalization_values['max_depth']
-
-
 
         # Flip the data if desired
         if self.use_transformations and self.flip_horizontal[idx]:
             self.x_frames = torch.flip(self.x_frames, dims=(2,))
-            self.x_frames_other = torch.flip(self.x_frames_other, dims=(2,))
+            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(2,))
         if self.use_transformations and self.flip_vertical[idx]:
             self.x_frames = torch.flip(self.x_frames, dims=(3,))
-            self.x_frames_other = torch.flip(self.x_frames_other, dims=(3,))
+            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(3,))
 
         # Unpack force measurements
         self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
@@ -152,8 +147,8 @@ class CustomDataset(Dataset):
         # Unpack label
         self.y_label[0] = self.modulus_labels[idx]
 
-        return self.x_frames.clone(), self.x_frames_other.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
-        # return self.x_frames.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
+        # return self.x_frames.clone(), self.x_frames_other.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
+        return self.x_frames.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
 
 
 class ModulusModel():
@@ -207,14 +202,14 @@ class ModulusModel():
 
         # Initialize models based on config
         self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
-        self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
+        # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
         self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
         self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
         self.estimation_encoder = EstimationFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
 
         # Compute the size of the input to the decoder based on config
         decoder_input_size = self.n_frames * self.img_feature_size
-        decoder_input_size += self.n_frames * self.img_feature_size
+        # decoder_input_size += self.n_frames * self.img_feature_size
         if self.use_force: 
             decoder_input_size += self.n_frames * self.fwe_feature_size
         if self.use_width: 
@@ -225,7 +220,7 @@ class ModulusModel():
 
         # Send models to device
         self.video_encoder.to(self.device)
-        self.other_video_encoder.to(self.device)
+        # self.other_video_encoder.to(self.device)
         if self.use_force:
             self.force_encoder.to(self.device)
         if self.use_width:
@@ -246,7 +241,7 @@ class ModulusModel():
 
         # Concatenate parameters of all models
         self.params         = list(self.video_encoder.parameters())
-        self.params         += list(self.other_video_encoder.parameters())
+        # self.params         += list(self.other_video_encoder.parameters())
         if self.use_force: 
             self.params += list(self.force_encoder.parameters())
         if self.use_width: 
@@ -355,23 +350,23 @@ class ModulusModel():
         paths_to_files = []
         list_files(f'{self.data_dir}/{training_data_folder_name}', paths_to_files, self.config)
 
-        # # Create some data structures for tracking performance
-        # self.train_object_performance = {}
-        # self.val_object_performance = {}
-        # for object_name in objects_train:
-        #     self.train_object_performance[object_name] = {
-        #             'total_log_diff': 0,
-        #             'total_log_acc': 0,
-        #             'total_poorly_predicted': 0, # Off by factor of 100 or more
-        #             'count': 0
-        #         }
-        # for object_name in objects_val:
-        #     self.val_object_performance[object_name] = {
-        #             'total_log_diff': 0,
-        #             'total_log_acc': 0,
-        #             'total_poorly_predicted': 0, # Off by factor of 100 or more
-        #             'count': 0
-        #         }
+        # Create some data structures for tracking performance
+        self.train_object_performance = {}
+        self.val_object_performance = {}
+        for object_name in objects_train:
+            self.train_object_performance[object_name] = {
+                    'total_log_diff': 0,
+                    'total_log_acc': 0,
+                    'total_poorly_predicted': 0, # Off by factor of 100 or more
+                    'count': 0
+                }
+        for object_name in objects_val:
+            self.val_object_performance[object_name] = {
+                    'total_log_diff': 0,
+                    'total_log_acc': 0,
+                    'total_poorly_predicted': 0, # Off by factor of 100 or more
+                    'count': 0
+                }
 
         # Divide paths up into training and validation data
         x_train, x_val = [], []
@@ -434,7 +429,7 @@ class ModulusModel():
         self.decoder.train()
 
         train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
-        for x_frames, x_frames_other, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
+        for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
 
             # Concatenate features across frames into a single vector
@@ -444,7 +439,7 @@ class ModulusModel():
                 # Execute CNN on video frames
                 features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
-                features.append(self.other_video_encoder(x_frames_other[:, i, :, :, :]))
+                # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
                 
                 # Execute FC layers on other data and append
                 if not (x_forces.max() == x_forces.min() == 0): # Force measurements
@@ -469,13 +464,13 @@ class ModulusModel():
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
             train_avg_log_diff += abs_log_diff.sum().item()
             for i in range(self.batch_size):
-                # self.train_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i]
-                # self.train_object_performance[object_names[i]]['count'] += 1
+                self.train_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i]
+                self.train_object_performance[object_names[i]]['count'] += 1
                 if abs_log_diff[i] <= 0.5:
-                    # self.train_object_performance[object_names[i]]['total_log_acc'] += 1
+                    self.train_object_performance[object_names[i]]['total_log_acc'] += 1
                     train_log_acc += 1
                 if abs_log_diff[i] >= 2:
-                    # self.train_object_performance[object_names[i]]['total_poorly_predicted'] += 1
+                    self.train_object_performance[object_names[i]]['total_poorly_predicted'] += 1
                     train_pct_with_100_factor_err += 1
                     
 
@@ -498,7 +493,7 @@ class ModulusModel():
         self.decoder.eval()
 
         val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
-        for x_frames, x_frames_other, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
+        for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
             
             # Concatenate features across frames into a single vector
             features = []
@@ -507,7 +502,7 @@ class ModulusModel():
                 # Execute CNN on video frames
                 features.append(self.video_encoder(x_frames[:, i, :, :, :]))
                 
-                features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
+                # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
 
                 # Execute FC layers on other data and append
                 if not (x_forces.max() == x_forces.min() == 0): # Force measurements
@@ -529,13 +524,13 @@ class ModulusModel():
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
             val_avg_log_diff += abs_log_diff.sum().item()
             for i in range(self.batch_size):
-                # self.val_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i]
-                # self.val_object_performance[object_names[i]]['count'] += 1
+                self.val_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i]
+                self.val_object_performance[object_names[i]]['count'] += 1
                 if abs_log_diff[i] <= 0.5:
-                    # self.val_object_performance[object_names[i]]['total_log_acc'] += 1
+                    self.val_object_performance[object_names[i]]['total_log_acc'] += 1
                     val_log_acc += 1
                 if abs_log_diff[i] >= 2:
-                    # self.val_object_performance[object_names[i]]['total_poorly_predicted'] += 1
+                    self.val_object_performance[object_names[i]]['total_poorly_predicted'] += 1
                     val_pct_with_100_factor_err += 1
         
         # Return loss and accuracy
@@ -552,10 +547,10 @@ class ModulusModel():
         else:
             if os.path.exists(f'./model/{self.run_name}/config.json'):
                 os.remove(f'./model/{self.run_name}/config.json')
-            # if os.path.exists(f'./model/{self.run_name}/train_object_performance.json'):
-            #     os.remove(f'./model/{self.run_name}/train_object_performance.json')
-            # if os.path.exists(f'./model/{self.run_name}/val_object_performance.json'):
-            #     os.remove(f'./model/{self.run_name}/val_object_performance.json')
+            if os.path.exists(f'./model/{self.run_name}/train_object_performance.json'):
+                os.remove(f'./model/{self.run_name}/train_object_performance.json')
+            if os.path.exists(f'./model/{self.run_name}/val_object_performance.json'):
+                os.remove(f'./model/{self.run_name}/val_object_performance.json')
             if os.path.exists(f'./model/{self.run_name}/video_encoder.pth'):
                 os.remove(f'./model/{self.run_name}/video_encoder.pth')
             if os.path.exists(f'./model/{self.run_name}/force_encoder.pth'):
@@ -576,11 +571,11 @@ class ModulusModel():
         if self.use_estimation: torch.save(self.estimation_encoder.state_dict(), f'./model/{self.run_name}/estimation_encoder.pth')
         torch.save(self.decoder.state_dict(), f'./model/{self.run_name}/decoder.pth')
 
-        # # Save performance data
-        # with open(f'./model/{self.run_name}/train_object_performance.json', 'w') as json_file:
-        #     json.dump(self.train_object_performance, json_file)
-        # with open(f'./model/{self.run_name}/val_object_performance.json', 'w') as json_file:
-        #     json.dump(self.val_object_performance, json_file)
+        # Save performance data
+        with open(f'./model/{self.run_name}/train_object_performance.json', 'w') as json_file:
+            json.dump(self.train_object_performance, json_file)
+        with open(f'./model/{self.run_name}/val_object_performance.json', 'w') as json_file:
+            json.dump(self.val_object_performance, json_file)
         return
 
     def train(self):
@@ -588,21 +583,21 @@ class ModulusModel():
         max_val_log_acc = 0.0
         for epoch in range(self.epochs):
 
-            # # Clean performance trackers
-            # for object_name in self.train_object_performance.keys():
-            #     self.train_object_performance[object_name] = {
-            #         'total_log_diff': 0,
-            #         'total_log_acc': 0,
-            #         'total_poorly_predicted': 0, # Off by factor of 100 or more
-            #         'count': 0
-            #     }
-            # for object_name in self.val_object_performance.keys():
-            #     self.val_object_performance[object_name] = {
-            #         'total_log_diff': 0,
-            #         'total_log_acc': 0,
-            #         'total_poorly_predicted': 0, # Off by factor of 100 or more
-            #         'count': 0
-            #     }
+            # Clean performance trackers
+            for object_name in self.train_object_performance.keys():
+                self.train_object_performance[object_name] = {
+                    'total_log_diff': 0,
+                    'total_log_acc': 0,
+                    'total_poorly_predicted': 0, # Off by factor of 100 or more
+                    'count': 0
+                }
+            for object_name in self.val_object_performance.keys():
+                self.val_object_performance[object_name] = {
+                    'total_log_diff': 0,
+                    'total_log_acc': 0,
+                    'total_poorly_predicted': 0, # Off by factor of 100 or more
+                    'count': 0
+                }
 
             # Train batch
             train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err = self._train_epoch()
@@ -679,7 +674,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': '2Frames_SameSide_SeparateCNN',   
+        'run_name': '1Frame_RGB',   
 
         # Training and model parameters
         'epochs'            : 100,
