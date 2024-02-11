@@ -22,7 +22,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -681,7 +681,7 @@ if __name__ == "__main__":
         'run_name': 'CorrectEstimationTest',   
 
         # Training and model parameters
-        'epochs'            : 80,
+        'epochs'            : 150,
         'batch_size'        : 32,
         'img_feature_size'  : 64,
         'fwe_feature_size'  : 8,
