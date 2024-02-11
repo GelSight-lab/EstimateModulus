@@ -1,6 +1,7 @@
 import os
 import csv
 import json
+import pickle
 from tactile_estimate import *
 
 def random_hex_color():
@@ -22,7 +23,7 @@ DATA_DIR = './data'
 RUN_NAME = 'THRESHOLD'
 
 # Objects to exclude from evaluation
-EXCLUDE = ['playdoh', 'silly_putty', 'silly_puty', 'racquetball']
+EXCLUDE = ['playdoh', 'silly_putty', 'silly_puty', 'racquet_ball']
 
 # Read CSV files with objects and labels tabulated
 object_to_modulus = {}
@@ -120,82 +121,104 @@ def plot_performance(plot_title, prediction_dict, linear_scaling, label_dict):
 
 if __name__ == '__main__':
 
-    empty_estimate_dict     = { obj:0 for obj in object_to_modulus.keys() }
+    empty_estimate_dict     = { obj:[] for obj in object_to_modulus.keys() }
     naive_estimates         = []
     naive_configs           = []
     hertz_estimates         = []
     hertz_configs           = []
     MDR_estimates           = []
     MDR_configs             = []
-    stochastic_estimates    = []
+    stochastic_estimates    = [empty_estimate_dict.copy()]
 
-    for object_name in object_to_modulus.keys():
+    for object_name in os.listdir(f'{DATA_DIR}/estimations'):
+        if object_name.count('.') > 0: continue
+        if object_name in EXCLUDE: continue
 
-        # Go to directory for each method
-        # If not enough dictionaries, add one
+        for trial_folder in os.listdir(f'{DATA_DIR}/estimations/{object_name}'):
 
+            # Unpack naive estimations for each config type
+            for file_name in sorted(os.listdir(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/naive')):
+                if file_name.count('.pkl') == 0: continue
 
+                # Extract info
+                i = int(file_name.split('.')[0])
+                with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/naive/{file_name}', 'rb') as file:
+                    E_i = pickle.load(file)
 
-    # Out of loop, evaluate each set of estimates and pick the best
+                if i > len(naive_estimates) - 1:
+                    naive_estimates.append(empty_estimate_dict.copy())
+                    with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/naive/{i}.json', 'r') as file:
+                        config_i = json.load(file)
+                    naive_configs.append(config_i)
+                
+                naive_estimates[i][object_name].append(E_i)
 
-    # # Find a linear scaling for each set of predictions to minimize error
-    # naive_scaling       = scale_predictions(naive_estimates, object_to_modulus)
-    # hertz_scaling       = scale_predictions(hertz_estimates, object_to_modulus)
-    # MDR_scaling         = scale_predictions(MDR_estimates, object_to_modulus)
-    # stochastic_scaling  = scale_predictions(stochastic_estimates, object_to_modulus)
-    
-    # with open(f'{DATA_DIR}/evaluate_estimator/max_depths.json', 'w') as json_file:
-    #     json.dump(max_depths, json_file)
+            # Unpack Hertzian estimations for each config type
+            for file_name in sorted(os.listdir(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/hertz')):
+                if file_name.count('.pkl') == 0: continue
 
-    # print('All skipped files:', skipped_files)
+                # Extract info
+                i = int(file_name.split('.')[0])
+                with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/hertz/{file_name}', 'rb') as file:
+                    E_i = pickle.load(file)
 
-    # # Compute average loss / average log difference / log accuracy for each
-    # naive_stats         = compute_estimation_stats(naive_estimates, naive_scaling, object_to_modulus)
-    # hertz_stats         = compute_estimation_stats(hertz_estimates, hertz_scaling, object_to_modulus)
-    # MDR_stats           = compute_estimation_stats(MDR_estimates, MDR_scaling, object_to_modulus)
-    # stochastic_stats    = compute_estimation_stats(stochastic_estimates, stochastic_scaling, object_to_modulus)
+                if i > len(hertz_estimates) - 1:
+                    hertz_estimates.append(empty_estimate_dict.copy())
+                    with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/hertz/{i}.json', 'r') as file:
+                        config_i = json.load(file)
+                    hertz_configs.append(config_i)
 
-    # # Create path to save all generate data in
-    # if not os.path.exists(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}'):
-    #     os.mkdir(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}')
+                hertz_estimates[i][object_name].append(E_i)
 
-    # # Save run data for each method
-    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/naive_config.json', 'w') as json_file:
-    #     json.dump(naive_config, json_file)
-    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/naive_estimates.json', 'w') as json_file:
-    #     json.dump(naive_estimates, json_file)
-    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/naive_stats.json', 'w') as json_file:
-    #     json.dump(naive_stats, json_file)
-    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/hertz_config.json', 'w') as json_file:
-    #     json.dump(hertz_config, json_file)
-    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/hertz_estimates.json', 'w') as json_file:
-    #     json.dump(hertz_estimates, json_file)
-    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/hertz_stats.json', 'w') as json_file:
-    #     json.dump(hertz_stats, json_file)
-    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/MDR_config.json', 'w') as json_file:
-    #     json.dump(MDR_config, json_file)
-    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/MDR_estimates.json', 'w') as json_file:
-    #     json.dump(MDR_estimates, json_file)
-    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/MDR_stats.json', 'w') as json_file:
-    #     json.dump(MDR_stats, json_file)
-    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/stochastic_config.json', 'w') as json_file:
-    #     json.dump(stochastic_config, json_file)
-    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/stochastic_estimates.json', 'w') as json_file:
-    #     json.dump(stochastic_estimates, json_file)
-    # with open(f'{DATA_DIR}/evaluate_estimator/{RUN_NAME}/stochastic_stats.json', 'w') as json_file:
-    #     json.dump(stochastic_stats, json_file)
+            # Unpack MDR estimations for each config type
+            for file_name in sorted(os.listdir(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/MDR')):
+                if file_name.count('.pkl') == 0: continue
 
-    # print('NAIVE CONFIG:\n', naive_config)
-    # print('NAIVE METHOD:\n', naive_stats, '\n')
-    # print('HERTZ CONFIG:\n', hertz_config)
-    # print('HERTZ METHOD:\n', hertz_stats, '\n')
-    # print('MDR CONFIG:\n', MDR_config)
-    # print('MDR METHOD:\n', MDR_stats, '\n')
-    # print('STOCHASTIC CONFIG:\n', stochastic_config)
-    # print('STOCHASTIC METHOD:\n', stochastic_stats, '\n')
+                # Extract info
+                i = int(file_name.split('.')[0])
+                with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/MDR/{file_name}', 'rb') as file:
+                    E_i = pickle.load(file)
 
-    # # Create plots showing how well each method does
-    # compute_estimation_stats('Naive Elasticity Method', naive_estimates, naive_scaling, object_to_modulus)
-    # compute_estimation_stats('Hertzian Method', hertz_estimates, hertz_scaling, object_to_modulus)
-    # compute_estimation_stats('MDR', MDR_estimates, MDR_scaling, object_to_modulus)
-    # compute_estimation_stats('Stochastic Method', stochastic_estimates, stochastic_scaling, object_to_modulus)
+                if i > len(MDR_estimates) - 1:
+                    MDR_estimates.append(empty_estimate_dict.copy())
+                    with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/MDR/{i}.json', 'r') as file:
+                        config_i = json.load(file)
+                    MDR_configs.append(config_i)
+
+                MDR_estimates[i][object_name].append(E_i)
+
+            # Unpack stochastic estimation
+            with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/stochastic/E.pkl', 'rb') as file:
+                E_i = pickle.load(file)
+            stochastic_estimates[0][object_name].append(E_i)
+
+    # Find a linear scaling for each set of predictions to minimize error
+    naive_scalings      = [ scale_predictions(x, object_to_modulus) for x in naive_estimates ]
+    hertz_scalings      = [ scale_predictions(x, object_to_modulus) for x in hertz_estimates ]
+    MDR_scalings        = [ scale_predictions(x, object_to_modulus) for x in MDR_estimates ]
+    stochastic_scalings = [ scale_predictions(stochastic_estimates[0], object_to_modulus) ]
+
+    # Evaluate each set of estimates and pick the best
+    naive_stats = [
+        compute_estimation_stats(naive_estimates[i], naive_scalings[i], object_to_modulus) for i in range(len(naive_estimates))
+    ]
+    hertz_stats = [
+        compute_estimation_stats(hertz_estimates[i], hertz_scalings[i], object_to_modulus) for i in range(len(hertz_estimates))
+    ]
+    MDR_stats = [
+        compute_estimation_stats(MDR_estimates[i], MDR_scalings[i], object_to_modulus) for i in range(len(MDR_estimates))
+    ]
+    stochastic_stats = [
+        compute_estimation_stats(stochastic_estimates[0], stochastic_scalings[0], object_to_modulus)
+    ]
+
+    # Sort based on log difference
+    naive_i_order  = sorted(range(len(naive_stats)), key=lambda i: naive_stats[i]['avg_log_diff'])
+    hertz_i_order  = sorted(range(len(hertz_stats)), key=lambda i: hertz_stats[i]['avg_log_diff'])
+    MDR_i_order    = sorted(range(len(MDR_stats)), key=lambda i: MDR_stats[i]['avg_log_diff'])
+
+    # Create plots showing how well each method does
+    compute_estimation_stats('Naive Elasticity Method', naive_estimates[naive_i_order[0]], naive_scalings[naive_i_order[0]], object_to_modulus)
+    compute_estimation_stats('Hertzian Method', hertz_estimates[hertz_i_order[0]], hertz_scalings[hertz_i_order[0]], object_to_modulus)
+    compute_estimation_stats('MDR', MDR_estimates[MDR_i_order[0]], MDR_scalings[MDR_i_order[0]], object_to_modulus)
+    compute_estimation_stats('Stochastic Method', stochastic_estimates[0], stochastic_scalings[0], object_to_modulus)
