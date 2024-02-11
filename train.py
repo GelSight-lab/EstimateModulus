@@ -662,7 +662,7 @@ if __name__ == "__main__":
         'data_dir': DATA_DIR,
         'n_frames': N_FRAMES,
         'img_size': WARPED_CROPPED_IMG_SIZE,
-        'img_style': 'depth',
+        'img_style': 'diff',
         'use_markers': True,
         'use_force': True,
         'use_width': True,
@@ -674,7 +674,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': '1Frame_RGB',   
+        'run_name': 'Nframes=3_Diff_RGB',   
 
         # Training and model parameters
         'epochs'            : 250,
