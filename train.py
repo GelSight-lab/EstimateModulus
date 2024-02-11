@@ -218,6 +218,15 @@ class ModulusModel():
             decoder_input_size += self.n_frames * self.fwe_feature_size
         self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1)
 
+        self.video_encoder = nn.DataParallel(self.video_encoder)
+        if self.use_force:
+            self.force_encoder = nn.DataParallel(self.force_encoder)
+        if self.use_width:
+            self.width_encoder = nn.DataParallel(self.width_encoder)
+        if self.use_estimation:
+            self.estimation_encoder = nn.DataParallel(self.estimation_encoder)
+        self.decoder = nn.DataParallel(self.decoder)
+
         # Send models to device
         self.video_encoder.to(self.device)
         # self.other_video_encoder.to(self.device)
