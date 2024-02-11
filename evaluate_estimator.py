@@ -46,38 +46,40 @@ def scale_predictions(prediction_dict, label_dict):
     for object_name in prediction_dict.keys():
         if object_name in EXCLUDE: continue
         for E in prediction_dict[object_name]:
-            if E > 0:
+            if E > 0 and not math.isnan(E):
                 x.append(E)
                 y.append(label_dict[object_name])
+    # TODO: Make a better fit here
     return np.polyfit(x, y, 1)
 
 # Compute statistics to evaluate the performance of estimation method
 def compute_estimation_stats(prediction_dict, linear_scaling, label_dict):
     assert len(linear_scaling) == 2
-    loss = []
     log_diff = []
     for object_name in prediction_dict.keys():
         if object_name in EXCLUDE: continue
         for E in prediction_dict[object_name]:
-            E_scaled = linear_scaling[0]*E + linear_scaling[1]
-            loss.append(abs(E_scaled - label_dict[object_name]))
-            log_diff.append(abs(np.log10(E_scaled) - np.log10(label_dict[object_name])))
+            if E > 0 and not math.isnan(E):
+                E_scaled = linear_scaling[0]*E + linear_scaling[1]
+                assert not math.isnan(E_scaled)
+                log_diff.append(abs(np.log10(E_scaled) - np.log10(label_dict[object_name])))
     
-    loss = np.array(loss)
     log_diff = np.array(log_diff)
+    log_diff = log_diff[~np.isnan(log_diff)]
     return {
-        'avg_loss': loss.mean(),
         'avg_log_diff': log_diff.mean(),
-        'log_accuracy': np.sum(log_diff < 0.5),
+        'log_accuracy': np.sum(log_diff < 0.5) / len(log_diff),
     }
 
-# Plot on log scale to see how performance is
+# Plot on log scale to see howE_ performance is
 def plot_performance(plot_title, prediction_dict, linear_scaling, label_dict):
     material_to_color = {
         'Foam': 'firebrick',
         'Plastic': 'forestgreen',
         'Wood': 'goldenrod',
+        'Paper': 'darkviolet',
         'Glass': 'darkgray',
+        'Ceramic': 'pink',
         'Rubber': 'slateblue',
         'Metal': 'royalblue',
         'Food': 'darkorange',
@@ -90,10 +92,12 @@ def plot_performance(plot_title, prediction_dict, linear_scaling, label_dict):
     }
     
     for obj in prediction_dict.keys():
+        if len(prediction_dict[obj]) == 0: continue
         assert obj in object_to_material.keys()
         mat = object_to_material[obj]
-        material_prediction_data[mat].append(linear_scaling[0]*prediction_dict[obj] + linear_scaling[1])
-        material_label_data[mat].append(label_dict[obj])
+        for E in prediction_dict[obj]:
+            material_prediction_data[mat].append(linear_scaling[0]*E + linear_scaling[1])
+            material_label_data[mat].append(label_dict[obj])
 
     # Create plot
     plt.rcParams['font.family'] = 'Times New Roman'
@@ -131,7 +135,7 @@ if __name__ == '__main__':
     MDR_configs             = []
     stochastic_estimates    = [empty_estimate_dict.copy()]
 
-    for object_name in ['pillow']: # sorted(os.listdir(f'{DATA_DIR}/estimations')):
+    for object_name in sorted(os.listdir(f'{DATA_DIR}/estimations')):
         if object_name.count('.') > 0: continue
         if object_name in EXCLUDE: continue
 
@@ -220,7 +224,7 @@ if __name__ == '__main__':
     MDR_i_order    = sorted(range(len(MDR_stats)), key=lambda i: MDR_stats[i]['avg_log_diff'])
 
     # Create plots showing how well each method does
-    compute_estimation_stats('Naive Elasticity Method', naive_estimates[naive_i_order[0]], naive_scalings[naive_i_order[0]], object_to_modulus)
-    compute_estimation_stats('Hertzian Method', hertz_estimates[hertz_i_order[0]], hertz_scalings[hertz_i_order[0]], object_to_modulus)
-    compute_estimation_stats('MDR', MDR_estimates[MDR_i_order[0]], MDR_scalings[MDR_i_order[0]], object_to_modulus)
-    compute_estimation_stats('Stochastic Method', stochastic_estimates[0], stochastic_scalings[0], object_to_modulus)
+    plot_performance('Naive Elasticity Method', naive_estimates[naive_i_order[0]], naive_scalings[naive_i_order[0]], object_to_modulus)
+    plot_performance('Hertzian Method', hertz_estimates[hertz_i_order[0]], hertz_scalings[hertz_i_order[0]], object_to_modulus)
+    plot_performance('MDR', MDR_estimates[MDR_i_order[0]], MDR_scalings[MDR_i_order[0]], object_to_modulus)
+    plot_performance('Stochastic Method', stochastic_estimates[0], stochastic_scalings[0], object_to_modulus)
