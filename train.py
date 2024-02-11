@@ -505,6 +505,8 @@ class ModulusModel():
         val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
             
+            print('start of loop')
+
             # Concatenate features across frames into a single vector
             features = []
             for i in range(N_FRAMES):
@@ -546,7 +548,11 @@ class ModulusModel():
                 if abs_log_diff[i] >= 2:
                     self.val_object_performance[object_names[i]]['total_poorly_predicted'] += 1
                     val_pct_with_100_factor_err += 1
+            
+            print('end of loop')
         
+        print('done looping')
+
         # Return loss and accuracy
         val_loss /= batch_count
         val_log_acc /= (self.batch_size * batch_count)
@@ -556,6 +562,7 @@ class ModulusModel():
         return val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err
 
     def _save_model(self):
+        print('saving model..')
         if not os.path.exists(f'./model/{self.run_name}'):
             os.mkdir(f'./model/{self.run_name}')
         else:
