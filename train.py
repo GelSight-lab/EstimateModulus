@@ -6,7 +6,7 @@ import json
 import numpy as np
 
 import torch
-# import torchvision
+import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
 import wandb
@@ -14,7 +14,7 @@ import wandb
 # from wedge_video import WARPED_CROPPED_IMG_SIZE
 from nn_modules import *
 
-# from torchinfo import summary
+from torchinfo import summary
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, Dataset
 from sklearn.model_selection import train_test_split
@@ -22,7 +22,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -229,15 +229,15 @@ class ModulusModel():
             self.estimation_encoder.to(self.device)
         self.decoder.to(self.device)
 
-        # print('Summaries...')
-        # col_names = ("input_size", "output_size", "num_params", "params_percent")
-        # summary(self.video_encoder, (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), col_names=col_names, device=device)
-        # print('\nIn comparison, ResNet looks like this...')
-        # summary(torchvision.models.resnet18(), (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), col_names=col_names)
-        # if self.use_force:
-        #     summary(self.force_encoder, (self.batch_size, 1), col_names=col_names, device=device)
-        # summary(self.decoder, (self.batch_size, decoder_input_size), col_names=col_names, device=device)
-        # print('Done.')
+        print('Summaries...')
+        col_names = ("input_size", "output_size", "num_params", "params_percent")
+        summary(self.video_encoder, (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), col_names=col_names, device=device)
+        print('\nIn comparison, ResNet looks like this...')
+        summary(torchvision.models.resnet18(), (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), col_names=col_names)
+        if self.use_force:
+            summary(self.force_encoder, (self.batch_size, 1), col_names=col_names, device=device)
+        summary(self.decoder, (self.batch_size, decoder_input_size), col_names=col_names, device=device)
+        print('Done.')
 
         # Concatenate parameters of all models
         self.params         = list(self.video_encoder.parameters())
@@ -544,7 +544,6 @@ class ModulusModel():
         return val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err
 
     def _save_model(self):
-        print('saving model..')
         if not os.path.exists(f'./model/{self.run_name}'):
             os.mkdir(f'./model/{self.run_name}')
         else:
@@ -700,7 +699,7 @@ if __name__ == "__main__":
         config['batch_size'] = batch_size
         for i in range(2):
             config['run_name'] = f'{base_run_name}_batchsize={batch_size}_t={i}'
-            
+
             # Train the model over some data
             train_modulus = ModulusModel(config, device=device)
             train_modulus.train()
