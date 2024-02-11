@@ -695,11 +695,9 @@ if __name__ == "__main__":
     if config['use_estimation']: raise NotImplementedError()
 
     base_run_name = config['run_name']
-    for batch_size in [32, 64]:
-        config['batch_size'] = batch_size
-        for i in range(2):
-            config['run_name'] = f'{base_run_name}_batchsize={batch_size}_t={i}'
+    for i in range(2):
+        config['run_name'] = f'{base_run_name}__t={i}'
 
-            # Train the model over some data
-            train_modulus = ModulusModel(config, device=device)
-            train_modulus.train()
+        # Train the model over some data
+        train_modulus = ModulusModel(config, device=device)
+        train_modulus.train()

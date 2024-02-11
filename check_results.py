@@ -5,11 +5,13 @@ run_names = [
     '', 
 ]
 
+DATA_DIR = '/media/mike/Elements/data'
+
 # Read CSV files with objects and labels tabulated
 object_to_modulus = {}
 object_to_shape = {}
 object_to_material = {}
-csv_file_path = './data/objects_and_labels.csv'
+csv_file_path = f'{DATA_DIR}/objects_and_labels.csv'
 with open(csv_file_path, 'r') as file:
     csv_reader = csv.reader(file)
     next(csv_reader) # Skip title row
@@ -49,12 +51,31 @@ for run_name in run_names:
         poorly_predicted_pct[obj][0] += val_object_performance[obj]['total_poorly_predicted']
         poorly_predicted_pct[obj][1] += val_object_performance[obj]['count']
 
+for key in shape_log_acc.keys():
+    if shape_log_acc[key][1] > 0:
+        shape_log_acc[key] = shape_log_acc[key][0] / shape_log_acc[key][1]
+    else:
+        shape_log_acc[key] = 0
+    if shape_log_diff[key][1] > 0:
+        shape_log_diff[key] = shape_log_diff[key][0] / shape_log_diff[key][1]
+    else:
+        shape_log_diff[key] = 0
 
-shape_log_acc = { key:shape_log_acc[key][0]/shape_log_acc[key][1] for key in shape_log_acc.keys() }
-shape_log_diff = { key:shape_log_diff[key][0]/shape_log_diff[key][1] for key in shape_log_diff.keys() }
-material_log_acc = { key:material_log_acc[key][0]/material_log_acc[key][1] for key in material_log_acc.keys() }
-material_log_diff = { key:material_log_diff[key][0]/material_log_diff[key][1] for key in material_log_diff.keys() }
-poorly_predicted_pct = { key:poorly_predicted_pct[key][0]/poorly_predicted_pct[key][1] for key in poorly_predicted_pct.keys() } # Over a factor of 100 off
+for key in material_log_acc.keys():
+    if material_log_acc[key][1] > 0:
+        material_log_acc[key] = material_log_acc[key][0] / material_log_acc[key][1]
+    else:
+        material_log_acc[key] = 0
+    if material_log_diff[key][1] > 0:
+        material_log_diff[key] = material_log_diff[key][0] / material_log_diff[key][1]
+    else:
+        material_log_diff[key] = 0
+
+for key in poorly_predicted_pct.keys():
+    if poorly_predicted_pct[key][1] > 0:
+        poorly_predicted_pct = poorly_predicted_pct[key][0] / poorly_predicted_pct[key][1] # Over a factor of 100 off
+    else:
+        poorly_predicted_pct = 0
 
 print('shape_log_acc', shape_log_acc)
 print('\n')
