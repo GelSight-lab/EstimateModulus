@@ -22,7 +22,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -390,8 +390,6 @@ class ModulusModel():
                 x_val.append(file_path)
                 y_val.append(self.log_normalize(self.object_to_modulus[object_name]))
 
-        del paths_to_files
-
         # Create tensor's on device to send to dataset
         empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device)
         empty_force_tensor        = torch.zeros((self.n_frames, 1), device=device)
@@ -421,8 +419,6 @@ class ModulusModel():
                                             label_tensor=empty_label_tensor)
         self.train_loader   = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, **kwargs)
         self.val_loader     = DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, **kwargs)
-        del x_train, y_train, x_val, y_val
-        del empty_frame_tensor, empty_force_tensor, empty_width_tensor, empty_estimation_tensor, empty_label_tensor
         return
 
     def _train_epoch(self):
@@ -468,10 +464,10 @@ class ModulusModel():
             batch_count += 1
 
             # Calculate performance metrics
-            abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y))).detach().numpy()
+            abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs.cpu())) - torch.log10(self.log_unnormalize(y.cpu()))).detach().numpy()
             train_avg_log_diff += abs_log_diff.sum()
             for i in range(self.batch_size):
-                self.train_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i]
+                self.train_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i][0]
                 self.train_object_performance[object_names[i]]['count'] += 1
                 if abs_log_diff[i] <= 0.5:
                     self.train_object_performance[object_names[i]]['total_log_acc'] += 1
@@ -527,10 +523,10 @@ class ModulusModel():
             batch_count += 1
 
             # Calculate performance metrics
-            abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y))).detach().numpy()
+            abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs.cpu())) - torch.log10(self.log_unnormalize(y.cpu()))).detach().numpy()
             val_avg_log_diff += abs_log_diff.sum()
             for i in range(self.batch_size):
-                self.val_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i]
+                self.val_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i][0]
                 self.val_object_performance[object_names[i]]['count'] += 1
                 if abs_log_diff[i] <= 0.5:
                     self.val_object_performance[object_names[i]]['total_log_acc'] += 1
@@ -684,7 +680,7 @@ if __name__ == "__main__":
         'run_name': 'Nframes=3_Diff_RGB',   
 
         # Training and model parameters
-        'epochs'            : 250,
+        'epochs'            : 80,
         'batch_size'        : 32,
         'img_feature_size'  : 64,
         'fwe_feature_size'  : 8,
@@ -700,8 +696,11 @@ if __name__ == "__main__":
     if config['use_estimation']: raise NotImplementedError()
 
     base_run_name = config['run_name']
-    for i in range(3):
-        config['run_name'] = f'{base_run_name}_t={i}'
-        # Train the model over some data
-        train_modulus = ModulusModel(config, device=device)
-        train_modulus.train()
+    for batch_size in [32, 64]:
+        config['batch_size'] = batch_size
+        for i in range(2):
+            config['run_name'] = f'{base_run_name}_batchsize={batch_size}_t={i}'
+            
+            # Train the model over some data
+            train_modulus = ModulusModel(config, device=device)
+            train_modulus.train()
