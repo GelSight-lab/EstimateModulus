@@ -202,7 +202,7 @@ class ModulusModel():
 
         # Initialize models based on config
         self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
-        self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
+        # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
         self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
         self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
         self.estimation_encoder = EstimationFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
@@ -220,7 +220,7 @@ class ModulusModel():
 
         # Send models to device
         self.video_encoder.to(self.device)
-        self.other_video_encoder.to(self.device)
+        # self.other_video_encoder.to(self.device)
         if self.use_force:
             self.force_encoder.to(self.device)
         if self.use_width:
@@ -241,7 +241,7 @@ class ModulusModel():
 
         # Concatenate parameters of all models
         self.params         = list(self.video_encoder.parameters())
-        self.params         += list(self.other_video_encoder.parameters())
+        # self.params         += list(self.other_video_encoder.parameters())
         if self.use_force: 
             self.params += list(self.force_encoder.parameters())
         if self.use_width: 
@@ -438,7 +438,7 @@ class ModulusModel():
                 # Execute CNN on video frames
                 features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
-                features.append(self.other_video_encoder(x_frames_other[:, i, :, :, :]))
+                features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
                 
                 # Execute FC layers on other data and append
                 if not (x_forces.max() == x_forces.min() == 0): # Force measurements
@@ -501,7 +501,7 @@ class ModulusModel():
                 # Execute CNN on video frames
                 features.append(self.video_encoder(x_frames[:, i, :, :, :]))
                 
-                features.append(self.other_video_encoder(x_frames_other[:, i, :, :, :]))
+                features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
 
                 # Execute FC layers on other data and append
                 if not (x_forces.max() == x_forces.min() == 0): # Force measurements
@@ -661,7 +661,7 @@ if __name__ == "__main__":
         'data_dir': DATA_DIR,
         'n_frames': N_FRAMES,
         'img_size': WARPED_CROPPED_IMG_SIZE,
-        'img_style': 'diff',
+        'img_style': 'depth',
         'use_markers': True,
         'use_force': True,
         'use_width': True,
@@ -673,7 +673,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': '2Frames_Opposite_SeparateCNN',   
+        'run_name': '2Frames_Opposite_Depth_SameCNN',   
 
         # Training and model parameters
         'epochs'            : 100,

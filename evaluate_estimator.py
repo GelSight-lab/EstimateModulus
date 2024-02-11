@@ -2,6 +2,7 @@ import os
 import csv
 import json
 import pickle
+import copy
 from tactile_estimate import *
 
 def random_hex_color():
@@ -130,7 +131,7 @@ if __name__ == '__main__':
     MDR_configs             = []
     stochastic_estimates    = [empty_estimate_dict.copy()]
 
-    for object_name in os.listdir(f'{DATA_DIR}/estimations'):
+    for object_name in ['pillow']: # sorted(os.listdir(f'{DATA_DIR}/estimations')):
         if object_name.count('.') > 0: continue
         if object_name in EXCLUDE: continue
 
@@ -146,7 +147,8 @@ if __name__ == '__main__':
                     E_i = pickle.load(file)
 
                 if i > len(naive_estimates) - 1:
-                    naive_estimates.append(empty_estimate_dict.copy())
+                    new_dict = copy.deepcopy(empty_estimate_dict)
+                    naive_estimates.append(new_dict)
                     with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/naive/{i}.json', 'r') as file:
                         config_i = json.load(file)
                     naive_configs.append(config_i)
