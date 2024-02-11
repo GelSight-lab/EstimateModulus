@@ -218,15 +218,6 @@ class ModulusModel():
             decoder_input_size += self.n_frames * self.fwe_feature_size
         self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1)
 
-        self.video_encoder = nn.DataParallel(self.video_encoder)
-        if self.use_force:
-            self.force_encoder = nn.DataParallel(self.force_encoder)
-        if self.use_width:
-            self.width_encoder = nn.DataParallel(self.width_encoder)
-        if self.use_estimation:
-            self.estimation_encoder = nn.DataParallel(self.estimation_encoder)
-        self.decoder = nn.DataParallel(self.decoder)
-
         # Send models to device
         self.video_encoder.to(self.device)
         # self.other_video_encoder.to(self.device)
@@ -479,6 +470,8 @@ class ModulusModel():
             print('train_loop', sys.getsizeof(self.train_object_performance))
 
             # Calculate performance metrics
+            outputs = outputs.cpu()
+            y = y.cpu()
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
             train_avg_log_diff += abs_log_diff.sum().item()
             for i in range(self.batch_size):
@@ -540,6 +533,8 @@ class ModulusModel():
             print('val_loop', sys.getsizeof(self.train_object_performance))
 
             # Calculate performance metrics
+            outputs = outputs.cpu()
+            y = y.cpu()
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
             val_avg_log_diff += abs_log_diff.sum().item()
             for i in range(self.batch_size):
