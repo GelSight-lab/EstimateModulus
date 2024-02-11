@@ -350,23 +350,23 @@ class ModulusModel():
         paths_to_files = []
         list_files(f'{self.data_dir}/{training_data_folder_name}', paths_to_files, self.config)
 
-        # Create some data structures for tracking performance
-        self.train_object_performance = {}
-        self.val_object_performance = {}
-        for object_name in objects_train:
-            self.train_object_performance[object_name] = {
-                    'total_log_diff': 0,
-                    'total_log_acc': 0,
-                    'total_poorly_predicted': 0, # Off by factor of 100 or more
-                    'count': 0
-                }
-        for object_name in objects_val:
-            self.val_object_performance[object_name] = {
-                    'total_log_diff': 0,
-                    'total_log_acc': 0,
-                    'total_poorly_predicted': 0, # Off by factor of 100 or more
-                    'count': 0
-                }
+        # # Create some data structures for tracking performance
+        # self.train_object_performance = {}
+        # self.val_object_performance = {}
+        # for object_name in objects_train:
+        #     self.train_object_performance[object_name] = {
+        #             'total_log_diff': 0,
+        #             'total_log_acc': 0,
+        #             'total_poorly_predicted': 0, # Off by factor of 100 or more
+        #             'count': 0
+        #         }
+        # for object_name in objects_val:
+        #     self.val_object_performance[object_name] = {
+        #             'total_log_diff': 0,
+        #             'total_log_acc': 0,
+        #             'total_poorly_predicted': 0, # Off by factor of 100 or more
+        #             'count': 0
+        #         }
 
         # Divide paths up into training and validation data
         x_train, x_val = [], []
@@ -464,13 +464,13 @@ class ModulusModel():
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
             train_avg_log_diff += abs_log_diff.sum().item()
             for i in range(self.batch_size):
-                self.train_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i]
-                self.train_object_performance[object_names[i]]['count'] += 1
+                # self.train_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i]
+                # self.train_object_performance[object_names[i]]['count'] += 1
                 if abs_log_diff[i] <= 0.5:
-                    self.train_object_performance[object_names[i]]['total_log_acc'] += 1
+                    # self.train_object_performance[object_names[i]]['total_log_acc'] += 1
                     train_log_acc += 1
                 if abs_log_diff[i] >= 2:
-                    self.train_object_performance[object_names[i]]['total_poorly_predicted'] += 1
+                    # self.train_object_performance[object_names[i]]['total_poorly_predicted'] += 1
                     train_pct_with_100_factor_err += 1
                     
 
@@ -524,13 +524,13 @@ class ModulusModel():
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
             val_avg_log_diff += abs_log_diff.sum().item()
             for i in range(self.batch_size):
-                self.val_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i]
-                self.val_object_performance[object_names[i]]['count'] += 1
+                # self.val_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i]
+                # self.val_object_performance[object_names[i]]['count'] += 1
                 if abs_log_diff[i] <= 0.5:
-                    self.val_object_performance[object_names[i]]['total_log_acc'] += 1
+                    # self.val_object_performance[object_names[i]]['total_log_acc'] += 1
                     val_log_acc += 1
                 if abs_log_diff[i] >= 2:
-                    self.val_object_performance[object_names[i]]['total_poorly_predicted'] += 1
+                    # self.val_object_performance[object_names[i]]['total_poorly_predicted'] += 1
                     val_pct_with_100_factor_err += 1
         
         # Return loss and accuracy
@@ -547,10 +547,10 @@ class ModulusModel():
         else:
             if os.path.exists(f'./model/{self.run_name}/config.json'):
                 os.remove(f'./model/{self.run_name}/config.json')
-            if os.path.exists(f'./model/{self.run_name}/train_object_performance.json'):
-                os.remove(f'./model/{self.run_name}/train_object_performance.json')
-            if os.path.exists(f'./model/{self.run_name}/val_object_performance.json'):
-                os.remove(f'./model/{self.run_name}/val_object_performance.json')
+            # if os.path.exists(f'./model/{self.run_name}/train_object_performance.json'):
+            #     os.remove(f'./model/{self.run_name}/train_object_performance.json')
+            # if os.path.exists(f'./model/{self.run_name}/val_object_performance.json'):
+            #     os.remove(f'./model/{self.run_name}/val_object_performance.json')
             if os.path.exists(f'./model/{self.run_name}/video_encoder.pth'):
                 os.remove(f'./model/{self.run_name}/video_encoder.pth')
             if os.path.exists(f'./model/{self.run_name}/force_encoder.pth'):
@@ -571,11 +571,11 @@ class ModulusModel():
         if self.use_estimation: torch.save(self.estimation_encoder.state_dict(), f'./model/{self.run_name}/estimation_encoder.pth')
         torch.save(self.decoder.state_dict(), f'./model/{self.run_name}/decoder.pth')
 
-        # Save performance data
-        with open(f'./model/{self.run_name}/train_object_performance.json', 'w') as json_file:
-            json.dump(self.train_object_performance, json_file)
-        with open(f'./model/{self.run_name}/val_object_performance.json', 'w') as json_file:
-            json.dump(self.val_object_performance, json_file)
+        # # Save performance data
+        # with open(f'./model/{self.run_name}/train_object_performance.json', 'w') as json_file:
+        #     json.dump(self.train_object_performance, json_file)
+        # with open(f'./model/{self.run_name}/val_object_performance.json', 'w') as json_file:
+        #     json.dump(self.val_object_performance, json_file)
         return
 
     def train(self):
@@ -583,21 +583,21 @@ class ModulusModel():
         max_val_log_acc = 0.0
         for epoch in range(self.epochs):
 
-            # Clean performance trackers
-            for object_name in self.train_object_performance.keys():
-                self.train_object_performance[object_name] = {
-                    'total_log_diff': 0,
-                    'total_log_acc': 0,
-                    'total_poorly_predicted': 0, # Off by factor of 100 or more
-                    'count': 0
-                }
-            for object_name in self.val_object_performance.keys():
-                self.val_object_performance[object_name] = {
-                    'total_log_diff': 0,
-                    'total_log_acc': 0,
-                    'total_poorly_predicted': 0, # Off by factor of 100 or more
-                    'count': 0
-                }
+            # # Clean performance trackers
+            # for object_name in self.train_object_performance.keys():
+            #     self.train_object_performance[object_name] = {
+            #         'total_log_diff': 0,
+            #         'total_log_acc': 0,
+            #         'total_poorly_predicted': 0, # Off by factor of 100 or more
+            #         'count': 0
+            #     }
+            # for object_name in self.val_object_performance.keys():
+            #     self.val_object_performance[object_name] = {
+            #         'total_log_diff': 0,
+            #         'total_log_acc': 0,
+            #         'total_poorly_predicted': 0, # Off by factor of 100 or more
+            #         'count': 0
+            #     }
 
             # Train batch
             train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err = self._train_epoch()
@@ -677,7 +677,7 @@ if __name__ == "__main__":
         'run_name': '1Frame_RGB',   
 
         # Training and model parameters
-        'epochs'            : 100,
+        'epochs'            : 250,
         'batch_size'        : 32,
         'img_feature_size'  : 64,
         'fwe_feature_size'  : 8,
