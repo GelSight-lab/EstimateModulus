@@ -467,21 +467,17 @@ class ModulusModel():
             train_loss += loss.item()
             batch_count += 1
 
-            print('train_loop', sys.getsizeof(self.train_object_performance))
-
             # Calculate performance metrics
-            outputs = outputs.cpu()
-            y = y.cpu()
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
             train_avg_log_diff += abs_log_diff.sum().item()
             for i in range(self.batch_size):
-                self.train_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i]
-                self.train_object_performance[object_names[i]]['count'] += 1
+                # self.train_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i]
+                # self.train_object_performance[object_names[i]]['count'] += 1
                 if abs_log_diff[i] <= 0.5:
-                    self.train_object_performance[object_names[i]]['total_log_acc'] += 1
+                    # self.train_object_performance[object_names[i]]['total_log_acc'] += 1
                     train_log_acc += 1
                 if abs_log_diff[i] >= 2:
-                    self.train_object_performance[object_names[i]]['total_poorly_predicted'] += 1
+                    # self.train_object_performance[object_names[i]]['total_poorly_predicted'] += 1
                     train_pct_with_100_factor_err += 1
                     
         # Return loss
@@ -504,8 +500,6 @@ class ModulusModel():
 
         val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
-            
-            print('start of loop')
 
             # Concatenate features across frames into a single vector
             features = []
@@ -532,26 +526,18 @@ class ModulusModel():
             val_loss += loss.item()
             batch_count += 1
 
-            print('val_loop', sys.getsizeof(self.train_object_performance))
-
             # Calculate performance metrics
-            outputs = outputs.cpu()
-            y = y.cpu()
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs)) - torch.log10(self.log_unnormalize(y)))
             val_avg_log_diff += abs_log_diff.sum().item()
             for i in range(self.batch_size):
-                self.val_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i]
-                self.val_object_performance[object_names[i]]['count'] += 1
+                # self.val_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i]
+                # self.val_object_performance[object_names[i]]['count'] += 1
                 if abs_log_diff[i] <= 0.5:
-                    self.val_object_performance[object_names[i]]['total_log_acc'] += 1
+                    # self.val_object_performance[object_names[i]]['total_log_acc'] += 1
                     val_log_acc += 1
                 if abs_log_diff[i] >= 2:
-                    self.val_object_performance[object_names[i]]['total_poorly_predicted'] += 1
+                    # self.val_object_performance[object_names[i]]['total_poorly_predicted'] += 1
                     val_pct_with_100_factor_err += 1
-            
-            print('end of loop')
-        
-        print('done looping')
 
         # Return loss and accuracy
         val_loss /= batch_count
