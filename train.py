@@ -194,6 +194,7 @@ class ModulusModel():
         self.img_feature_size   = config['img_feature_size']
         self.fwe_feature_size   = config['fwe_feature_size']
         self.val_pct            = config['val_pct']
+        self.dropout_pct        = config['dropout_pct']
         self.learning_rate      = config['learning_rate']
         self.gamma              = config['gamma']
         self.lr_step_size       = config['lr_step_size']
@@ -201,7 +202,7 @@ class ModulusModel():
         self.criterion          = nn.MSELoss()
 
         # Initialize models based on config
-        self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
+        self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size, dropout_pct=self.dropout_pct)
         # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
         self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
         self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
@@ -216,7 +217,7 @@ class ModulusModel():
             decoder_input_size += self.n_frames * self.fwe_feature_size
         if self.use_estimation: 
             decoder_input_size += self.fwe_feature_size
-        self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1)
+        self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
 
         # Send models to device
         self.video_encoder.to(self.device)
@@ -284,6 +285,7 @@ class ModulusModel():
                     "gamma": self.gamma,
                     "lr_step_size": self.lr_step_size,
                     "validation_pct": self.val_pct,
+                    "dropout_pct": self.dropout_pct,
                     "random_state": self.random_state,
                     "architecture": "ENCODE_DECODE",
                     "num_params": len(self.params),
@@ -678,7 +680,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Dropout30',   
+        'run_name': 'AllTanh_Dropout30',   
 
         # Training and model parameters
         'epochs'            : 250,
@@ -686,6 +688,7 @@ if __name__ == "__main__":
         'img_feature_size'  : 64,
         'fwe_feature_size'  : 8,
         'val_pct'           : 0.15,
+        'dropout_pct'       : 0.3,
         'learning_rate'     : 1e-4,
         'gamma'             : None,
         'lr_step_size'      : None,

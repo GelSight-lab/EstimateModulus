@@ -23,7 +23,7 @@ class EncoderCNN(nn.Module):
                  input_channels=1,
                  fc_hidden1=256,
                  fc_hidden2=64,
-                 drop_p=0.3,
+                 dropout_pct=0.5,
                  CNN_embed_dim=128):
         super(EncoderCNN, self).__init__()
 
@@ -33,7 +33,7 @@ class EncoderCNN(nn.Module):
 
         # Fully connected layer hidden nodes
         self.fc_hidden1, self.fc_hidden2 = fc_hidden1, fc_hidden2
-        self.drop_p = drop_p
+        self.dropout_pct = dropout_pct
 
         # CNN architechtures
         self.ch1, self.ch2, self.ch3, self.ch4, self.ch5 = 32, 64, 128, 256, 512
@@ -103,7 +103,7 @@ class EncoderCNN(nn.Module):
             nn.SiLU(inplace=True),
         )
 
-        self.drop = nn.Dropout(self.drop_p)
+        self.drop = nn.Dropout(self.dropout_pct)
         # self.pool = nn.MaxPool2d(2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
@@ -137,7 +137,7 @@ class EncoderCNN(nn.Module):
         x = self.drop(x)
         # FC layers
         x = self.fc1(x)
-        x = F.silu(x)
+        x = F.tanh(x) # F.silu(x)
         x = self.drop(x)
         x = self.fc2(x) # CNN embedding
         # x = F.silu(x)
@@ -149,13 +149,13 @@ class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
                 FC_layer_nodes=[256, 256, 128], # 64],
-                drop_p=0.3,
+                dropout_pct=0.5,
                 output_dim=6):
         super(DecoderFC, self).__init__()
     
         self.FC_input_size = input_dim
         self.FC_layer_nodes = FC_layer_nodes
-        self.drop_p = drop_p
+        self.dropout_pct = dropout_pct
         self.output_dim = output_dim
 
         assert len(FC_layer_nodes) == 3
@@ -166,18 +166,18 @@ class DecoderFC(nn.Module):
         self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.output_dim)
         # self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.FC_layer_nodes[3])
         # self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.output_dim)
-        self.drop = nn.Dropout(self.drop_p)
+        self.drop = nn.Dropout(self.dropout_pct)
 
     def forward(self, x):
         x = self.drop(x)
         x = self.fc1(x)
-        x = F.silu(x)
+        x = F.tanh(x) # F.silu(x)
         x = self.drop(x)
         x = self.fc2(x)
-        x = F.silu(x)
+        x = F.tanh(x) # F.silu(x)
         x = self.drop(x)
         x = self.fc3(x)
-        x = F.silu(x) # F.tanh(x)
+        x = F.tanh(x) # F.silu(x)
         x = self.drop(x)
         x = self.fc4(x)
         # x = F.silu(x)
@@ -186,58 +186,58 @@ class DecoderFC(nn.Module):
         return torch.sigmoid(x)
  
 class ForceFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim=16, drop_p=0.3):
+    def __init__(self, hidden_size=16, output_dim=16, dropout_pct=0.5):
         super(ForceFC, self).__init__()
 
         self.hidden_size = hidden_size
         self.output_dim = output_dim
-        self.drop_p = drop_p
+        self.dropout_pct = dropout_pct
 
         self.fc1 = nn.Linear(1, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
-        self.drop = nn.Dropout(self.drop_p)
+        self.drop = nn.Dropout(self.dropout_pct)
 
     def forward(self, x):
         x = self.fc1(x)
-        x = F.silu(x)
+        x = F.tanh(x) # F.silu(x)
         x = self.drop(x)
         x = self.fc2(x)
         return x
     
 class WidthFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim=16, drop_p=0.3):
+    def __init__(self, hidden_size=16, output_dim=16, dropout_pct=0.5):
         super(WidthFC, self).__init__()
 
         self.hidden_size = hidden_size
         self.output_dim = output_dim
-        self.drop_p = drop_p
+        self.dropout_pct = dropout_pct
 
         self.fc1 = nn.Linear(1, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
-        self.drop = nn.Dropout(self.drop_p)
+        self.drop = nn.Dropout(self.dropout_pct)
 
     def forward(self, x):
         x = self.fc1(x)
-        x = F.silu(x)
+        x = F.tanh(x) # F.silu(x)
         x = self.drop(x)
         x = self.fc2(x)
         return x
  
 class EstimationFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim=16, drop_p=0.3):
+    def __init__(self, hidden_size=16, output_dim=16, dropout_pct=0.5):
         super(EstimationFC, self).__init__()
 
         self.hidden_size = hidden_size
         self.output_dim = output_dim
-        self.drop_p = drop_p
+        self.dropout_pct = dropout_pct
 
         self.fc1 = nn.Linear(1, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
-        self.drop = nn.Dropout(self.drop_p)
+        self.drop = nn.Dropout(self.dropout_pct)
 
     def forward(self, x):
         x = self.fc1(x)
-        x = F.silu(x)
+        x = F.tanh(x) # F.silu(x)
         x = self.drop(x)
         x = self.fc2(x)
         return x
