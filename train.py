@@ -678,13 +678,13 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'CorrectEstimationTest_8FWE_OneLayer',   
+        'run_name': 'DecoderEntranceDropout',   
 
         # Training and model parameters
         'epochs'            : 250,
         'batch_size'        : 32,
         'img_feature_size'  : 64,
-        'fwe_feature_size'  : 16, # 8,
+        'fwe_feature_size'  : 8,
         'val_pct'           : 0.15,
         'learning_rate'     : 1e-4,
         'gamma'             : None,

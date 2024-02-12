@@ -35,35 +35,36 @@ with open(csv_file_path, 'r') as file:
             object_to_material[row[1]] = row[3]
 
 # Define settings configuration for each estimator method
+CONTACT_MASK = 'conditional_contact_mask'
 naive_configs = [{
-        'contact_mask': 'conditional_contact_mask',
+        'contact_mask': CONTACT_MASK,
         'use_mean': False,
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': False,
     },{
-        'contact_mask': 'conditional_contact_mask',
+        'contact_mask': CONTACT_MASK,
         'use_mean': False,
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': True,
     },
     {
-        'contact_mask': 'conditional_contact_mask',
+        'contact_mask': CONTACT_MASK,
         'use_mean': True,
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': True,
     },
     {
-        'contact_mask': 'conditional_contact_mask',
+        'contact_mask': CONTACT_MASK,
         'use_mean': False,
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': True,
         'use_lower_resolution_depth': True,
     },
     {
-        'contact_mask': 'conditional_contact_mask',
+        'contact_mask': CONTACT_MASK,
         'use_mean': True,
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': True,
@@ -83,17 +84,17 @@ naive_configs = [{
     },
 ]
 hertz_configs = [{
-        'contact_mask': 'conditional_contact_mask',
+        'contact_mask': CONTACT_MASK,
         'use_ellipse_mask': False, 
         'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': False,
     },{
-        'contact_mask': 'conditional_contact_mask',
+        'contact_mask': CONTACT_MASK,
         'use_ellipse_mask': False, 
         'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': True,
     },{
-        'contact_mask': 'conditional_contact_mask',
+        'contact_mask': CONTACT_MASK,
         'use_ellipse_mask': False, 
         'fit_mask_to_ellipse': True,
         'use_lower_resolution_depth': True,
@@ -110,42 +111,42 @@ hertz_configs = [{
     },
 ]
 MDR_configs = [{
-        'contact_mask': 'conditional_contact_mask',
+        'contact_mask': CONTACT_MASK,
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': False,
         'use_apparent_deformation': True,
         'use_lower_resolution_depth': True,
         'use_mean_radius': False
     },{
-        'contact_mask': 'conditional_contact_mask',
+        'contact_mask': CONTACT_MASK,
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': False,
         'use_apparent_deformation': False,
         'use_lower_resolution_depth': True,
         'use_mean_radius': False
     },{
-        'contact_mask': 'conditional_contact_mask',
+        'contact_mask': CONTACT_MASK,
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': False,
         'use_apparent_deformation': True,
         'use_lower_resolution_depth': False,
         'use_mean_radius': False
     },{
-        'contact_mask': 'conditional_contact_mask',
+        'contact_mask': CONTACT_MASK,
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': False,
         'use_apparent_deformation': False,
         'use_lower_resolution_depth': False,
         'use_mean_radius': False
     },{
-        'contact_mask': 'conditional_contact_mask',
+        'contact_mask': CONTACT_MASK,
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': True,
         'use_apparent_deformation': True,
         'use_lower_resolution_depth': True,
         'use_mean_radius': False
     },{
-        'contact_mask': 'conditional_contact_mask',
+        'contact_mask': CONTACT_MASK,
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': False,
         'use_apparent_deformation': False,
@@ -177,6 +178,9 @@ MDR_configs = [{
 
 max_depths = {}
 estimator = EstimateModulus(grasp_data=grasp_data, use_gripper_width=True, use_other_video=USE_MARKER_FINGER)
+
+print('MAKE SAVE INDEX SMART. IF CONTACT MASK DIRECTORY EXISTS, DONT WRITE')
+raise NotImplementedError
 
 objects = sorted(os.listdir(f'{DATA_DIR}/raw_data'))
 for object_name in tqdm(objects):
@@ -219,11 +223,12 @@ for object_name in tqdm(objects):
                         fit_mask_to_ellipse=naive_config['fit_mask_to_ellipse'],
                         use_lower_resolution_depth=naive_config['use_lower_resolution_depth']
                     )
+            config_contact_mask = naive_config['contact_mask'] if naive_config['contact_mask'] is not None else 'ellipse_contact_mask'
             if not os.path.exists(f'{file_path_prefix}/naive'):
                 os.mkdir(f'{file_path_prefix}/naive')
-            with open(f'{file_path_prefix}/naive/{i+shift}.pkl', 'wb') as file:
+            with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i+shift}.pkl', 'wb') as file:
                 pickle.dump(E_naive, file)
-            with open(f'{file_path_prefix}/naive/{i+shift}.json', 'w') as json_file:
+            with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i+shift}.json', 'w') as json_file:
                 json.dump(naive_config, json_file)
 
         # Fit using Hertzian estimator
@@ -235,11 +240,12 @@ for object_name in tqdm(objects):
                         fit_mask_to_ellipse=hertz_config['fit_mask_to_ellipse'],
                         use_lower_resolution_depth=hertz_config['use_lower_resolution_depth']
                     )
+            config_contact_mask = hertz_config['contact_mask'] if hertz_config['contact_mask'] is not None else 'ellipse_contact_mask'
             if not os.path.exists(f'{file_path_prefix}/hertz'):
                 os.mkdir(f'{file_path_prefix}/hertz')
-            with open(f'{file_path_prefix}/hertz/{i+shift}.pkl', 'wb') as file:
+            with open(f'{file_path_prefix}/hertz/{config_contact_mask}/{i+shift}.pkl', 'wb') as file:
                 pickle.dump(E_hertz, file)
-            with open(f'{file_path_prefix}/hertz/{i+shift}.json', 'w') as json_file:
+            with open(f'{file_path_prefix}/hertz/{config_contact_mask}/{i+shift}.json', 'w') as json_file:
                 json.dump(hertz_config, json_file)
 
         # Fit using MDR estimator
@@ -253,19 +259,20 @@ for object_name in tqdm(objects):
                                     use_lower_resolution_depth=MDR_config['use_lower_resolution_depth'],
                                     use_mean_radius=MDR_config['use_mean_radius'],
                                 )
+            config_contact_mask = MDR_config['contact_mask'] if MDR_config['contact_mask'] is not None else 'ellipse_contact_mask'
             if not os.path.exists(f'{file_path_prefix}/MDR'):
                 os.mkdir(f'{file_path_prefix}/MDR')
-            with open(f'{file_path_prefix}/MDR/{i+shift}.pkl', 'wb') as file:
+            with open(f'{file_path_prefix}/MDR/{config_contact_mask}/{i+shift}.pkl', 'wb') as file:
                 pickle.dump(E_MDR, file)
-            with open(f'{file_path_prefix}/MDR/{i+shift}.json', 'w') as json_file:
+            with open(f'{file_path_prefix}/MDR/{config_contact_mask}/{i+shift}.json', 'w') as json_file:
                 json.dump(MDR_config, json_file)
 
-        # # Fit using the stochastic estimator
-        # E_stochastic = estimator.fit_modulus_stochastic()
-        # if not os.path.exists(f'{file_path_prefix}/stochastic'):
-        #     os.mkdir(f'{file_path_prefix}/stochastic')
-        # with open(f'{file_path_prefix}/stochastic/E.pkl', 'wb') as file:
-        #     pickle.dump(E_stochastic, file)
+        # Fit using the stochastic estimator
+        E_stochastic = estimator.fit_modulus_stochastic()
+        if not os.path.exists(f'{file_path_prefix}/{CONTACT_MASK}/stochastic'):
+            os.mkdir(f'{file_path_prefix}/stochastic')
+        with open(f'{file_path_prefix}/stochastic/{CONTACT_MASK}/E.pkl', 'wb') as file:
+            pickle.dump(E_stochastic, file)
         
 with open(f'{DATA_DIR}/estimations/max_depths.json', 'w') as json_file:
     json.dump(max_depths, json_file)
