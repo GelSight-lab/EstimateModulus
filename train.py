@@ -678,7 +678,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'CorrectEstimationtest_16FWE',   
+        'run_name': 'CorrectEstimationTest_8FWE_OneLayer',   
 
         # Training and model parameters
         'epochs'            : 250,

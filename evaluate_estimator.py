@@ -7,6 +7,10 @@ import copy
 from scipy.optimize import curve_fit
 from tactile_estimate import *
 
+import matplotlib as mpl
+mpl.rcParams.update(mpl.rcParamsDefault)
+import matplotlib.pyplot as plt
+
 def exp_function(x, a, b, c):
     return a * np.exp(b * x) + c
 
@@ -49,20 +53,26 @@ with open(csv_file_path, 'r') as file:
 def scale_predictions(prediction_dict, label_dict, linear_log_fit=True, exp_fit=False):
     assert linear_log_fit ^ exp_fit
     x, y = [], []
+    nan_count, total_count = 0, 0
     for object_name in prediction_dict.keys():
         if object_name in EXCLUDE: continue
         for E in prediction_dict[object_name]:
             if E > 0 and not math.isnan(E):
                 x.append(E)
                 y.append(label_dict[object_name])
+            else:
+                nan_count += 1
+        total_count += len(prediction_dict[object_name])
 
     # Filter out outliers for fitting
     x, y = np.array(x), np.array(y)
     outlier_mask = np.abs(x - np.mean(x)) < 2*np.std(x)
     x_filtered, y_filtered = x[outlier_mask], y[outlier_mask]
 
+    print('Percent of Predictions NaN:', nan_count / total_count)
     print('Number of datapoints before filtering:', len(x))
     print('Number of datapoints after filtering:', len(x_filtered))
+    print('\n')
 
     # TODO: Make a better fit here
     if linear_log_fit:
@@ -135,9 +145,10 @@ def plot_performance(plot_title, prediction_dict, label_dict):
                 material_label_data[mat].append(label_dict[obj])
 
     # Create plot
-    # plt.rcParams['text.usetex'] = True
-    # plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
-    # plt.rc('text', usetex=True)
+    plt.rcParams['text.usetex'] = True
+    plt.rcParams["font.family"] = "sans-serif"
+    plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
+    plt.rc('text', usetex=True)
     plt.figure()
     plt.plot([100, 10**12], [100, 10**12], 'k--', label='_')
     plt.fill_between([100, 10**12], [10**(1.5), 10**(11.5)], [10**(2.5), 10**(12.5)], color='gray', alpha=0.2)
@@ -145,10 +156,10 @@ def plot_performance(plot_title, prediction_dict, label_dict):
     plt.yscale('log')
 
     for mat in material_to_color.keys():
-        plt.plot(material_prediction_data[mat], material_label_data[mat], '.', markersize=10, color=material_to_color[mat], label=mat)
+        plt.plot(material_label_data[mat], material_prediction_data[mat], '.', markersize=10, color=material_to_color[mat], label=mat)
 
-    plt.xlabel("Predicted Modulus ($\\widetilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
-    plt.ylabel("Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
+    plt.xlabel(r"Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
+    plt.ylabel(r"Predicted Modulus ($\\widetilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
     plt.xlim([100, 10**12])
     plt.ylim([100, 10**12])
     plt.title(plot_title, fontsize=14)
@@ -157,7 +168,7 @@ def plot_performance(plot_title, prediction_dict, label_dict):
     plt.grid(True, which='both', linestyle='--', linewidth=0.25)
     plt.tick_params(axis='both', which='both', labelsize=10)
 
-    plt.savefig(f'./figures/{plot_title}.png')
+    plt.savefig('./figures/naive_method.png')
     plt.show()
 
     return
@@ -172,7 +183,7 @@ if __name__ == '__main__':
     hertz_configs           = []
     MDR_estimates           = []
     MDR_configs             = []
-    stochastic_estimates    = [empty_estimate_dict.copy()]
+    stochastic_estimates    = [copy.deepcopy(empty_estimate_dict)]
 
     for object_name in sorted(os.listdir(f'{DATA_DIR}/estimations')):
         if object_name.count('.') > 0: continue
@@ -190,8 +201,7 @@ if __name__ == '__main__':
                     E_i = pickle.load(file)
 
                 if i > len(naive_estimates) - 1:
-                    new_dict = copy.deepcopy(empty_estimate_dict)
-                    naive_estimates.append(new_dict)
+                    naive_estimates.append(copy.deepcopy(empty_estimate_dict))
                     with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/naive/{i}.json', 'r') as file:
                         config_i = json.load(file)
                     naive_configs.append(config_i)
@@ -208,7 +218,7 @@ if __name__ == '__main__':
                     E_i = pickle.load(file)
 
                 if i > len(hertz_estimates) - 1:
-                    hertz_estimates.append(empty_estimate_dict.copy())
+                    hertz_estimates.append(copy.deepcopy(empty_estimate_dict))
                     with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/hertz/{i}.json', 'r') as file:
                         config_i = json.load(file)
                     hertz_configs.append(config_i)
@@ -225,7 +235,7 @@ if __name__ == '__main__':
                     E_i = pickle.load(file)
 
                 if i > len(MDR_estimates) - 1:
-                    MDR_estimates.append(empty_estimate_dict.copy())
+                    MDR_estimates.append(copy.deepcopy(empty_estimate_dict))
                     with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/MDR/{i}.json', 'r') as file:
                         config_i = json.load(file)
                     MDR_configs.append(config_i)
@@ -238,9 +248,13 @@ if __name__ == '__main__':
             stochastic_estimates[0][object_name].append(E_i)
 
     # Find a linear scaling for each set of predictions to minimize error
+    print('Scaling naive...\n')
     naive_estimates      = [ scale_predictions(x, object_to_modulus) for x in naive_estimates ]
+    print('Scaling Hertzian...\n')
     hertz_estimates      = [ scale_predictions(x, object_to_modulus) for x in hertz_estimates ]
+    print('Scaling MDR...\n')
     MDR_estimates        = [ scale_predictions(x, object_to_modulus) for x in MDR_estimates ]
+    print('Scaling stochastic...\n')
     stochastic_estimates = [ scale_predictions(stochastic_estimates[0], object_to_modulus) ]
 
     # Evaluate each set of estimates and pick the best
@@ -264,11 +278,11 @@ if __name__ == '__main__':
 
     # Create plots showing how well each method does
     print('Plotting naive...')
-    plot_performance('Naive Elasticity Method', naive_estimates[naive_i_order[0]], object_to_modulus)
+    plot_performance(r'Naive Elasticity Method', naive_estimates[naive_i_order[0]], object_to_modulus)
     print('Plotting Hertzian...')
-    plot_performance('Hertzian Method', hertz_estimates[hertz_i_order[0]], object_to_modulus)
+    plot_performance(r'Hertzian Method', hertz_estimates[hertz_i_order[0]], object_to_modulus)
     print('Plotting MDR...')
-    plot_performance('MDR', MDR_estimates[MDR_i_order[0]], object_to_modulus)
+    plot_performance(r'MDR', MDR_estimates[MDR_i_order[0]], object_to_modulus)
     print('Plotting stochastic...')
-    plot_performance('Stochastic Method', stochastic_estimates[0], object_to_modulus)
+    plot_performance(r'Stochastic Method', stochastic_estimates[0], object_to_modulus)
     print('Done.')

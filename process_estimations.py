@@ -221,9 +221,9 @@ for object_name in tqdm(objects):
                     )
             if not os.path.exists(f'{file_path_prefix}/naive'):
                 os.mkdir(f'{file_path_prefix}/naive')
-            with open(f'{file_path_prefix}/naive/{i}.pkl', 'wb') as file:
+            with open(f'{file_path_prefix}/naive/{i+shift}.pkl', 'wb') as file:
                 pickle.dump(E_naive, file)
-            with open(f'{file_path_prefix}/naive/{i}.json', 'w') as json_file:
+            with open(f'{file_path_prefix}/naive/{i+shift}.json', 'w') as json_file:
                 json.dump(naive_config, json_file)
 
         # Fit using Hertzian estimator
@@ -237,9 +237,9 @@ for object_name in tqdm(objects):
                     )
             if not os.path.exists(f'{file_path_prefix}/hertz'):
                 os.mkdir(f'{file_path_prefix}/hertz')
-            with open(f'{file_path_prefix}/hertz/{i}.pkl', 'wb') as file:
+            with open(f'{file_path_prefix}/hertz/{i+shift}.pkl', 'wb') as file:
                 pickle.dump(E_hertz, file)
-            with open(f'{file_path_prefix}/hertz/{i}.json', 'w') as json_file:
+            with open(f'{file_path_prefix}/hertz/{i+shift}.json', 'w') as json_file:
                 json.dump(hertz_config, json_file)
 
         # Fit using MDR estimator
@@ -255,17 +255,17 @@ for object_name in tqdm(objects):
                                 )
             if not os.path.exists(f'{file_path_prefix}/MDR'):
                 os.mkdir(f'{file_path_prefix}/MDR')
-            with open(f'{file_path_prefix}/MDR/{i}.pkl', 'wb') as file:
+            with open(f'{file_path_prefix}/MDR/{i+shift}.pkl', 'wb') as file:
                 pickle.dump(E_MDR, file)
-            with open(f'{file_path_prefix}/MDR/{i}.json', 'w') as json_file:
+            with open(f'{file_path_prefix}/MDR/{i+shift}.json', 'w') as json_file:
                 json.dump(MDR_config, json_file)
 
-        # Fit using the stochastic estimator
-        E_stochastic = estimator.fit_modulus_stochastic()
-        if not os.path.exists(f'{file_path_prefix}/stochastic'):
-            os.mkdir(f'{file_path_prefix}/stochastic')
-        with open(f'{file_path_prefix}/stochastic/E.pkl', 'wb') as file:
-            pickle.dump(E_stochastic, file)
+        # # Fit using the stochastic estimator
+        # E_stochastic = estimator.fit_modulus_stochastic()
+        # if not os.path.exists(f'{file_path_prefix}/stochastic'):
+        #     os.mkdir(f'{file_path_prefix}/stochastic')
+        # with open(f'{file_path_prefix}/stochastic/E.pkl', 'wb') as file:
+        #     pickle.dump(E_stochastic, file)
         
 with open(f'{DATA_DIR}/estimations/max_depths.json', 'w') as json_file:
     json.dump(max_depths, json_file)

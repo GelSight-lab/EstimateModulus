@@ -193,14 +193,14 @@ class ForceFC(nn.Module):
         self.drop_p = drop_p
 
         self.fc1 = nn.Linear(1, self.hidden_size)
-        self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
-        self.drop = nn.Dropout(self.drop_p)
+        # self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
+        # self.drop = nn.Dropout(self.drop_p)
 
     def forward(self, x):
         x = self.fc1(x)
-        x = F.silu(x)
-        x = self.drop(x)
-        x = self.fc2(x)
+        # x = F.silu(x)
+        # x = self.drop(x)
+        # x = self.fc2(x)
         return x
     
 class WidthFC(nn.Module):
@@ -212,14 +212,14 @@ class WidthFC(nn.Module):
         self.drop_p = drop_p
 
         self.fc1 = nn.Linear(1, self.hidden_size)
-        self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
-        self.drop = nn.Dropout(self.drop_p)
+        # self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
+        # self.drop = nn.Dropout(self.drop_p)
 
     def forward(self, x):
         x = self.fc1(x)
-        x = F.silu(x)
-        x = self.drop(x)
-        x = self.fc2(x)
+        # x = F.silu(x)
+        # x = self.drop(x)
+        # x = self.fc2(x)
         return x
  
 class EstimationFC(nn.Module):
@@ -231,12 +231,12 @@ class EstimationFC(nn.Module):
         self.drop_p = drop_p
 
         self.fc1 = nn.Linear(1, self.hidden_size)
-        self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
-        self.drop = nn.Dropout(self.drop_p)
+        # self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
+        # self.drop = nn.Dropout(self.drop_p)
 
     def forward(self, x):
         x = self.fc1(x)
-        x = F.silu(x)
-        x = self.drop(x)
-        x = self.fc2(x)
+        # x = F.silu(x)
+        # x = self.drop(x)
+        # x = self.fc2(x)
         return x
