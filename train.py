@@ -670,7 +670,7 @@ if __name__ == "__main__":
         'use_markers': True,
         'use_force': True,
         'use_width': True,
-        'use_estimation': True,
+        'use_estimation': False,
         'use_transformations': True,
         'exclude': ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'yellow_foam_brick', 'green_foam_brick', 
@@ -678,10 +678,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'CorrectEstimationTest',   
+        'run_name': 'NoEstimation_RGB_3Frames',   
 
         # Training and model parameters
-        'epochs'            : 150,
+        'epochs'            : 250,
         'batch_size'        : 32,
         'img_feature_size'  : 64,
         'fwe_feature_size'  : 8,
@@ -695,7 +695,7 @@ if __name__ == "__main__":
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
     base_run_name = config['run_name']
-    for i in range(2):
+    for i in range(5):
         config['run_name'] = f'{base_run_name}__t={i}'
 
         # Train the model over some data
