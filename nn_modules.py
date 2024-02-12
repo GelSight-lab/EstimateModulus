@@ -194,8 +194,8 @@ class ForceFC(nn.Module):
         self.drop_p = drop_p
 
         self.fc1 = nn.Linear(1, self.hidden_size)
-        # self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
-        # self.drop = nn.Dropout(self.drop_p)
+        self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
+        self.drop = nn.Dropout(self.drop_p)
 
     def forward(self, x):
         x = self.fc1(x)
@@ -213,8 +213,8 @@ class WidthFC(nn.Module):
         self.drop_p = drop_p
 
         self.fc1 = nn.Linear(1, self.hidden_size)
-        # self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
-        # self.drop = nn.Dropout(self.drop_p)
+        self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
+        self.drop = nn.Dropout(self.drop_p)
 
     def forward(self, x):
         x = self.fc1(x)
