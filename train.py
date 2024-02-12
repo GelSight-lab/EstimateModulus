@@ -678,7 +678,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'DecoderEntranceDropout',   
+        'run_name': 'Dropout30',   
 
         # Training and model parameters
         'epochs'            : 250,

@@ -23,7 +23,7 @@ class EncoderCNN(nn.Module):
                  input_channels=1,
                  fc_hidden1=256,
                  fc_hidden2=64,
-                 drop_p=0.5,
+                 drop_p=0.3,
                  CNN_embed_dim=128):
         super(EncoderCNN, self).__init__()
 
@@ -149,7 +149,7 @@ class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
                 FC_layer_nodes=[256, 256, 128], # 64],
-                drop_p=0.5,
+                drop_p=0.3,
                 output_dim=6):
         super(DecoderFC, self).__init__()
     
@@ -186,7 +186,7 @@ class DecoderFC(nn.Module):
         return torch.sigmoid(x)
  
 class ForceFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim=16, drop_p=0.5):
+    def __init__(self, hidden_size=16, output_dim=16, drop_p=0.3):
         super(ForceFC, self).__init__()
 
         self.hidden_size = hidden_size
@@ -205,7 +205,7 @@ class ForceFC(nn.Module):
         return x
     
 class WidthFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim=16, drop_p=0.5):
+    def __init__(self, hidden_size=16, output_dim=16, drop_p=0.3):
         super(WidthFC, self).__init__()
 
         self.hidden_size = hidden_size
@@ -224,7 +224,7 @@ class WidthFC(nn.Module):
         return x
  
 class EstimationFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim=16, drop_p=0.5):
+    def __init__(self, hidden_size=16, output_dim=16, drop_p=0.3):
         super(EstimationFC, self).__init__()
 
         self.hidden_size = hidden_size
