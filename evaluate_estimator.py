@@ -3,7 +3,12 @@ import csv
 import json
 import pickle
 import copy
+
+from scipy.optimize import curve_fit
 from tactile_estimate import *
+
+def exp_function(x, a, b, c):
+    return a * np.exp(b * x) + c
 
 def random_hex_color():
     # Generate random values for red, green, and blue
@@ -54,15 +59,17 @@ def scale_predictions(prediction_dict, label_dict, linear_log_fit=True, exp_fit=
     # Filter out outliers for fitting
     x, y = np.array(x), np.array(y)
     outlier_mask = np.abs(x - np.mean(x)) < 2*np.std(x)
-    x_filtered = x[outlier_mask]
-    y_filtered = y[outlier_mask]
+    x_filtered, y_filtered = x[outlier_mask], y[outlier_mask]
+
+    print('Number of datapoints before filtering:', len(x))
+    print('Number of datapoints after filtering:', len(x_filtered))
 
     # TODO: Make a better fit here
     if linear_log_fit:
         poly = np.polyfit(np.log10(x_filtered), np.log10(y_filtered), 1)
     elif exp_fit:
-        poly = np.polyfit(x_filtered, np.log10(y_filtered), 1)
-    
+        p, _ = curve_fit(exp_function, np.log10(x_filtered), np.log10(y_filtered), maxfev=2000)
+
     # Scale all predictions accordingly
     scaled_prediction_dict = {}
     for object_name in prediction_dict.keys():
@@ -73,7 +80,7 @@ def scale_predictions(prediction_dict, label_dict, linear_log_fit=True, exp_fit=
                 if linear_log_fit:
                     E_scaled = 10**(np.log10(E)*poly[0] + poly[1])
                 elif exp_fit:
-                    E_scaled = poly[0]*np.exp(poly[0]*E)
+                    E_scaled = 10**exp_function(np.log10(x_filtered), p[0], p[1], p[2])[0]
                 scaled_prediction_dict[object_name].append(E_scaled)
             else:
                 scaled_prediction_dict[object_name].append(E)
@@ -128,10 +135,9 @@ def plot_performance(plot_title, prediction_dict, label_dict):
                 material_label_data[mat].append(label_dict[obj])
 
     # Create plot
-    plt.rcParams['text.usetex'] = True
-    plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
-    # plt.rcParams['font.family'] = 'Times New Roman'
-    plt.rc('text', usetex=True)
+    # plt.rcParams['text.usetex'] = True
+    # plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
+    # plt.rc('text', usetex=True)
     plt.figure()
     plt.plot([100, 10**12], [100, 10**12], 'k--', label='_')
     plt.fill_between([100, 10**12], [10**(1.5), 10**(11.5)], [10**(2.5), 10**(12.5)], color='gray', alpha=0.2)
@@ -139,10 +145,10 @@ def plot_performance(plot_title, prediction_dict, label_dict):
     plt.yscale('log')
 
     for mat in material_to_color.keys():
-        plt.plot(material_label_data[mat], material_prediction_data[mat], '.', markersize=10, color=material_to_color[mat], label=mat)
+        plt.plot(material_prediction_data[mat], material_label_data[mat], '.', markersize=10, color=material_to_color[mat], label=mat)
 
-    plt.xlabel("Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
-    plt.ylabel("Predicted Modulus ($\\widetilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
+    plt.xlabel("Predicted Modulus ($\\widetilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
+    plt.ylabel("Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
     plt.xlim([100, 10**12])
     plt.ylim([100, 10**12])
     plt.title(plot_title, fontsize=14)
@@ -151,7 +157,7 @@ def plot_performance(plot_title, prediction_dict, label_dict):
     plt.grid(True, which='both', linestyle='--', linewidth=0.25)
     plt.tick_params(axis='both', which='both', labelsize=10)
 
-    plt.savefig(f'{plot_title}.png')
+    plt.savefig(f'./figures/{plot_title}.png')
     plt.show()
 
     return
@@ -257,7 +263,12 @@ if __name__ == '__main__':
     MDR_i_order    = sorted(range(len(MDR_stats)), key=lambda i: MDR_stats[i]['avg_log_diff'])
 
     # Create plots showing how well each method does
+    print('Plotting naive...')
     plot_performance('Naive Elasticity Method', naive_estimates[naive_i_order[0]], object_to_modulus)
+    print('Plotting Hertzian...')
     plot_performance('Hertzian Method', hertz_estimates[hertz_i_order[0]], object_to_modulus)
+    print('Plotting MDR...')
     plot_performance('MDR', MDR_estimates[MDR_i_order[0]], object_to_modulus)
+    print('Plotting stochastic...')
     plot_performance('Stochastic Method', stochastic_estimates[0], object_to_modulus)
+    print('Done.')

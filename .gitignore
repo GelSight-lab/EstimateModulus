@@ -3,4 +3,5 @@ data/
 data.zip
 wandb/
 model/
+figures/
 visually_inspect.py
