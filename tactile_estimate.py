@@ -872,8 +872,8 @@ if __name__ == "__main__":
         sp3.set_xlabel('Radius [m]')
         sp3.set_ylabel('Index [/]')
 
-    wedge_video         = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
-    other_wedge_video   = GelsightWedgeVideo(config_csv="./config_200_markers.csv") # Non-sensing finger
+    wedge_video         = GelsightWedgeVideo(config_csv="./wedge_config/config_100.csv") # Force-sensing finger
+    other_wedge_video   = GelsightWedgeVideo(config_csv="./wedge_config/config_200_markers.csv") # Non-sensing finger
     contact_force       = ContactForce()
     gripper_width       = GripperWidth()
     grasp_data          = GraspData(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width, use_gripper_width=True)

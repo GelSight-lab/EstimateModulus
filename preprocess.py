@@ -127,8 +127,8 @@ def preprocess(path_to_file, grasp_data=GraspData(), destination_dir=f'{HARDDRIV
 
 if __name__ == "__main__":
 
-    wedge_video         = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
-    other_wedge_video   = GelsightWedgeVideo(config_csv="./config_200_markers.csv") # Other finger
+    wedge_video         = GelsightWedgeVideo(config_csv="./wedge_config/config_100.csv") # Force-sensing finger
+    other_wedge_video   = GelsightWedgeVideo(config_csv="./wedge_config/config_200_markers.csv") # Other finger
     grasp_data          = GraspData(wedge_video=wedge_video, other_wedge_video=other_wedge_video, gripper_width=GripperWidth(), contact_force=ContactForce())
 
     # File structure...

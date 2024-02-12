@@ -384,7 +384,7 @@ class GelsightWedgeVideo():
 
 if __name__ == "__main__":
     # Typical video recording workflow might be...
-    wedge_video = GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_100_markers.csv")
+    wedge_video = GelsightWedgeVideo(IP="172.16.0.200", config_csv="./wedge_config/config_100_markers.csv")
     wedge_video.start_stream(plot=True, plot_diff=True, plot_depth=True)
     time.sleep(20)
     wedge_video.end_stream()

@@ -15,7 +15,7 @@ class GraspData():
     Class to streamline recording of data from Gelsight Wedge's / force gauge and package into training
     '''
     def __init__(self, 
-                 wedge_video=GelsightWedgeVideo(config_csv="./config_100.csv"),
+                 wedge_video=GelsightWedgeVideo(config_csv="./wedge_config/config_100.csv"),
                  other_wedge_video=None,
                  contact_force=ContactForce(), 
                  gripper_width=GripperWidth(), 
@@ -291,8 +291,8 @@ if __name__ == "__main__":
     # Typical data collection workflow might be...
 
     # Define streaming addresses
-    wedge_video         =   GelsightWedgeVideo(IP="172.16.0.100", config_csv="./config_100.csv") # Force-sensing finger
-    # other_wedge_video   =   GelsightWedgeVideo(IP="172.16.0.200", config_csv="./config_200.csv") # Other finger
+    wedge_video         =   GelsightWedgeVideo(IP="172.16.0.100", config_csv="./wedge_config/config_100.csv") # Force-sensing finger
+    # other_wedge_video   =   GelsightWedgeVideo(IP="172.16.0.200", config_csv="./wedge_config/config_200.csv") # Other finger
     contact_force       =   ContactForce(IP="172.16.0.50", port=8888)
     grasp_data          =   GraspData(wedge_video=wedge_video, contact_force=contact_force)
 

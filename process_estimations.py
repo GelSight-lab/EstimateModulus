@@ -5,8 +5,8 @@ import pickle
 from tqdm import tqdm
 from tactile_estimate import *
 
-wedge_video         = GelsightWedgeVideo(config_csv="./config_100.csv") # Force-sensing finger
-other_wedge_video   = GelsightWedgeVideo(config_csv="./config_200_markers.csv") # Non-sensing finger
+wedge_video         = GelsightWedgeVideo(config_csv="./wedge_config/config_100.csv") # Force-sensing finger
+other_wedge_video   = GelsightWedgeVideo(config_csv="./wedge_config/config_200_markers.csv") # Non-sensing finger
 contact_force       = ContactForce()
 gripper_width       = GripperWidth()
 grasp_data          = GraspData(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width, use_gripper_width=True)
@@ -188,9 +188,9 @@ for object_name in tqdm(objects):
                 config_contact_mask = naive_config['contact_mask'] if naive_config['contact_mask'] is not None else 'ellipse_contact_mask'
                 if not os.path.exists(f'{file_path_prefix}/naive'):
                     os.mkdir(f'{file_path_prefix}/naive')
-                with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i+shift}.pkl', 'wb') as file:
+                with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i}.pkl', 'wb') as file:
                     pickle.dump(E_naive, file)
-                with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i+shift}.json', 'w') as json_file:
+                with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i}.json', 'w') as json_file:
                     json.dump(naive_config, json_file)
 
             # Fit using Hertzian estimator
@@ -205,9 +205,9 @@ for object_name in tqdm(objects):
                 config_contact_mask = hertz_config['contact_mask'] if hertz_config['contact_mask'] is not None else 'ellipse_contact_mask'
                 if not os.path.exists(f'{file_path_prefix}/hertz'):
                     os.mkdir(f'{file_path_prefix}/hertz')
-                with open(f'{file_path_prefix}/hertz/{config_contact_mask}/{i+shift}.pkl', 'wb') as file:
+                with open(f'{file_path_prefix}/hertz/{config_contact_mask}/{i}.pkl', 'wb') as file:
                     pickle.dump(E_hertz, file)
-                with open(f'{file_path_prefix}/hertz/{config_contact_mask}/{i+shift}.json', 'w') as json_file:
+                with open(f'{file_path_prefix}/hertz/{config_contact_mask}/{i}.json', 'w') as json_file:
                     json.dump(hertz_config, json_file)
 
             # Fit using MDR estimator
@@ -224,9 +224,9 @@ for object_name in tqdm(objects):
                 config_contact_mask = MDR_config['contact_mask'] if MDR_config['contact_mask'] is not None else 'ellipse_contact_mask'
                 if not os.path.exists(f'{file_path_prefix}/MDR'):
                     os.mkdir(f'{file_path_prefix}/MDR')
-                with open(f'{file_path_prefix}/MDR/{config_contact_mask}/{i+shift}.pkl', 'wb') as file:
+                with open(f'{file_path_prefix}/MDR/{config_contact_mask}/{i}.pkl', 'wb') as file:
                     pickle.dump(E_MDR, file)
-                with open(f'{file_path_prefix}/MDR/{config_contact_mask}/{i+shift}.json', 'w') as json_file:
+                with open(f'{file_path_prefix}/MDR/{config_contact_mask}/{i}.json', 'w') as json_file:
                     json.dump(MDR_config, json_file)
 
             # # Fit using the stochastic estimator
