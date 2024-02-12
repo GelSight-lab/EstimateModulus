@@ -194,63 +194,66 @@ if __name__ == '__main__':
             grasp_dir = f'{DATA_DIR}/estimations/{object_name}/{trial_folder}'
 
             # Unpack naive estimations for each config type
+            i = 0
             for contact_mask in sorted(os.listdir(f'{grasp_dir}/naive')):
                 for file_name in sorted(os.listdir(f'{grasp_dir}/{contact_mask}/naive')):
                     if file_name.count('.pkl') == 0: continue
 
                     # Extract info
-                    i = int(file_name.split('.')[0])
                     with open(f'{grasp_dir}/naive/{contact_mask}/{file_name}', 'rb') as file:
                         E_i = pickle.load(file)
 
                     if i > len(naive_estimates) - 1:
                         naive_estimates.append(copy.deepcopy(empty_estimate_dict))
-                        with open(f'{grasp_dir}/naive/{contact_mask}/{i}.json', 'r') as file:
+                        with open(f'{grasp_dir}/naive/{contact_mask}/{file_name.split('.')[0]}.json', 'r') as file:
                             config_i = json.load(file)
                         naive_configs.append(config_i)
                     
                     naive_estimates[i][object_name].append(E_i)
+                    i += 1
 
             # Unpack Hertzian estimations for each config type
+            i = 0
             for contact_mask in sorted(os.listdir(f'{grasp_dir}/hertz')):
                 for file_name in sorted(os.listdir(f'{grasp_dir}/{contact_mask}/hertz')):
                     if file_name.count('.pkl') == 0: continue
 
                     # Extract info
-                    i = int(file_name.split('.')[0])
                     with open(f'{grasp_dir}/{contact_mask}/hertz/{file_name}', 'rb') as file:
                         E_i = pickle.load(file)
 
                     if i > len(hertz_estimates) - 1:
                         hertz_estimates.append(copy.deepcopy(empty_estimate_dict))
-                        with open(f'{grasp_dir}/{contact_mask}/hertz/{i}.json', 'r') as file:
+                        with open(f'{grasp_dir}/{contact_mask}/hertz/{file_name.split('.')[0]}.json', 'r') as file:
                             config_i = json.load(file)
                         hertz_configs.append(config_i)
 
                     hertz_estimates[i][object_name].append(E_i)
+                    i += 1
 
             # Unpack MDR estimations for each config type
-            for file_name in sorted(os.listdir(f'{grasp_dir}/MDR')):
-                if file_name.count('.pkl') == 0: continue
+            i = 0
+            for contact_mask in sorted(os.listdir(f'{grasp_dir}/MDR')):
+                for file_name in sorted(os.listdir(f'{grasp_dir}/{contact_mask}/MDR')):
+                    if file_name.count('.pkl') == 0: continue
 
-                # Extract info
-                i = int(file_name.split('.')[0])
-                with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/MDR/{file_name}', 'rb') as file:
-                    E_i = pickle.load(file)
+                    # Extract info
+                    with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/MDR/{file_name}', 'rb') as file:
+                        E_i = pickle.load(file)
 
-                if i > len(MDR_estimates) - 1:
-                    MDR_estimates.append(copy.deepcopy(empty_estimate_dict))
-                    with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/MDR/{i}.json', 'r') as file:
-                        config_i = json.load(file)
-                    MDR_configs.append(config_i)
+                    if i > len(MDR_estimates) - 1:
+                        MDR_estimates.append(copy.deepcopy(empty_estimate_dict))
+                        with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/MDR/{file_name.split('.')[0]}.json', 'r') as file:
+                            config_i = json.load(file)
+                        MDR_configs.append(config_i)
 
-                MDR_estimates[i][object_name].append(E_i)
+                    MDR_estimates[i][object_name].append(E_i)
+                    i += 1
 
             # Unpack stochastic estimation
-            for contact_mask in sorted(os.listdir(f'{grasp_dir}/stochastic')):
-                with open(f'{grasp_dir}/stochastic/{contact_mask}/E.pkl', 'rb') as file:
-                    E_i = pickle.load(file)
-                stochastic_estimates[0][object_name].append(E_i)
+            with open(f'{grasp_dir}/stochastic/E.pkl', 'rb') as file:
+                E_i = pickle.load(file)
+            stochastic_estimates[0][object_name].append(E_i)
 
     # Find a linear scaling for each set of predictions to minimize error
     print('Scaling naive...\n')
