@@ -459,6 +459,9 @@ class ModulusModel():
                     features.append(self.width_encoder(x_widths[:, i, :]))
 
             if self.use_estimation: # Precomputed modulus estimation
+                print(x_estimations[:, :, :])
+                print(self.log_normalize(x_estimations[:, :, :], use_torch=True))
+                print(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
                 features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
             # Send aggregated features to the FC decoder
