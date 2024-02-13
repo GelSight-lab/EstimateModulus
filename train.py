@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -136,8 +136,10 @@ class CustomDataset(Dataset):
         # Unpack gripper width measurements
         if self.use_width:
             with open(self.base_name + '_widths.pkl', 'rb') as file:
-                self.x_widths[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
-                self.x_widths /= self.normalization_values['max_width'] # self.x_widths.max()
+                self.x_widths[:self.n_frames] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
+                self.x_widths[self.n_frames:] = self.x_widths[:self.n_frames]
+                self.x_widths[self.n_frames:] /= self.x_widths.max()
+                self.x_widths[:self.n_frames] /= self.normalization_values['max_width'] 
         
         # Unpack modulus estimations
         if self.use_estimation:
@@ -205,9 +207,9 @@ class ModulusModel():
         # Initialize models based on config
         self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size, dropout_pct=self.dropout_pct)
         # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
-        self.force_encoder = ForceFC(hidden_size=4*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_force else None
-        self.width_encoder = WidthFC(hidden_size=4*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_width else None
-        self.estimation_encoder = EstimationFC(hidden_size=4*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_estimation else None
+        self.force_encoder = ForceFC(hidden_size=5*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_force else None
+        self.width_encoder = WidthFC(hidden_size=5*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_width else None
+        self.estimation_encoder = EstimationFC(hidden_size=5*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_estimation else None
 
         # Compute the size of the input to the decoder based on config
         decoder_input_size = self.n_frames * self.img_feature_size
@@ -401,7 +403,7 @@ class ModulusModel():
         # Create tensor's on device to send to dataset
         empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device)
         empty_force_tensor        = torch.zeros((self.n_frames, 1), device=device)
-        empty_width_tensor        = torch.zeros((self.n_frames, 1), device=device)
+        empty_width_tensor        = torch.zeros((2*self.n_frames, 1), device=device)
         empty_estimation_tensor   = torch.zeros((3, 1), device=device)
         empty_label_tensor        = torch.zeros((1), device=device)
     
@@ -703,7 +705,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'CombinedFW_DecoderTiny_Img32',   
+        'run_name': 'PctW_CombinedFW_DecoderTiny_Img32',   
 
         # Training and model parameters
         'epochs'            : 150,

@@ -184,7 +184,7 @@ class ForceFC(nn.Module):
         self.output_dim = output_dim
         self.dropout_pct = dropout_pct
 
-        self.fc1 = nn.Linear(3, self.hidden_size)
+        self.fc1 = nn.Linear(N_FRAMES, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
 
@@ -203,7 +203,7 @@ class WidthFC(nn.Module):
         self.output_dim = output_dim
         self.dropout_pct = dropout_pct
 
-        self.fc1 = nn.Linear(3, self.hidden_size)
+        self.fc1 = nn.Linear(2*N_FRAMES, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
 
