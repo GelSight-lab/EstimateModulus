@@ -21,7 +21,7 @@ class EncoderCNN(nn.Module):
                  img_x=200,
                  img_y=200,
                  input_channels=1,
-                 fc_hidden1=256,
+                 fc_hidden1=128,
                  fc_hidden2=64,
                  dropout_pct=0.5,
                  CNN_embed_dim=128):
@@ -107,19 +107,19 @@ class EncoderCNN(nn.Module):
         # self.pool = nn.MaxPool2d(2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
-        self.fc1 = nn.Linear(
-            self.ch5, # self.ch5 * self.conv5_outshape[0] * self.conv5_outshape[1],
-            self.CNN_embed_dim
-        ) # Fully connected layer, output k classes
-
         # self.fc1 = nn.Linear(
         #     self.ch5, # self.ch5 * self.conv5_outshape[0] * self.conv5_outshape[1],
-        #     self.fc_hidden1
-        # ) # Fully connected layer, output k classes
-        # self.fc2 = nn.Linear(
-        #     self.fc_hidden1,
         #     self.CNN_embed_dim
-        # )  # Output = CNN embedding latent variables
+        # ) # Fully connected layer, output k classes
+
+        self.fc1 = nn.Linear(
+            self.ch5, # self.ch5 * self.conv5_outshape[0] * self.conv5_outshape[1],
+            self.fc_hidden1
+        ) # Fully connected layer, output k classes
+        self.fc2 = nn.Linear(
+            self.fc_hidden1,
+            self.CNN_embed_dim
+        )  # Output = CNN embedding latent variables
 
     def forward(self, x):
         x = self.conv1(x)
@@ -131,9 +131,9 @@ class EncoderCNN(nn.Module):
         x = x.view(x.size(0), -1) # Flatten the output of conv
         x = self.drop(x)
         x = self.fc1(x)
-        # x = F.silu(x)
-        # x = self.drop(x)
-        # x = self.fc2(x) # CNN embedding
+        x = F.silu(x)
+        x = self.drop(x)
+        x = self.fc2(x) # CNN embedding
         return x
 
 class DecoderFC(nn.Module):
