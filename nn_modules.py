@@ -139,7 +139,7 @@ class EncoderCNN(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[128, 128, 32], # [256, 256, 128, 32],
+                FC_layer_nodes=[128, 128, 64, 32], # [256, 256, 128, 32],
                 dropout_pct=0.5,
                 output_dim=1):
         super(DecoderFC, self).__init__()
@@ -154,9 +154,9 @@ class DecoderFC(nn.Module):
         self.fc1 = nn.Linear(self.FC_input_size, self.FC_layer_nodes[0])
         self.fc2 = nn.Linear(self.FC_layer_nodes[0], self.FC_layer_nodes[1])
         self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
-        self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.output_dim)
-        # self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.FC_layer_nodes[3])
-        # self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.output_dim)
+        # self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.output_dim)
+        self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.FC_layer_nodes[3])
+        self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
 
     def forward(self, x):
@@ -171,9 +171,9 @@ class DecoderFC(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc4(x)
-        # x = F.silu(x)
-        # x = self.drop(x)
-        # x = self.fc5(x)
+        x = F.silu(x)
+        x = self.drop(x)
+        x = self.fc5(x)
         return torch.sigmoid(x)
  
 class ForceFC(nn.Module):

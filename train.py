@@ -24,7 +24,7 @@ torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
 DATA_DIR = '/media/mike/Elements/data'
-N_FRAMES = 3
+N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
 # Get the tree of all video files from a directory in place
@@ -207,9 +207,9 @@ class ModulusModel():
         # Initialize models based on config
         self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size, dropout_pct=self.dropout_pct)
         # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
-        self.force_encoder = ForceFC(hidden_size=5*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_force else None
-        self.width_encoder = WidthFC(hidden_size=5*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_width else None
-        self.estimation_encoder = EstimationFC(hidden_size=5*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_estimation else None
+        self.force_encoder = ForceFC(hidden_size=4*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_force else None
+        self.width_encoder = WidthFC(hidden_size=4*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_width else None
+        self.estimation_encoder = EstimationFC(hidden_size=4*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_estimation else None
 
         # Compute the size of the input to the decoder based on config
         decoder_input_size = self.n_frames * self.img_feature_size
@@ -705,7 +705,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'PctW_CombinedFW_DecoderTiny_Img32',   
+        'run_name': 'Nframes=5_Img32',   
 
         # Training and model parameters
         'epochs'            : 150,
