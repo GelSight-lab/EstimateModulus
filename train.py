@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -380,18 +380,6 @@ class ModulusModel():
                 x_val.append(file_path)
                 y_val.append(self.log_normalize(self.object_to_modulus[object_name]))
 
-
-
-
-        x_train = x_train[:10*self.batch_size]
-        y_train = y_train[:10*self.batch_size]
-        x_val = x_train[:10*self.batch_size]
-        y_val = y_train[:10*self.batch_size]
-        objects_val = objects_train
-
-
-
-
         # Create some data structures for tracking performance
         self.train_object_performance = {}
         self.val_object_performance = {}
@@ -409,7 +397,6 @@ class ModulusModel():
                     'total_poorly_predicted': 0, # Off by factor of 100 or more
                     'count': 0
                 }
-
 
         # Create tensor's on device to send to dataset
         empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device)
@@ -687,15 +674,15 @@ if __name__ == "__main__":
         'use_markers': True,
         'use_force': True,
         'use_width': True,
-        'use_estimation': False,
-        'use_transformations': False, # True,
+        'use_estimation': True,
+        'use_transformations': True,
         'exclude': ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'yellow_foam_brick', 'green_foam_brick', 
                     'apple', 'orange', 'strawberry', 'lacrosse_ball', 'rubber_washer_stack'],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'OverfitTo10Batch',   
+        'run_name': 'UseRealEstimations',   
 
         # Training and model parameters
         'epochs'            : 150,
