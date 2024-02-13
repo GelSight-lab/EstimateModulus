@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -204,22 +204,24 @@ class ModulusModel():
         self.random_state       = config['random_state']
         self.criterion          = nn.MSELoss()
 
-        # Initialize models based on config
+        # Initialize CNN based on config
         self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size, dropout_pct=self.dropout_pct)
         # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
-        self.force_encoder = ForceFC(hidden_size=4*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_force else None
-        self.width_encoder = WidthFC(hidden_size=4*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_width else None
-        self.estimation_encoder = EstimationFC(hidden_size=4*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_estimation else None
+            
+        # Initialize force, width, estimation based on config
+        self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
+        self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
+        self.estimation_encoder = EstimationFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_estimation else None
 
         # Compute the size of the input to the decoder based on config
         decoder_input_size = self.n_frames * self.img_feature_size
         # decoder_input_size += self.n_frames * self.img_feature_size
         if self.use_force: 
-            decoder_input_size += self.n_frames * self.fwe_feature_size
+            decoder_input_size += self.fwe_feature_size
         if self.use_width: 
-            decoder_input_size += self.n_frames * self.fwe_feature_size
+            decoder_input_size += self.fwe_feature_size
         if self.use_estimation: 
-            decoder_input_size += 3 * self.fwe_feature_size
+            decoder_input_size += self.fwe_feature_size
         self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
 
         # Send models to device
@@ -239,7 +241,7 @@ class ModulusModel():
         print('\nIn comparison, ResNet looks like this...')
         summary(torchvision.models.resnet18(), (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), col_names=col_names)
         if self.use_force:
-            summary(self.force_encoder, (self.batch_size, 3), col_names=col_names, device=device)
+            summary(self.force_encoder, (self.batch_size, self.n_frames), col_names=col_names, device=device)
         summary(self.decoder, (self.batch_size, decoder_input_size), col_names=col_names, device=device)
         print('Done.')
 
@@ -711,7 +713,7 @@ if __name__ == "__main__":
         'epochs'            : 150,
         'batch_size'        : 32,
         'img_feature_size'  : 32,
-        'fwe_feature_size'  : 8,
+        'fwe_feature_size'  : 24,
         'val_pct'           : 0.15,
         'dropout_pct'       : 0.3,
         'learning_rate'     : 1e-4,
