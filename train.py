@@ -702,6 +702,8 @@ if __name__ == "__main__":
     base_run_name = config['run_name']
     for lr in ['1e-3', '5e-5', '1e-5', '1e-4']:
         config['learning_rate'] = float(lr)
+        if lr == 0.001:
+            config['epochs'] = 100
         for i in range(2):
             config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
 
