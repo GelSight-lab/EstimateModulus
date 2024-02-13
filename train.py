@@ -672,9 +672,9 @@ if __name__ == "__main__":
         'img_size': WARPED_CROPPED_IMG_SIZE,
         'img_style': 'diff',
         'use_markers': True,
-        'use_force': True,
-        'use_width': True,
-        'use_estimation': True,
+        'use_force': False,
+        'use_width': False,
+        'use_estimation': False,
         'use_transformations': True,
         'exclude': ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'yellow_foam_brick', 'green_foam_brick', 
@@ -682,7 +682,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'DecoderTiny_Img32',   
+        'run_name': 'NoFWE_DecoderTiny_Img32',   
 
         # Training and model parameters
         'epochs'            : 150,
