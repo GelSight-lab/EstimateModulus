@@ -207,7 +207,7 @@ class ModulusModel():
         # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
         self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
         self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
-        self.estimation_encoder = EstimationFC(hidden_size=2*self.fwe_feature_size, output_dim=2*self.fwe_feature_size) if self.use_width else None
+        self.estimation_encoder = EstimationFC(hidden_size=2*self.fwe_feature_size, output_dim=2*self.fwe_feature_size) if self.use_estimation else None
 
         # Compute the size of the input to the decoder based on config
         decoder_input_size = self.n_frames * self.img_feature_size
@@ -459,9 +459,6 @@ class ModulusModel():
                     features.append(self.width_encoder(x_widths[:, i, :]))
 
             if self.use_estimation: # Precomputed modulus estimation
-                print(x_estimations[:, :, :])
-                print(self.log_normalize(x_estimations[:, :, :], use_torch=True))
-                print(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
                 features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
             # Send aggregated features to the FC decoder
