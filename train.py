@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -700,9 +700,11 @@ if __name__ == "__main__":
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
     base_run_name = config['run_name']
-    for i in range(5):
-        config['run_name'] = f'{base_run_name}__t={i}'
+    for lr in ['1e-3', '5e-5', '1e-5']:
+        config['learning_rate'] = float(lr)
+        for i in range(2):
+            config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
 
-        # Train the model over some data
-        train_modulus = ModulusModel(config, device=device)
-        train_modulus.train()
+            # Train the model over some data
+            train_modulus = ModulusModel(config, device=device)
+            train_modulus.train()

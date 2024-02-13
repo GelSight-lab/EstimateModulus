@@ -132,12 +132,12 @@ MDR_configs = [{
     }
 ]
 
-print('MAKE SAVE INDEX SMART. IF CONTACT MASK DIRECTORY EXISTS, DONT WRITE')
-raise NotImplementedError
-
 estimator = EstimateModulus(grasp_data=grasp_data, use_gripper_width=True, use_other_video=USE_MARKER_FINGER)
 
-CONTACT_MASKS = ['conditional_contact_mask']
+CONTACT_MASKS = ['constant_threshold_contact_mask', 'total_conditional_contact_mask', 'normalized_threshold_contact_mask' ] # , \
+                #  'total_normalized_threshold_contact_mask', 'mean_threshold_contact_mask', 'total_mean_threshold_contact_mask', \
+                #  'std_above_mean_contact_mask'
+                # ]
 
 max_depths = {}
 
@@ -151,8 +151,6 @@ for object_name in tqdm(objects):
         trial_number = eval(os.path.splitext(file_name)[0][file_name.find('t=')+2:])
         file_path_prefix = f'{DATA_DIR}/estimations/{object_name}/t={str(trial_number)}'
         if os.path.exists(file_path_prefix):
-            continue
-        else:
             if not os.path.exists(f'{DATA_DIR}/estimations/{object_name}'):
                 os.mkdir(f'{DATA_DIR}/estimations/{object_name}')
             if not os.path.exists(file_path_prefix):
@@ -188,6 +186,8 @@ for object_name in tqdm(objects):
                 config_contact_mask = naive_config['contact_mask'] if naive_config['contact_mask'] is not None else 'ellipse_contact_mask'
                 if not os.path.exists(f'{file_path_prefix}/naive'):
                     os.mkdir(f'{file_path_prefix}/naive')
+                if not os.path.exists(f'{file_path_prefix}/naive/{config_contact_mask}'):
+                    os.mkdir(f'{file_path_prefix}/naive/{config_contact_mask}')
                 with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i}.pkl', 'wb') as file:
                     pickle.dump(E_naive, file)
                 with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i}.json', 'w') as json_file:
@@ -205,6 +205,8 @@ for object_name in tqdm(objects):
                 config_contact_mask = hertz_config['contact_mask'] if hertz_config['contact_mask'] is not None else 'ellipse_contact_mask'
                 if not os.path.exists(f'{file_path_prefix}/hertz'):
                     os.mkdir(f'{file_path_prefix}/hertz')
+                if not os.path.exists(f'{file_path_prefix}/hertz/{config_contact_mask}'):
+                    os.mkdir(f'{file_path_prefix}/hertz/{config_contact_mask}')
                 with open(f'{file_path_prefix}/hertz/{config_contact_mask}/{i}.pkl', 'wb') as file:
                     pickle.dump(E_hertz, file)
                 with open(f'{file_path_prefix}/hertz/{config_contact_mask}/{i}.json', 'w') as json_file:
@@ -224,17 +226,19 @@ for object_name in tqdm(objects):
                 config_contact_mask = MDR_config['contact_mask'] if MDR_config['contact_mask'] is not None else 'ellipse_contact_mask'
                 if not os.path.exists(f'{file_path_prefix}/MDR'):
                     os.mkdir(f'{file_path_prefix}/MDR')
+                if not os.path.exists(f'{file_path_prefix}/MDR/{config_contact_mask}'):
+                    os.mkdir(f'{file_path_prefix}/MDR/{config_contact_mask}')
                 with open(f'{file_path_prefix}/MDR/{config_contact_mask}/{i}.pkl', 'wb') as file:
                     pickle.dump(E_MDR, file)
                 with open(f'{file_path_prefix}/MDR/{config_contact_mask}/{i}.json', 'w') as json_file:
                     json.dump(MDR_config, json_file)
 
-            # # Fit using the stochastic estimator
-            # E_stochastic = estimator.fit_modulus_stochastic()
-            # if not os.path.exists(f'{file_path_prefix}/{contact_mask}/stochastic'):
-            #     os.mkdir(f'{file_path_prefix}/stochastic')
-            # with open(f'{file_path_prefix}/stochastic/{contact_mask}/E.pkl', 'wb') as file:
-            #     pickle.dump(E_stochastic, file)
+            # Fit using the stochastic estimator
+            E_stochastic = estimator.fit_modulus_stochastic()
+            if not os.path.exists(f'{file_path_prefix}/stochastic'):
+                os.mkdir(f'{file_path_prefix}/stochastic')
+            with open(f'{file_path_prefix}/stochastic/0.pkl', 'wb') as file:
+                pickle.dump(E_stochastic, file)
         
 with open(f'{DATA_DIR}/estimations/max_depths.json', 'w') as json_file:
     json.dump(max_depths, json_file)
