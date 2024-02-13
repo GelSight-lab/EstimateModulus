@@ -196,7 +196,7 @@ if __name__ == '__main__':
             # Unpack naive estimations for each config type
             i = 0
             for contact_mask in sorted(os.listdir(f'{grasp_dir}/naive')):
-                for file_name in sorted(os.listdir(f'{grasp_dir}/{contact_mask}/naive')):
+                for file_name in sorted(os.listdir(f'{grasp_dir}/naive/{contact_mask}')):
                     if file_name.count('.pkl') == 0: continue
 
                     # Extract info
@@ -205,7 +205,7 @@ if __name__ == '__main__':
 
                     if i > len(naive_estimates) - 1:
                         naive_estimates.append(copy.deepcopy(empty_estimate_dict))
-                        with open(f'{grasp_dir}/naive/{contact_mask}/{file_name.split('.')[0]}.json', 'r') as file:
+                        with open(f'{grasp_dir}/naive/{contact_mask}/{file_name.split(".")[0]}.json', 'r') as file:
                             config_i = json.load(file)
                         naive_configs.append(config_i)
                     
@@ -215,16 +215,16 @@ if __name__ == '__main__':
             # Unpack Hertzian estimations for each config type
             i = 0
             for contact_mask in sorted(os.listdir(f'{grasp_dir}/hertz')):
-                for file_name in sorted(os.listdir(f'{grasp_dir}/{contact_mask}/hertz')):
+                for file_name in sorted(os.listdir(f'{grasp_dir}/hertz/{contact_mask}')):
                     if file_name.count('.pkl') == 0: continue
 
                     # Extract info
-                    with open(f'{grasp_dir}/{contact_mask}/hertz/{file_name}', 'rb') as file:
+                    with open(f'{grasp_dir}/hertz/{contact_mask}/{file_name}', 'rb') as file:
                         E_i = pickle.load(file)
 
                     if i > len(hertz_estimates) - 1:
                         hertz_estimates.append(copy.deepcopy(empty_estimate_dict))
-                        with open(f'{grasp_dir}/{contact_mask}/hertz/{file_name.split('.')[0]}.json', 'r') as file:
+                        with open(f'{grasp_dir}/hertz/{contact_mask}/{file_name.split(".")[0]}.json', 'r') as file:
                             config_i = json.load(file)
                         hertz_configs.append(config_i)
 
@@ -234,26 +234,26 @@ if __name__ == '__main__':
             # Unpack MDR estimations for each config type
             i = 0
             for contact_mask in sorted(os.listdir(f'{grasp_dir}/MDR')):
-                for file_name in sorted(os.listdir(f'{grasp_dir}/{contact_mask}/MDR')):
+                for file_name in sorted(os.listdir(f'{grasp_dir}/MDR/{contact_mask}')):
                     if file_name.count('.pkl') == 0: continue
 
                     # Extract info
-                    with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/MDR/{file_name}', 'rb') as file:
+                    with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/MDR/{contact_mask}/{file_name}', 'rb') as file:
                         E_i = pickle.load(file)
 
                     if i > len(MDR_estimates) - 1:
                         MDR_estimates.append(copy.deepcopy(empty_estimate_dict))
-                        with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/MDR/{file_name.split('.')[0]}.json', 'r') as file:
+                        with open(f'{DATA_DIR}/estimations/{object_name}/{trial_folder}/MDR/{contact_mask}/{file_name.split(".")[0]}.json', 'r') as file:
                             config_i = json.load(file)
                         MDR_configs.append(config_i)
 
                     MDR_estimates[i][object_name].append(E_i)
                     i += 1
 
-            # Unpack stochastic estimation
-            with open(f'{grasp_dir}/stochastic/E.pkl', 'rb') as file:
-                E_i = pickle.load(file)
-            stochastic_estimates[0][object_name].append(E_i)
+            # # Unpack stochastic estimation
+            # with open(f'{grasp_dir}/stochastic/E.pkl', 'rb') as file:
+            #     E_i = pickle.load(file)
+            # stochastic_estimates[0][object_name].append(E_i)
 
     # Find a linear scaling for each set of predictions to minimize error
     print('Scaling naive...\n')
@@ -262,8 +262,8 @@ if __name__ == '__main__':
     hertz_estimates      = [ scale_predictions(x, object_to_modulus) for x in hertz_estimates ]
     print('Scaling MDR...\n')
     MDR_estimates        = [ scale_predictions(x, object_to_modulus) for x in MDR_estimates ]
-    print('Scaling stochastic...\n')
-    stochastic_estimates = [ scale_predictions(x, object_to_modulus) for x in stochastic_estimates ]
+    # print('Scaling stochastic...\n')
+    # stochastic_estimates = [ scale_predictions(x, object_to_modulus) for x in stochastic_estimates ]
 
     # Evaluate each set of estimates and pick the best
     naive_stats = [
@@ -275,20 +275,20 @@ if __name__ == '__main__':
     MDR_stats = [
         compute_estimation_stats(MDR_estimates[i], object_to_modulus) for i in range(len(MDR_estimates))
     ]
-    stochastic_stats = [
-        compute_estimation_stats(stochastic_estimates[i], object_to_modulus) for i in range(len(stochastic_estimates))
-    ]
+    # stochastic_stats = [
+    #     compute_estimation_stats(stochastic_estimates[i], object_to_modulus) for i in range(len(stochastic_estimates))
+    # ]
 
     # Sort based on log difference
     naive_i_order       = sorted(range(len(naive_stats)), key=lambda i: naive_stats[i]['avg_log_diff'])
     hertz_i_order       = sorted(range(len(hertz_stats)), key=lambda i: hertz_stats[i]['avg_log_diff'])
     MDR_i_order         = sorted(range(len(MDR_stats)), key=lambda i: MDR_stats[i]['avg_log_diff'])
-    stochastic_i_order  = sorted(range(len(stochastic_stats)), key=lambda i: stochastic_stats[i]['avg_log_diff'])
+    # stochastic_i_order  = sorted(range(len(stochastic_stats)), key=lambda i: stochastic_stats[i]['avg_log_diff'])
 
     naive_configs_ordered       = [ naive_configs[i] for i in naive_i_order ]
     hertz_configs_ordered       = [ hertz_configs[i] for i in hertz_i_order ]
     MDR_configs_ordered         = [ MDR_configs[i] for i in MDR_i_order ]
-    stochastic_configs_ordered  = [ stochastic_configs[i] for i in stochastic_i_order ]
+    # stochastic_configs_ordered  = [ stochastic_configs[i] for i in stochastic_i_order ]
 
     # Create plots showing how well each method does
     print('Plotting naive...')
@@ -297,6 +297,37 @@ if __name__ == '__main__':
     plot_performance(r'Hertzian Method', hertz_estimates[hertz_i_order[0]], object_to_modulus)
     print('Plotting MDR...')
     plot_performance(r'MDR', MDR_estimates[MDR_i_order[0]], object_to_modulus)
-    print('Plotting stochastic...')
-    plot_performance(r'Stochastic Method', stochastic_estimates[0], object_to_modulus)
+    # print('Plotting stochastic...')
+    # plot_performance(r'Stochastic Method', stochastic_estimates[0], object_to_modulus)
     print('Done.')
+    
+    # # Write training estimations
+    # contact_mask = 'ellipse_contact_mask'
+    # for object_name in naive_estimates[naive_i_order[0]].keys():
+    #     if object_name in EXCLUDE: continue
+    #     if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}'):
+    #         os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}')
+
+    #     for t in range(len(naive_estimates[naive_i_order[0]][object_name])):
+            
+    #         E_naive = naive_estimates[naive_i_order[0]][object_name][t]
+    #         if E_naive < 0 or math.isnan(E_naive):
+    #             if t > 0: E_naive = naive_estimates[naive_i_order[0]][object_name][t-1]
+    #             else: E_naive = naive_estimates[naive_i_order[0]][object_name][t+1]
+            
+    #         E_hertz = hertz_estimates[hertz_i_order[0]][object_name][t]
+    #         if E_hertz < 0 or math.isnan(E_hertz):
+    #             if t > 0: E_hertz = hertz_estimates[hertz_i_order[0]][object_name][t-1]
+    #             else: E_hertz = hertz_estimates[hertz_i_order[0]][object_name][t+1]
+            
+    #         E_MDR = MDR_estimates[MDR_i_order[0]][object_name][t]
+    #         if E_MDR < 0 or math.isnan(E_MDR):
+    #             if t > 0: E_MDR = MDR_estimates[MDR_i_order[0]][object_name][t-1]
+    #             else: E_MDR = MDR_estimates[MDR_i_order[0]][object_name][t+1]
+
+    #         if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}/t={t}'):
+    #             os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}/t={t}')
+
+    #         E_estimates = np.array([E_naive, E_hertz, E_MDR])
+    #         with open(f'{DATA_DIR}/training_estimations/{object_name}/t={t}/E.pkl', 'wb') as file:
+    #             pickle.dump(E_estimates, file)

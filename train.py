@@ -140,9 +140,10 @@ class CustomDataset(Dataset):
         
         # Unpack modulus estimations
         if self.use_estimation:
-            # Seed with the correct answer to test
-            self.x_estimations[0] = self.normalized_modulus_labels[idx]
-            # raise NotImplementedError()
+            t = self.base_name[self.base_name.find('t=')+2:self.base_name.find('/aug')]
+            estimation_path = f'{DATA_DIR}/training_estimations/{object_name}/t={t}'
+            with open(f'{estimation_path}/E.pkl', 'rb') as file:
+                self.x_estimations[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
         
         # Unpack label
         self.y_label[0] = self.normalized_modulus_labels[idx]
@@ -206,7 +207,7 @@ class ModulusModel():
         # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
         self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
         self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
-        self.estimation_encoder = EstimationFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
+        self.estimation_encoder = EstimationFC(hidden_size=2*self.fwe_feature_size, output_dim=2*self.fwe_feature_size) if self.use_width else None
 
         # Compute the size of the input to the decoder based on config
         decoder_input_size = self.n_frames * self.img_feature_size
@@ -216,7 +217,7 @@ class ModulusModel():
         if self.use_width: 
             decoder_input_size += self.n_frames * self.fwe_feature_size
         if self.use_estimation: 
-            decoder_input_size += self.fwe_feature_size
+            decoder_input_size += 2 * self.fwe_feature_size
         self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
 
         # Send models to device
@@ -396,7 +397,7 @@ class ModulusModel():
         empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device)
         empty_force_tensor        = torch.zeros((self.n_frames, 1), device=device)
         empty_width_tensor        = torch.zeros((self.n_frames, 1), device=device)
-        empty_estimation_tensor   = torch.zeros((1, 1), device=device)
+        empty_estimation_tensor   = torch.zeros((3, 1), device=device)
         empty_label_tensor        = torch.zeros((1), device=device)
 
         # if self.use_estimation:
@@ -453,7 +454,7 @@ class ModulusModel():
                     features.append(self.width_encoder(x_widths[:, i, :]))
 
             if self.use_estimation: # Precomputed modulus estimation
-                features.append(self.estimation_encoder(x_estimations[:, 0, :]))
+                features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, 0, :])))
 
             # Send aggregated features to the FC decoder
             features = torch.cat(features, -1)
@@ -516,7 +517,7 @@ class ModulusModel():
                     features.append(self.width_encoder(x_widths[:, i, :]))
 
             if self.use_estimation: # Precomputed modulus estimation
-                features.append(self.estimation_encoder(x_estimations[:, 0, :]))
+                features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, 0, :])))
 
             # Send aggregated features to the FC decoder
             features = torch.cat(features, -1)
@@ -672,7 +673,7 @@ if __name__ == "__main__":
         'use_markers': True,
         'use_force': True,
         'use_width': True,
-        'use_estimation': False,
+        'use_estimation': True,
         'use_transformations': True,
         'exclude': ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'yellow_foam_brick', 'green_foam_brick', 
@@ -680,7 +681,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'AllTanh_Dropout30',   
+        'run_name': 'UseRealEstimations',   
 
         # Training and model parameters
         'epochs'            : 250,

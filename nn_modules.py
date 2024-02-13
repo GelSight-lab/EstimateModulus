@@ -137,7 +137,7 @@ class EncoderCNN(nn.Module):
         x = self.drop(x)
         # FC layers
         x = self.fc1(x)
-        x = F.tanh(x) # F.silu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x) # CNN embedding
         # x = F.silu(x)
@@ -150,7 +150,7 @@ class DecoderFC(nn.Module):
                 input_dim=N_FRAMES * 512,
                 FC_layer_nodes=[256, 256, 128], # 64],
                 dropout_pct=0.5,
-                output_dim=6):
+                output_dim=1):
         super(DecoderFC, self).__init__()
     
         self.FC_input_size = input_dim
@@ -171,13 +171,13 @@ class DecoderFC(nn.Module):
     def forward(self, x):
         x = self.drop(x)
         x = self.fc1(x)
-        x = F.tanh(x) # F.silu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x)
-        x = F.tanh(x) # F.silu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x)
-        x = F.tanh(x) # F.silu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc4(x)
         # x = F.silu(x)
@@ -199,7 +199,7 @@ class ForceFC(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
-        x = F.tanh(x) # F.silu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x)
         return x
@@ -218,7 +218,7 @@ class WidthFC(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
-        x = F.tanh(x) # F.silu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x)
         return x
@@ -231,13 +231,13 @@ class EstimationFC(nn.Module):
         self.output_dim = output_dim
         self.dropout_pct = dropout_pct
 
-        self.fc1 = nn.Linear(1, self.hidden_size)
+        self.fc1 = nn.Linear(3, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
 
     def forward(self, x):
         x = self.fc1(x)
-        x = F.tanh(x) # F.silu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x)
         return x
