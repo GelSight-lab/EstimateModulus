@@ -685,7 +685,7 @@ if __name__ == "__main__":
         'run_name': 'ExtraLayerOnDecoder',   
 
         # Training and model parameters
-        'epochs'            : 250,
+        'epochs'            : 200,
         'batch_size'        : 32,
         'img_feature_size'  : 64,
         'fwe_feature_size'  : 8,
@@ -700,7 +700,7 @@ if __name__ == "__main__":
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
     base_run_name = config['run_name']
-    for lr in ['1e-3', '5e-5', '1e-5']:
+    for lr in ['1e-3', '5e-5', '1e-5', '1e-4']:
         config['learning_rate'] = float(lr)
         for i in range(2):
             config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
