@@ -319,9 +319,7 @@ class ModulusModel():
         if x_max is None: x_max = self.normalization_values['max_modulus']
         if x_min is None: x_min = self.normalization_values['min_modulus']
         if use_torch:
-            x_max = torch.Tensor([x_max])
-            x_min = torch.Tensor([x_min])
-            return (torch.log10(x) - torch.log10(x_min)) / (torch.log10(x_max) - torch.log10(x_min))
+            return (torch.log10(x) - torch.log10(self.x_min_cuda)) / (torch.log10(self.x_max_cuda) - torch.log10(self.x_min_cuda))
         return (np.log10(x) - np.log10(x_min)) / (np.log10(x_max) - np.log10(x_min))
     
     # Unnormalize labels from maximum on log scale
@@ -344,6 +342,9 @@ class ModulusModel():
                     self.object_to_modulus[row[1]] = modulus
                     self.normalization_values['max_modulus'] = max(self.normalization_values['max_modulus'], modulus)
                     self.normalization_values['min_modulus'] = min(self.normalization_values['min_modulus'], modulus)
+
+        self.x_max_cuda = torch.Tensor([self.normalization_values['max_modulus']]).to(device)
+        self.x_min_cuda = torch.Tensor([self.normalization_values['min_modulus']]).to(device)
 
         # Extract object names as keys from data
         object_names = self.object_to_modulus.keys()
