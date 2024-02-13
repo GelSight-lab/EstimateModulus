@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -205,9 +205,9 @@ class ModulusModel():
         # Initialize models based on config
         self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size, dropout_pct=self.dropout_pct)
         # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
-        self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
-        self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
-        self.estimation_encoder = EstimationFC(hidden_size=2*self.fwe_feature_size, output_dim=2*self.fwe_feature_size) if self.use_estimation else None
+        self.force_encoder = ForceFC(hidden_size=4*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_force else None
+        self.width_encoder = WidthFC(hidden_size=4*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_width else None
+        self.estimation_encoder = EstimationFC(hidden_size=4*self.fwe_feature_size, output_dim=3*self.fwe_feature_size) if self.use_estimation else None
 
         # Compute the size of the input to the decoder based on config
         decoder_input_size = self.n_frames * self.img_feature_size
@@ -217,7 +217,7 @@ class ModulusModel():
         if self.use_width: 
             decoder_input_size += self.n_frames * self.fwe_feature_size
         if self.use_estimation: 
-            decoder_input_size += 2 * self.fwe_feature_size
+            decoder_input_size += 3 * self.fwe_feature_size
         self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
 
         # Send models to device
@@ -237,7 +237,7 @@ class ModulusModel():
         print('\nIn comparison, ResNet looks like this...')
         summary(torchvision.models.resnet18(), (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), col_names=col_names)
         if self.use_force:
-            summary(self.force_encoder, (self.batch_size, 1), col_names=col_names, device=device)
+            summary(self.force_encoder, (self.batch_size, 3), col_names=col_names, device=device)
         summary(self.decoder, (self.batch_size, decoder_input_size), col_names=col_names, device=device)
         print('Done.')
 
@@ -404,16 +404,6 @@ class ModulusModel():
         empty_width_tensor        = torch.zeros((self.n_frames, 1), device=device)
         empty_estimation_tensor   = torch.zeros((3, 1), device=device)
         empty_label_tensor        = torch.zeros((1), device=device)
-
-
-
-
-
-        empty_force_tensor        = torch.zeros((self.n_frames, self.fwe_feature_size), device=device)
-        empty_width_tensor        = torch.zeros((self.n_frames, self.fwe_feature_size), device=device)
-
-
-        
     
         # Construct datasets
         kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
@@ -458,13 +448,20 @@ class ModulusModel():
 
                 # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
                 
-                # Execute FC layers on other data and append
-                if self.use_force: # Force measurements
-                    # features.append(self.force_encoder(x_forces[:, i, :]))
-                    features.append(x_forces[:, i, :])
-                if self.use_width: # Width measurements
-                    # features.append(self.width_encoder(x_widths[:, i, :]))
-                    features.append(x_widths[:, i, :])
+                # # Execute FC layers on other data and append
+                # if self.use_force: # Force measurements
+                #     features.append(self.force_encoder(x_forces[:, i, :]))
+                # if self.use_width: # Width measurements
+                #     features.append(self.width_encoder(x_widths[:, i, :]))
+
+
+
+            # Execute FC layers on other data and append
+            if self.use_force: # Force measurements
+                features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
+            if self.use_width: # Width measurements
+                features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
+
 
             if self.use_estimation: # Precomputed modulus estimation
                 features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
@@ -523,13 +520,23 @@ class ModulusModel():
                 
                 # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
 
-                # Execute FC layers on other data and append
-                if self.use_force: # Force measurements
-                    # features.append(self.force_encoder(x_forces[:, i, :]))
-                    features.append(x_forces[:, i, :])
-                if self.use_width: # Width measurements
-                    # features.append(self.width_encoder(x_widths[:, i, :]))
-                    features.append(x_widths[:, i, :])
+
+                # # Execute FC layers on other data and append
+                # if self.use_force: # Force measurements
+                #     features.append(self.force_encoder(x_forces[:, i, :]))
+                # if self.use_width: # Width measurements
+                #     features.append(self.width_encoder(x_widths[:, i, :]))
+
+
+
+            # Execute FC layers on other data and append
+            if self.use_force: # Force measurements
+                features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
+            if self.use_width: # Width measurements
+                features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
+
+
+
 
             if self.use_estimation: # Precomputed modulus estimation
                 features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
@@ -640,12 +647,12 @@ class ModulusModel():
                 '\n'
             )
 
-            # for name, param in self.video_encoder.named_parameters():
-            #     print(f'{name}: {param.data}')
-            #     break
-            # for name, param in self.force_encoder.named_parameters():
-            #     print(f'{name}: {param.data}')
-            #     break
+            for name, param in self.video_encoder.named_parameters():
+                print(f'{name}: {param.data}')
+                break
+            for name, param in self.force_encoder.named_parameters():
+                print(f'{name}: {param.data}')
+                break
 
             # Save the best model based on validation loss
             if val_log_acc >= max_val_log_acc:
@@ -696,7 +703,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'PassThroughFW_DecoderTiny_Img32',   
+        'run_name': 'CombinedFW_DecoderTiny_Img32',   
 
         # Training and model parameters
         'epochs'            : 150,
