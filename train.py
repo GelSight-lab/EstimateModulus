@@ -404,6 +404,16 @@ class ModulusModel():
         empty_width_tensor        = torch.zeros((self.n_frames, 1), device=device)
         empty_estimation_tensor   = torch.zeros((3, 1), device=device)
         empty_label_tensor        = torch.zeros((1), device=device)
+
+
+
+
+
+        empty_force_tensor        = torch.zeros((self.n_frames, self.fwe_feature_size), device=device)
+        empty_width_tensor        = torch.zeros((self.n_frames, self.fwe_feature_size), device=device)
+
+
+        
     
         # Construct datasets
         kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
@@ -450,9 +460,11 @@ class ModulusModel():
                 
                 # Execute FC layers on other data and append
                 if self.use_force: # Force measurements
-                    features.append(self.force_encoder(x_forces[:, i, :]))
+                    # features.append(self.force_encoder(x_forces[:, i, :]))
+                    features.append(x_forces[:, i, :])
                 if self.use_width: # Width measurements
-                    features.append(self.width_encoder(x_widths[:, i, :]))
+                    # features.append(self.width_encoder(x_widths[:, i, :]))
+                    features.append(x_widths[:, i, :])
 
             if self.use_estimation: # Precomputed modulus estimation
                 features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
@@ -513,9 +525,11 @@ class ModulusModel():
 
                 # Execute FC layers on other data and append
                 if self.use_force: # Force measurements
-                    features.append(self.force_encoder(x_forces[:, i, :]))
+                    # features.append(self.force_encoder(x_forces[:, i, :]))
+                    features.append(x_forces[:, i, :])
                 if self.use_width: # Width measurements
-                    features.append(self.width_encoder(x_widths[:, i, :]))
+                    # features.append(self.width_encoder(x_widths[:, i, :]))
+                    features.append(x_widths[:, i, :])
 
             if self.use_estimation: # Precomputed modulus estimation
                 features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
@@ -672,8 +686,8 @@ if __name__ == "__main__":
         'img_size': WARPED_CROPPED_IMG_SIZE,
         'img_style': 'diff',
         'use_markers': True,
-        'use_force': False,
-        'use_width': False,
+        'use_force': True,
+        'use_width': True,
         'use_estimation': False,
         'use_transformations': True,
         'exclude': ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
@@ -682,7 +696,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoFWE_DecoderTiny_Img32',   
+        'run_name': 'PassThroughFW_DecoderTiny_Img32',   
 
         # Training and model parameters
         'epochs'            : 150,
