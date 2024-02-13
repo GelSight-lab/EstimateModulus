@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -361,24 +361,6 @@ class ModulusModel():
         paths_to_files = []
         list_files(f'{self.data_dir}/{training_data_folder_name}', paths_to_files, self.config)
 
-        # Create some data structures for tracking performance
-        self.train_object_performance = {}
-        self.val_object_performance = {}
-        for object_name in objects_train:
-            self.train_object_performance[object_name] = {
-                    'total_log_diff': 0,
-                    'total_log_acc': 0,
-                    'total_poorly_predicted': 0, # Off by factor of 100 or more
-                    'count': 0
-                }
-        for object_name in objects_val:
-            self.val_object_performance[object_name] = {
-                    'total_log_diff': 0,
-                    'total_log_acc': 0,
-                    'total_poorly_predicted': 0, # Off by factor of 100 or more
-                    'count': 0
-                }
-
         # Divide paths up into training and validation data
         x_train, x_val = [], []
         y_train, y_val = [], []
@@ -399,10 +381,34 @@ class ModulusModel():
                 y_val.append(self.log_normalize(self.object_to_modulus[object_name]))
 
 
+
+
         x_train = x_train[:self.batch_size]
         y_train = y_train[:self.batch_size]
         x_val = x_train[:self.batch_size]
         y_val = y_train[:self.batch_size]
+        objects_val = objects_train
+
+
+
+
+        # Create some data structures for tracking performance
+        self.train_object_performance = {}
+        self.val_object_performance = {}
+        for object_name in objects_train:
+            self.train_object_performance[object_name] = {
+                    'total_log_diff': 0,
+                    'total_log_acc': 0,
+                    'total_poorly_predicted': 0, # Off by factor of 100 or more
+                    'count': 0
+                }
+        for object_name in objects_val:
+            self.val_object_performance[object_name] = {
+                    'total_log_diff': 0,
+                    'total_log_acc': 0,
+                    'total_poorly_predicted': 0, # Off by factor of 100 or more
+                    'count': 0
+                }
 
 
         # Create tensor's on device to send to dataset
