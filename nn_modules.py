@@ -236,11 +236,11 @@ class EstimationFC(nn.Module):
         self.drop = nn.Dropout(self.dropout_pct)
 
     def forward(self, x):
-        print(x.device, x[0])
+        print(x.device, x.shape, x[0])
         x = self.fc1(x)
-        print(x.device, x[0])
+        print(x.device, x.shape, x[0])
         x = F.silu(x)
-        print(x.device, x[0])
+        print(x.device, x.shape, x[0])
         x = self.drop(x)
         print(x.device, x[0])
         x = self.fc2(x)
