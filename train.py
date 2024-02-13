@@ -42,7 +42,7 @@ class CustomDataset(Dataset):
                  frame_tensor=torch.zeros((N_FRAMES, 3, WARPED_CROPPED_IMG_SIZE[0], WARPED_CROPPED_IMG_SIZE[1])),
                  force_tensor=torch.zeros((N_FRAMES, 1)),
                  width_tensor=torch.zeros((N_FRAMES, 1)),
-                 estimation_tensor=torch.zeros((1, 1)),
+                 estimation_tensor=torch.zeros((3, 1)),
                  label_tensor=torch.zeros((1, 1)),
         ):
         # Data parameters 
@@ -319,6 +319,8 @@ class ModulusModel():
         if x_max is None: x_max = self.normalization_values['max_modulus']
         if x_min is None: x_min = self.normalization_values['min_modulus']
         if use_torch:
+            x_max = torch.Tensor([x_max])
+            x_min = torch.Tensor([x_min])
             return (torch.log10(x) - torch.log10(x_min)) / (torch.log10(x_max) - torch.log10(x_min))
         return (np.log10(x) - np.log10(x_min)) / (np.log10(x_max) - np.log10(x_min))
     
