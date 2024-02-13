@@ -383,10 +383,10 @@ class ModulusModel():
 
 
 
-        x_train = x_train[:self.batch_size]
-        y_train = y_train[:self.batch_size]
-        x_val = x_train[:self.batch_size]
-        y_val = y_train[:self.batch_size]
+        x_train = x_train[:10*self.batch_size]
+        y_train = y_train[:10*self.batch_size]
+        x_val = x_train[:10*self.batch_size]
+        y_val = y_train[:10*self.batch_size]
         objects_val = objects_train
 
 
@@ -695,10 +695,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'OverfitTo1Batch',   
+        'run_name': 'OverfitTo10Batch',   
 
         # Training and model parameters
-        'epochs'            : 100,
+        'epochs'            : 150,
         'batch_size'        : 32,
         'img_feature_size'  : 64,
         'fwe_feature_size'  : 8,
