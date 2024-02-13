@@ -21,6 +21,7 @@ from sklearn.model_selection import train_test_split
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
+torch.autograd.set_detect_anomaly(True)
 
 DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
@@ -454,8 +455,7 @@ class ModulusModel():
                     features.append(self.width_encoder(x_widths[:, i, :]))
 
             if self.use_estimation: # Precomputed modulus estimation
-                x_estimations[:] = self.log_normalize(x_estimations[:, :, :], use_torch=True)
-                features.append(self.estimation_encoder(x_estimations.squeeze()))
+                features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
             # Send aggregated features to the FC decoder
             features = torch.cat(features, -1)
@@ -518,8 +518,7 @@ class ModulusModel():
                     features.append(self.width_encoder(x_widths[:, i, :]))
 
             if self.use_estimation: # Precomputed modulus estimation
-                x_estimations[:] = self.log_normalize(x_estimations[:, :, :], use_torch=True)
-                features.append(self.estimation_encoder(x_estimations.squeeze()))
+                features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
             # Send aggregated features to the FC decoder
             features = torch.cat(features, -1)

@@ -23,13 +23,28 @@ def random_hex_color():
     # Format the values as hexadecimal and concatenate them
     return "#{:02X}{:02X}{:02X}".format(R, G, B)
 
+def closest_non_nan_element(numbers, index):
+    closest_distance = float('inf')
+    closest_element = None
+
+    for i in range(len(numbers)):
+        if numbers[i] > 0:
+            distance = abs(i - index)
+            if distance < closest_distance:
+                closest_distance = distance
+                closest_element = numbers[i]
+
+    if closest_distance > 1e10: return 0
+
+    return closest_element
+
 wedge_video         = GelsightWedgeVideo(config_csv="./wedge_config/config_100.csv") # Force-sensing finger
 other_wedge_video   = GelsightWedgeVideo(config_csv="./wedge_config/config_200_markers.csv") # Non-sensing finger
 contact_force       = ContactForce()
 gripper_width       = GripperWidth()
 grasp_data          = GraspData(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width, use_gripper_width=True)
 
-DATA_DIR = './data'
+DATA_DIR = '/media/mike/Elements/data'
 RUN_NAME = 'THRESHOLD'
 
 # Objects to exclude from evaluation
@@ -290,44 +305,34 @@ if __name__ == '__main__':
     MDR_configs_ordered         = [ MDR_configs[i] for i in MDR_i_order ]
     # stochastic_configs_ordered  = [ stochastic_configs[i] for i in stochastic_i_order ]
 
-    # Create plots showing how well each method does
-    print('Plotting naive...')
-    plot_performance(r'Naive Elasticity Method', naive_estimates[naive_i_order[0]], object_to_modulus)
-    print('Plotting Hertzian...')
-    plot_performance(r'Hertzian Method', hertz_estimates[hertz_i_order[0]], object_to_modulus)
-    print('Plotting MDR...')
-    plot_performance(r'MDR', MDR_estimates[MDR_i_order[0]], object_to_modulus)
-    # print('Plotting stochastic...')
-    # plot_performance(r'Stochastic Method', stochastic_estimates[0], object_to_modulus)
-    print('Done.')
-    
-    # # Write training estimations
-    # contact_mask = 'ellipse_contact_mask'
-    # for object_name in naive_estimates[naive_i_order[0]].keys():
-    #     if object_name in EXCLUDE: continue
-    #     if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}'):
-    #         os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}')
+    # # Create plots showing how well each method does
+    # print('Plotting naive...')
+    # plot_performance(r'Naive Elasticity Method', naive_estimates[naive_i_order[0]], object_to_modulus)
+    # print('Plotting Hertzian...')
+    # plot_performance(r'Hertzian Method', hertz_estimates[hertz_i_order[0]], object_to_modulus)
+    # print('Plotting MDR...')
+    # plot_performance(r'MDR', MDR_estimates[MDR_i_order[0]], object_to_modulus)
+    # # print('Plotting stochastic...')
+    # # plot_performance(r'Stochastic Method', stochastic_estimates[0], object_to_modulus)
+    # print('Done.')
 
-    #     for t in range(len(naive_estimates[naive_i_order[0]][object_name])):
-            
-    #         E_naive = naive_estimates[naive_i_order[0]][object_name][t]
-    #         if E_naive < 0 or math.isnan(E_naive):
-    #             if t > 0: E_naive = naive_estimates[naive_i_order[0]][object_name][t-1]
-    #             else: E_naive = naive_estimates[naive_i_order[0]][object_name][t+1]
-            
-    #         E_hertz = hertz_estimates[hertz_i_order[0]][object_name][t]
-    #         if E_hertz < 0 or math.isnan(E_hertz):
-    #             if t > 0: E_hertz = hertz_estimates[hertz_i_order[0]][object_name][t-1]
-    #             else: E_hertz = hertz_estimates[hertz_i_order[0]][object_name][t+1]
-            
-    #         E_MDR = MDR_estimates[MDR_i_order[0]][object_name][t]
-    #         if E_MDR < 0 or math.isnan(E_MDR):
-    #             if t > 0: E_MDR = MDR_estimates[MDR_i_order[0]][object_name][t-1]
-    #             else: E_MDR = MDR_estimates[MDR_i_order[0]][object_name][t+1]
+    # Write training estimations
+    contact_mask = 'ellipse_contact_mask'
+    for object_name in naive_estimates[naive_i_order[0]].keys():
+        if object_name in EXCLUDE: continue
+        if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}'):
+            os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}')
 
-    #         if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}/t={t}'):
-    #             os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}/t={t}')
+        for t in range(len(naive_estimates[naive_i_order[0]][object_name])):
+            
+            E_naive = closest_non_nan_element(naive_estimates[naive_i_order[0]][object_name], t)
+            E_hertz = closest_non_nan_element(hertz_estimates[hertz_i_order[0]][object_name], t)
+            E_MDR = closest_non_nan_element(MDR_estimates[MDR_i_order[0]][object_name], t)
+            assert E_naive > 0 and E_hertz > 0 and E_MDR > 0
 
-    #         E_estimates = np.array([E_naive, E_hertz, E_MDR])
-    #         with open(f'{DATA_DIR}/training_estimations/{object_name}/t={t}/E.pkl', 'wb') as file:
-    #             pickle.dump(E_estimates, file)
+            if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}/t={t}'):
+                os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}/t={t}')
+
+            E_estimates = np.array([E_naive, E_hertz, E_MDR])
+            with open(f'{DATA_DIR}/training_estimations/{object_name}/t={t}/E.pkl', 'wb') as file:
+                pickle.dump(E_estimates, file)
