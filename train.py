@@ -22,7 +22,7 @@ from sklearn.model_selection import train_test_split
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -186,7 +186,6 @@ class ModulusModel():
             'max_depth': 7.0,
             'max_width': 0.08,
             'max_force': 60.0,
-            'max_estimation': 0.0,
         }
 
         # Define training parameters
@@ -404,10 +403,6 @@ class ModulusModel():
         empty_width_tensor        = torch.zeros((self.n_frames, 1), device=device)
         empty_estimation_tensor   = torch.zeros((3, 1), device=device)
         empty_label_tensor        = torch.zeros((1), device=device)
-
-        # if self.use_estimation:
-        #     print('MUST NORMALIZE ESTIMATIONS')
-        #     raise NotImplementedError
     
         # Construct datasets
         kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
@@ -459,7 +454,8 @@ class ModulusModel():
                     features.append(self.width_encoder(x_widths[:, i, :]))
 
             if self.use_estimation: # Precomputed modulus estimation
-                features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
+                x_estimations[:] = self.log_normalize(x_estimations[:, :, :], use_torch=True)
+                features.append(self.estimation_encoder(x_estimations.squeeze()))
 
             # Send aggregated features to the FC decoder
             features = torch.cat(features, -1)
@@ -522,7 +518,8 @@ class ModulusModel():
                     features.append(self.width_encoder(x_widths[:, i, :]))
 
             if self.use_estimation: # Precomputed modulus estimation
-                features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
+                x_estimations[:] = self.log_normalize(x_estimations[:, :, :], use_torch=True)
+                features.append(self.estimation_encoder(x_estimations.squeeze()))
 
             # Send aggregated features to the FC decoder
             features = torch.cat(features, -1)
