@@ -2,10 +2,13 @@ import os
 import csv
 import json
 import pickle
+import random
 import copy
+import math
+import numpy as np
 
 from scipy.optimize import curve_fit
-from tactile_estimate import *
+# from tactile_estimate import *
 
 import matplotlib as mpl
 mpl.rcParams.update(mpl.rcParamsDefault)
@@ -37,12 +40,6 @@ def closest_non_nan_element(numbers, index):
     if closest_distance > 1e10: return 0
 
     return closest_element
-
-wedge_video         = GelsightWedgeVideo(config_csv="./wedge_config/config_100.csv") # Force-sensing finger
-other_wedge_video   = GelsightWedgeVideo(config_csv="./wedge_config/config_200_markers.csv") # Non-sensing finger
-contact_force       = ContactForce()
-gripper_width       = GripperWidth()
-grasp_data          = GraspData(wedge_video=wedge_video, other_wedge_video=other_wedge_video, contact_force=contact_force, gripper_width=gripper_width, use_gripper_width=True)
 
 DATA_DIR = '/media/mike/Elements/data'
 RUN_NAME = 'THRESHOLD'
