@@ -134,7 +134,7 @@ MDR_configs = [{
 
 estimator = EstimateModulus(grasp_data=grasp_data, use_gripper_width=True, use_other_video=USE_MARKER_FINGER)
 
-CONTACT_MASKS = ['constant_threshold_contact_mask', 'total_conditional_contact_mask', 'normalized_threshold_contact_mask' ] # , \
+CONTACT_MASKS = ['ellipse_contact_mask', 'constant_threshold_contact_mask', 'total_conditional_contact_mask', 'normalized_threshold_contact_mask' ] # , \
                 #  'total_normalized_threshold_contact_mask', 'mean_threshold_contact_mask', 'total_mean_threshold_contact_mask', \
                 #  'std_above_mean_contact_mask'
                 # ]
@@ -150,13 +150,6 @@ for object_name in tqdm(objects):
 
         trial_number = eval(os.path.splitext(file_name)[0][file_name.find('t=')+2:])
         file_path_prefix = f'{DATA_DIR}/estimations/{object_name}/t={str(trial_number)}'
-
-        processed = True
-        for contact_mask in CONTACT_MASKS:
-            if not os.path.exists(f'{file_path_prefix}/naive/{contact_mask}'):
-                processed = False
-                break
-        if processed: continue
 
         if os.path.exists(file_path_prefix):
             if not os.path.exists(f'{DATA_DIR}/estimations/{object_name}'):

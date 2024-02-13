@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -398,6 +398,13 @@ class ModulusModel():
                 x_val.append(file_path)
                 y_val.append(self.log_normalize(self.object_to_modulus[object_name]))
 
+
+        x_train = x_train[:self.batch_size]
+        y_train = y_train[:self.batch_size]
+        x_val = x_train[:self.batch_size]
+        y_val = y_train[:self.batch_size]
+
+
         # Create tensor's on device to send to dataset
         empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device)
         empty_force_tensor        = torch.zeros((self.n_frames, 1), device=device)
@@ -675,17 +682,17 @@ if __name__ == "__main__":
         'use_force': True,
         'use_width': True,
         'use_estimation': False,
-        'use_transformations': True,
+        'use_transformations': False, # True,
         'exclude': ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'yellow_foam_brick', 'green_foam_brick', 
                     'apple', 'orange', 'strawberry', 'lacrosse_ball', 'rubber_washer_stack'],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'ExtraLayerOnDecoder',   
+        'run_name': 'OverfitTo1Batch',   
 
         # Training and model parameters
-        'epochs'            : 200,
+        'epochs'            : 100,
         'batch_size'        : 32,
         'img_feature_size'  : 64,
         'fwe_feature_size'  : 8,
@@ -700,13 +707,9 @@ if __name__ == "__main__":
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
     base_run_name = config['run_name']
-    for lr in ['1e-3', '5e-5', '1e-5', '1e-4']:
-        config['learning_rate'] = float(lr)
-        if lr == 0.001:
-            config['epochs'] = 100
-        for i in range(2):
-            config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
+    for i in range(2):
+        config['run_name'] = f'{base_run_name}__t={i}'
 
-            # Train the model over some data
-            train_modulus = ModulusModel(config, device=device)
-            train_modulus.train()
+        # Train the model over some data
+        train_modulus = ModulusModel(config, device=device)
+        train_modulus.train()
