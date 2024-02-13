@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -626,12 +626,12 @@ class ModulusModel():
                 '\n'
             )
 
-            for name, param in self.video_encoder.named_parameters():
-                print(f'{name}: {param.data}')
-                break
-            for name, param in self.force_encoder.named_parameters():
-                print(f'{name}: {param.data}')
-                break
+            # for name, param in self.video_encoder.named_parameters():
+            #     print(f'{name}: {param.data}')
+            #     break
+            # for name, param in self.force_encoder.named_parameters():
+            #     print(f'{name}: {param.data}')
+            #     break
 
             # Save the best model based on validation loss
             if val_log_acc >= max_val_log_acc:
