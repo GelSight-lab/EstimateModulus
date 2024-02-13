@@ -109,40 +109,31 @@ class EncoderCNN(nn.Module):
 
         self.fc1 = nn.Linear(
             self.ch5, # self.ch5 * self.conv5_outshape[0] * self.conv5_outshape[1],
-            self.fc_hidden1
-        ) # Fully connected layer, output k classes
-        self.fc2 = nn.Linear(
-            self.fc_hidden1,
             self.CNN_embed_dim
-        )  # Output = CNN embedding latent variables
+        ) # Fully connected layer, output k classes
 
+        # self.fc1 = nn.Linear(
+        #     self.ch5, # self.ch5 * self.conv5_outshape[0] * self.conv5_outshape[1],
+        #     self.fc_hidden1
+        # ) # Fully connected layer, output k classes
         # self.fc2 = nn.Linear(
         #     self.fc_hidden1,
-        #     self.fc_hidden2
-        # ) # Output = CNN embedding latent variables
-        # self.fc3 = nn.Linear(
-        #     self.fc_hidden2,
         #     self.CNN_embed_dim
-        # ) # Output = CNN embedding latent variables
+        # )  # Output = CNN embedding latent variables
 
     def forward(self, x):
-        # CNNs
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
         x = self.conv5(x)
         x = self.avgpool(x)
-        x = x.view(x.size(0), -1)  # Flatten the output of conv
+        x = x.view(x.size(0), -1) # Flatten the output of conv
         x = self.drop(x)
-        # FC layers
         x = self.fc1(x)
-        x = F.silu(x)
-        x = self.drop(x)
-        x = self.fc2(x) # CNN embedding
         # x = F.silu(x)
         # x = self.drop(x)
-        # x = self.fc3(x) # CNN embedding
+        # x = self.fc2(x) # CNN embedding
         return x
 
 class DecoderFC(nn.Module):
