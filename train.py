@@ -315,9 +315,11 @@ class ModulusModel():
         return
     
     # Normalize labels to maximum on log scale
-    def log_normalize(self, x, x_max=None, x_min=None):
+    def log_normalize(self, x, x_max=None, x_min=None, use_torch=False):
         if x_max is None: x_max = self.normalization_values['max_modulus']
         if x_min is None: x_min = self.normalization_values['min_modulus']
+        if use_torch:
+            return (torch.log10(x) - torch.log10(x_min)) / (torch.log10(x_max) - torch.log10(x_min))
         return (np.log10(x) - np.log10(x_min)) / (np.log10(x_max) - np.log10(x_min))
     
     # Unnormalize labels from maximum on log scale
@@ -454,7 +456,7 @@ class ModulusModel():
                     features.append(self.width_encoder(x_widths[:, i, :]))
 
             if self.use_estimation: # Precomputed modulus estimation
-                features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, 0, :])))
+                features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, 0, :], use_torch=True)))
 
             # Send aggregated features to the FC decoder
             features = torch.cat(features, -1)
