@@ -154,9 +154,9 @@ class DecoderFC(nn.Module):
         self.fc1 = nn.Linear(self.FC_input_size, self.FC_layer_nodes[0])
         self.fc2 = nn.Linear(self.FC_layer_nodes[0], self.FC_layer_nodes[1])
         self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
-        # self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.output_dim)
-        self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.FC_layer_nodes[3])
-        self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.output_dim)
+        self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.output_dim)
+        # self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.FC_layer_nodes[3])
+        # self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
 
     def forward(self, x):
@@ -203,7 +203,7 @@ class WidthFC(nn.Module):
         self.output_dim = output_dim
         self.dropout_pct = dropout_pct
 
-        self.fc1 = nn.Linear(2*N_FRAMES, self.hidden_size)
+        self.fc1 = nn.Linear(N_FRAMES, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
 

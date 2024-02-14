@@ -24,8 +24,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
-N_FRAMES = 5
+DATA_DIR = '/media/mike/Elements/data'
+N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
 # Get the tree of all video files from a directory in place
@@ -137,10 +137,12 @@ class CustomDataset(Dataset):
         # Unpack gripper width measurements
         if self.use_width:
             with open(self.base_name + '_widths.pkl', 'rb') as file:
-                self.x_widths[:self.n_frames] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
-                self.x_widths[self.n_frames:] = self.x_widths[:self.n_frames]
-                self.x_widths[self.n_frames:] /= self.x_widths.max()
-                self.x_widths[:self.n_frames] /= self.normalization_values['max_width'] 
+                # self.x_widths[:self.n_frames] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
+                # self.x_widths[self.n_frames:] = self.x_widths[:self.n_frames]
+                # self.x_widths[self.n_frames:] /= self.x_widths.max()
+                # self.x_widths[:self.n_frames] /= self.normalization_values['max_width'] 
+                self.x_widths[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
+                self.x_widths[:] /= self.normalization_values['max_width'] 
         
         # Unpack modulus estimations
         if self.use_estimation:
@@ -421,7 +423,7 @@ class ModulusModel():
         # Create tensor's on device to send to dataset
         empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device)
         empty_force_tensor        = torch.zeros((self.n_frames, 1), device=device)
-        empty_width_tensor        = torch.zeros((2*self.n_frames, 1), device=device)
+        empty_width_tensor        = torch.zeros((self.n_frames, 1), device=device)
         empty_estimation_tensor   = torch.zeros((3, 1), device=device)
         empty_label_tensor        = torch.zeros((1), device=device)
     
@@ -709,7 +711,7 @@ class ModulusModel():
         self.video_encoder.load_state_dict(torch.load(f'{folder_path}/video_encoder.pth'))
         if self.use_force: self.force_encoder.load_state_dict(torch.load(f'{folder_path}/force_encoder.pth'))
         if self.use_width: self.width_encoder.load_state_dict(torch.load(f'{folder_path}/width_encoder.pth'))
-        if self.use_force: self.estimation_encoder.load_state_dict(torch.load(f'{folder_path}/estimation_encoder.pth'))
+        if self.use_estimation: self.estimation_encoder.load_state_dict(torch.load(f'{folder_path}/estimation_encoder.pth'))
         self.decoder.load_state_dict(torch.load(f'{folder_path}/decoder.pth'))
 
         with open(f'{folder_path}/train_object_performance.json', 'r') as file:
@@ -720,7 +722,7 @@ class ModulusModel():
         self.objects_val = val_object_performance.keys()
 
         # Create data loaders based on original training distinctions
-        self._create_data_loaders(self.objects_train, self.objects_val)
+        self._create_data_loaders()
         return
 
     def make_performance_plot(self):
@@ -780,7 +782,7 @@ class ModulusModel():
         plt.grid(True, which='both', linestyle='--', linewidth=0.25)
         plt.tick_params(axis='both', which='both', labelsize=10)
 
-        plt.savefig('./figures/naive_method.png')
+        plt.savefig('./figures/nn.png')
         plt.show()
         return
 
@@ -828,4 +830,7 @@ if __name__ == "__main__":
 
         # Train the model over some data
         train_modulus = ModulusModel(config, device=device)
-        train_modulus.train()
+        # train_modulus.train()
+
+        train_modulus.load_model('./model/CombinedFW_DecoderTiny_Img32__t=0')
+        train_modulus.make_performance_plot()
