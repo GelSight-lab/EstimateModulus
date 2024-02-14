@@ -182,9 +182,9 @@ class ModulusModel():
         # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
             
         # Initialize force, width, estimation based on config
-        self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
-        self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
-        self.estimation_encoder = EstimationFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_estimation else None
+        self.force_encoder = ForceFC(hidden_size=32, output_dim=self.fwe_feature_size) if self.use_force else None
+        self.width_encoder = WidthFC(hidden_size=32, output_dim=self.fwe_feature_size) if self.use_width else None
+        self.estimation_encoder = EstimationFC(hidden_size=32, output_dim=self.fwe_feature_size) if self.use_estimation else None
 
         # Compute the size of the input to the decoder based on config
         decoder_input_size = self.n_frames * self.img_feature_size
