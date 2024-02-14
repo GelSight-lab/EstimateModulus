@@ -196,9 +196,9 @@ class ModulusModel():
 
             decoder_input_size = self.img_feature_size
             if self.use_force: 
-                decoder_input_size += 1 # self.fwe_feature_size
+                decoder_input_size += self.fwe_feature_size
             if self.use_width: 
-                decoder_input_size += 1 # self.fwe_feature_size
+                decoder_input_size += self.fwe_feature_size
             self.decoderRNN = DecoderRNN(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
         else:
             # Initialize force, width, estimation based on config
@@ -502,11 +502,11 @@ class ModulusModel():
 
                     # Execute FC layers on other data and append
                     if self.use_force: # Force measurements
-                        # frame_features.append(self.force_encoder(x_forces[:, i, :]))
-                        frame_features.append(x_forces[:, i, :])
+                        frame_features.append(self.force_encoder(x_forces[:, i, :]))
+                        # frame_features.append(x_forces[:, i, :])
                     if self.use_width: # Width measurements
-                        # frame_features.append(self.width_encoder(x_widths[:, i, :]))
-                        frame_features.append(x_widths[:, i, :])
+                        frame_features.append(self.width_encoder(x_widths[:, i, :]))
+                        # frame_features.append(x_widths[:, i, :])
 
                     frame_features = torch.cat(frame_features, -1).unsqueeze(-1)
                     features.append(frame_features)
@@ -604,11 +604,11 @@ class ModulusModel():
 
                     # Execute FC layers on other data and append
                     if self.use_force: # Force measurements
-                        # frame_features.append(self.force_encoder(x_forces[:, i, :]))
-                        frame_features.append(x_forces[:, i, :])
+                        frame_features.append(self.force_encoder(x_forces[:, i, :]))
+                        # frame_features.append(x_forces[:, i, :])
                     if self.use_width: # Width measurements
-                        # frame_features.append(self.width_encoder(x_widths[:, i, :]))
-                        frame_features.append(x_widths[:, i, :])
+                        frame_features.append(self.width_encoder(x_widths[:, i, :]))
+                        # frame_features.append(x_widths[:, i, :])
 
                     frame_features = torch.cat(frame_features, -1).unsqueeze(-1)
                     features.append(frame_features)
@@ -912,7 +912,7 @@ if __name__ == "__main__":
         'batch_size'        : 32,
         'use_RNN'           : True,
         'img_feature_size'  : 32,
-        'fwe_feature_size'  : 1, # 4, # 24,
+        'fwe_feature_size'  : 8, # 24,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
         'learning_rate'     : 1e-4,
