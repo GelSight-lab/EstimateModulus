@@ -10,6 +10,9 @@ import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
 import wandb
+
+import matplotlib as mpl
+mpl.rcParams.update(mpl.rcParamsDefault)
 import matplotlib.pyplot as plt
 
 # from wedge_video import WARPED_CROPPED_IMG_SIZE
@@ -578,7 +581,7 @@ class ModulusModel():
                     val_pct_with_100_factor_err += 1
 
                 if track_predictions:
-                    predictions[object_names[i]] = self.log_unnormalize(outputs.cpu()).detach().numpy()[i]
+                    predictions[object_names[i]].append(self.log_unnormalize(outputs.cpu()).detach().numpy()[i][0])
 
         # Return loss and accuracy
         val_loss /= batch_count
@@ -718,8 +721,8 @@ class ModulusModel():
             train_object_performance = json.load(file)
         with open(f'{folder_path}/val_object_performance.json', 'r') as file:
             val_object_performance = json.load(file)
-        self.objects_train = train_object_performance.keys()
-        self.objects_val = val_object_performance.keys()
+        self.objects_train = list(train_object_performance.keys())
+        self.objects_val = list(val_object_performance.keys())
 
         # Create data loaders based on original training distinctions
         self._create_data_loaders()
@@ -748,6 +751,7 @@ class ModulusModel():
         predictions = self._val_epoch(track_predictions=True)
 
         # Turn predictions into plotting data
+        count = 0
         for obj in predictions.keys():
             if len(predictions[obj]) == 0: continue
             assert obj in self.object_to_material.keys()
@@ -757,6 +761,7 @@ class ModulusModel():
                     assert not math.isnan(E)
                     material_prediction_data[mat].append(E)
                     material_label_data[mat].append(self.object_to_modulus[obj])
+                    count += 1
 
         # Create plot
         plt.rcParams['text.usetex'] = True
@@ -814,7 +819,7 @@ if __name__ == "__main__":
         'batch_size'        : 32,
         'img_feature_size'  : 32,
         'fwe_feature_size'  : 24,
-        'val_pct'           : 0.2,
+        'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
         'learning_rate'     : 1e-4,
         'gamma'             : None,
@@ -830,7 +835,7 @@ if __name__ == "__main__":
 
         # Train the model over some data
         train_modulus = ModulusModel(config, device=device)
-        # train_modulus.train()
+        train_modulus.train()
 
-        train_modulus.load_model('./model/CombinedFW_DecoderTiny_Img32__t=0')
-        train_modulus.make_performance_plot()
+        # train_modulus.load_model('./model/CombinedFW_DecoderTiny_Img32__t=0')
+        # train_modulus.make_performance_plot()
