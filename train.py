@@ -765,6 +765,8 @@ class ModulusModel():
                 os.remove(f'./model/{self.run_name}/estimation_encoder.pth')
             if os.path.exists(f'./model/{self.run_name}/decoder.pth'):
                 os.remove(f'./model/{self.run_name}/decoder.pth')
+            if os.path.exists(f'./model/{self.run_name}/decoderRNN.pth'):
+                os.remove(f'./model/{self.run_name}/decoderRNN.pth')
 
         # Save configuration dictionary and all files for the model(s)
         with open(f'./model/{self.run_name}/config.json', 'w') as json_file:
@@ -773,7 +775,9 @@ class ModulusModel():
         if self.use_force: torch.save(self.force_encoder.state_dict(), f'./model/{self.run_name}/force_encoder.pth')
         if self.use_width: torch.save(self.width_encoder.state_dict(), f'./model/{self.run_name}/width_encoder.pth')
         if self.use_estimation: torch.save(self.estimation_encoder.state_dict(), f'./model/{self.run_name}/estimation_encoder.pth')
-        torch.save(self.decoder.state_dict(), f'./model/{self.run_name}/decoder.pth')
+
+        # torch.save(self.decoder.state_dict(), f'./model/{self.run_name}/decoder.pth')
+        torch.save(self.decoderRNN.state_dict(), f'./model/{self.run_name}/decoderRNN.pth')
 
         # Save performance data
         with open(f'./model/{self.run_name}/train_object_performance.json', 'w') as json_file:
@@ -791,7 +795,8 @@ class ModulusModel():
         if self.use_force: self.force_encoder.load_state_dict(torch.load(f'{folder_path}/force_encoder.pth'))
         if self.use_width: self.width_encoder.load_state_dict(torch.load(f'{folder_path}/width_encoder.pth'))
         if self.use_estimation: self.estimation_encoder.load_state_dict(torch.load(f'{folder_path}/estimation_encoder.pth'))
-        self.decoder.load_state_dict(torch.load(f'{folder_path}/decoder.pth'))
+        # self.decoder.load_state_dict(torch.load(f'{folder_path}/decoder.pth'))
+        self.decoderRNN.load_state_dict(torch.load(f'{folder_path}/decoderRNN.pth'))
 
         with open(f'{folder_path}/train_object_performance.json', 'r') as file:
             train_object_performance = json.load(file)
