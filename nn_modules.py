@@ -175,6 +175,54 @@ class DecoderFC(nn.Module):
         x = self.drop(x)
         x = self.fc5(x)
         return torch.sigmoid(x)
+    
+class DecoderRNN(nn.Module):
+    def __init__(self,
+                 input_dim=512,
+                 h_RNN_layers=1,
+                 h_RNN=512,
+                 h_FC_dim=256,
+                 dropout_pct=0.5,
+                 output_dim=1):
+        super(DecoderRNN, self).__init__()
+
+        self.RNN_input_size = input_dim
+        self.h_RNN_layers = h_RNN_layers  # RNN hidden layers
+        self.h_RNN = h_RNN  # RNN hidden nodes
+        self.h_FC_dim = h_FC_dim
+        self.dropout_pct = dropout_pct
+        self.output_dim = output_dim
+
+        self.LSTM = nn.LSTM(
+                input_size=self.RNN_input_size,
+                hidden_size=self.h_RNN,
+                num_layers=self.h_RNN_layers,
+                batch_first=True,
+                dropout=self.dropout_pct
+            )
+
+        self.fc1 = nn.Linear(self.h_RNN, self.h_FC_dim)
+        self.bn = nn.BatchNorm1d(self.h_FC_dim)
+        self.fc2 = nn.Linear(self.h_FC_dim, self.output_dim)
+        self.drop = nn.Dropout(self.dropout_pct)
+
+    def forward(self, x):
+        self.LSTM.flatten_parameters()
+        RNN_out, _ = self.LSTM(x, None)
+        x = self.fc1(RNN_out)
+        x = F.silu(x)
+        x = self.drop(x)
+        x = torch.sigmoid(self.fc2(x))
+        return x
+
+    # def forward_single(self, x, h_nc):
+    #     self.LSTM.flatten_parameters()
+    #     RNN_out, h_nc_ = self.LSTM(x, h_nc)
+    #     x = self.fc1(RNN_out)
+    #     x = F.silu(x)
+    #     x = self.drop(x)
+    #     x = torch.sigmoid(self.fc2(x))
+    #     return x, h_nc_
  
 class ForceFC(nn.Module):
     def __init__(self, hidden_size=16, output_dim=16, dropout_pct=0.5):
@@ -184,7 +232,8 @@ class ForceFC(nn.Module):
         self.output_dim = output_dim
         self.dropout_pct = dropout_pct
 
-        self.fc1 = nn.Linear(N_FRAMES, self.hidden_size)
+        self.fc1 = nn.Linear(1, self.hidden_size)
+        # self.fc1 = nn.Linear(N_FRAMES, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
 
@@ -203,7 +252,8 @@ class WidthFC(nn.Module):
         self.output_dim = output_dim
         self.dropout_pct = dropout_pct
 
-        self.fc1 = nn.Linear(N_FRAMES, self.hidden_size)
+        self.fc1 = nn.Linear(1, self.hidden_size)
+        # self.fc1 = nn.Linear(N_FRAMES, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
 

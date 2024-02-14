@@ -186,6 +186,7 @@ class ModulusModel():
         self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size, dropout_pct=self.dropout_pct)
         # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
             
+        '''
         # Initialize force, width, estimation based on config
         self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
         self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
@@ -201,6 +202,21 @@ class ModulusModel():
         if self.use_estimation: 
             decoder_input_size += self.fwe_feature_size
         self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
+        '''
+
+
+        # FOR TEMP. LSTM IMPLEMENTATION
+        self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
+        self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
+        self.estimation_encoder = None
+        decoder_input_size = self.img_feature_size
+        if self.use_force: 
+            decoder_input_size += self.fwe_feature_size
+        if self.use_width: 
+            decoder_input_size += self.fwe_feature_size
+        self.decoderRNN = DecoderRNN(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
+
+
 
         # Send models to device
         self.video_encoder.to(self.device)
@@ -211,8 +227,10 @@ class ModulusModel():
             self.width_encoder.to(self.device)
         if self.use_estimation:
             self.estimation_encoder.to(self.device)
-        self.decoder.to(self.device)
+        # self.decoder.to(self.device)
+        self.decoderRNN.to(self.device)
 
+        '''
         print('Summaries...')
         col_names = ("input_size", "output_size", "num_params", "params_percent")
         summary(self.video_encoder, (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), col_names=col_names, device=device)
@@ -222,6 +240,7 @@ class ModulusModel():
             summary(self.force_encoder, (self.batch_size, self.n_frames), col_names=col_names, device=device)
         summary(self.decoder, (self.batch_size, decoder_input_size), col_names=col_names, device=device)
         print('Done.')
+        '''
 
         # Concatenate parameters of all models
         self.params         = list(self.video_encoder.parameters())
@@ -232,7 +251,8 @@ class ModulusModel():
             self.params += list(self.width_encoder.parameters())
         if self.use_estimation: 
             self.params += list(self.estimation_encoder.parameters())
-        self.params         += list(self.decoder.parameters())
+        # self.params         += list(self.decoder.parameters())
+        self.params         += list(self.decoderRNN.parameters())
         
         # Create optimizer, use Adam
         self.optimizer      = torch.optim.Adam(self.params, lr=self.learning_rate)
@@ -458,12 +478,14 @@ class ModulusModel():
             self.width_encoder.train()
         if self.use_estimation:
             self.estimation_encoder.train()
-        self.decoder.train()
+        # self.decoder.train()
+        self.decoderRNN.train()
 
         train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
 
+            '''
             # Concatenate features across frames into a single vector
             features = []
             for i in range(N_FRAMES):
@@ -490,6 +512,32 @@ class ModulusModel():
             # Send aggregated features to the FC decoder
             features = torch.cat(features, -1)
             outputs = self.decoder(features)
+            '''
+
+
+
+            # Concatenate features across frames into a single vector
+            features = []
+            for i in range(N_FRAMES):
+
+                frame_features = []
+
+                # Execute CNN on video frames
+                frame_features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+
+                # Execute FC layers on other data and append
+                if self.use_force: # Force measurements
+                    frame_features.append(self.force_encoder(x_forces[:, i, :]))
+                if self.use_width: # Width measurements
+                    frame_features.append(self.width_encoder(x_widths[:, i, :]))
+
+                frame_features = torch.cat(frame_features, -1).unsqueeze(-1)
+                features.append(frame_features)
+
+            features = torch.cat(features, -1).permute((0, 2, 1))
+            outputs = self.decoderRNN(features)[:, -1, :]
+
+
             
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             loss.backward()
@@ -527,14 +575,16 @@ class ModulusModel():
             self.width_encoder.eval()
         if self.use_estimation:
             self.estimation_encoder.eval()
-        self.decoder.eval()
+        # self.decoder.eval()
+        self.decoderRNN.eval()
 
         if track_predictions:
             predictions = { obj : [] for obj in self.objects_val }
 
         val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
-
+            
+            '''
             # Concatenate features across frames into a single vector
             features = []
             for i in range(N_FRAMES):
@@ -562,7 +612,33 @@ class ModulusModel():
             # Send aggregated features to the FC decoder
             features = torch.cat(features, -1)
             outputs = self.decoder(features)
+            '''
 
+
+
+            # Concatenate features across frames into a single vector
+            features = []
+            for i in range(N_FRAMES):
+
+                frame_features = []
+
+                # Execute CNN on video frames
+                frame_features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+
+                # Execute FC layers on other data and append
+                if self.use_force: # Force measurements
+                    frame_features.append(self.force_encoder(x_forces[:, i, :]))
+                if self.use_width: # Width measurements
+                    frame_features.append(self.width_encoder(x_widths[:, i, :]))
+
+                frame_features = torch.cat(frame_features, -1).unsqueeze(-1)
+                features.append(frame_features)
+
+            features = torch.cat(features, -1).permute((0, 2, 1))
+            outputs = self.decoderRNN(features)[:, -1, :]
+
+
+            
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             val_loss += loss.item()
             batch_count += 1
@@ -804,7 +880,7 @@ if __name__ == "__main__":
         'use_markers': True,
         'use_force': True,
         'use_width': True,
-        'use_estimation': True,
+        'use_estimation': False,
         'use_transformations': True,
         'exclude': ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'yellow_foam_brick', 'green_foam_brick', 
@@ -812,13 +888,13 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Base',   
+        'run_name': 'LSTM_Attempt',   
 
         # Training and model parameters
         'epochs'            : 150,
         'batch_size'        : 32,
-        'img_feature_size'  : 16, # 32,
-        'fwe_feature_size'  : 16, # 24,
+        'img_feature_size'  : 32,
+        'fwe_feature_size'  : 4, # 24,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
         'learning_rate'     : 1e-4,
@@ -836,6 +912,3 @@ if __name__ == "__main__":
         # Train the model over some data
         train_modulus = ModulusModel(config, device=device)
         train_modulus.train()
-
-        # train_modulus.load_model('./model/CombinedFW_DecoderTiny_Img32__t=0')
-        # train_modulus.make_performance_plot()
