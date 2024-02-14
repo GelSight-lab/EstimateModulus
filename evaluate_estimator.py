@@ -6,6 +6,7 @@ import random
 import copy
 import math
 import numpy as np
+from tqdm import tqdm
 
 from scipy.optimize import curve_fit
 # from tactile_estimate import *
@@ -41,11 +42,13 @@ def closest_non_nan_element(numbers, index):
 
     return closest_element
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 RUN_NAME = 'THRESHOLD'
 
 # Objects to exclude from evaluation
-EXCLUDE = ['playdoh', 'silly_putty', 'silly_puty', 'racquet_ball']
+EXCLUDE = ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
+            'red_foam_brick', 'blue_foam_brick', 'yellow_foam_brick', 'green_foam_brick', 
+            'apple', 'orange', 'strawberry', 'lacrosse_ball', 'rubber_washer_stack']
 
 # Read CSV files with objects and labels tabulated
 object_to_modulus = {}
@@ -81,10 +84,10 @@ def scale_predictions(prediction_dict, label_dict, linear_log_fit=True, exp_fit=
     outlier_mask = np.abs(x - np.mean(x)) < np.std(x)
     x_filtered, y_filtered = x[outlier_mask], y[outlier_mask]
 
-    print('Percent of Predictions NaN:', nan_count / total_count)
-    print('Number of datapoints before filtering:', len(x))
-    print('Number of datapoints after filtering:', len(x_filtered))
-    print('\n')
+    # print('Percent of Predictions NaN:', nan_count / total_count)
+    # print('Number of datapoints before filtering:', len(x))
+    # print('Number of datapoints after filtering:', len(x_filtered))
+    # print('\n')
 
     # TODO: Make a better fit here
     if linear_log_fit:
@@ -112,18 +115,23 @@ def scale_predictions(prediction_dict, label_dict, linear_log_fit=True, exp_fit=
 # Compute statistics to evaluate the performance of estimation method
 def compute_estimation_stats(prediction_dict, label_dict):
     log_diff = []
+    nan_count, total_count = 0, 0
     for object_name in prediction_dict.keys():
         if object_name in EXCLUDE: continue
         for E in prediction_dict[object_name]:
             if E > 0 and not math.isnan(E):
                 assert not math.isnan(E)
                 log_diff.append(abs(np.log10(E) - np.log10(label_dict[object_name])))
+            else:
+                nan_count += 1
+        total_count += len(prediction_dict[object_name])
     
     log_diff = np.array(log_diff)
     log_diff = log_diff[~np.isnan(log_diff)]
     return {
         'avg_log_diff': log_diff.mean(),
         'log_accuracy': np.sum(log_diff < 0.5) / len(log_diff),
+        'nan_pct': nan_count / total_count,
     }
 
 # Plot on log scale to see how performance is
@@ -132,7 +140,7 @@ def plot_performance(plot_title, prediction_dict, label_dict):
         'Foam': 'firebrick',
         'Plastic': 'forestgreen',
         'Wood': 'goldenrod',
-        'Paper': 'darkviolet',
+        'Paper': 'yellow',
         'Glass': 'darkgray',
         'Ceramic': 'pink',
         'Rubber': 'slateblue',
@@ -157,10 +165,10 @@ def plot_performance(plot_title, prediction_dict, label_dict):
                 material_label_data[mat].append(label_dict[obj])
 
     # Create plot
-    plt.rcParams['text.usetex'] = True
-    plt.rcParams["font.family"] = "sans-serif"
-    plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
-    plt.rc('text', usetex=True)
+    # plt.rcParams['text.usetex'] = True
+    # plt.rcParams["font.family"] = "sans-serif"
+    # plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
+    # plt.rc('text', usetex=True)
     plt.figure()
     plt.plot([100, 10**12], [100, 10**12], 'k--', label='_')
     plt.fill_between([100, 10**12], [10**(1.5), 10**(11.5)], [10**(2.5), 10**(12.5)], color='gray', alpha=0.2)
@@ -170,8 +178,10 @@ def plot_performance(plot_title, prediction_dict, label_dict):
     for mat in material_to_color.keys():
         plt.plot(material_label_data[mat], material_prediction_data[mat], '.', markersize=10, color=material_to_color[mat], label=mat)
 
-    plt.xlabel(r"Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
-    plt.ylabel(r"Predicted Modulus ($\\widetilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
+    # plt.xlabel(r"Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
+    # plt.ylabel(r"Predicted Modulus ($\\widetilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
+    plt.xlabel("Ground Truth Modulus (E)", fontsize=12)
+    plt.ylabel("Predicted Modulus (E)", fontsize=12)
     plt.xlim([100, 10**12])
     plt.ylim([100, 10**12])
     plt.title(plot_title, fontsize=14)
@@ -198,7 +208,7 @@ if __name__ == '__main__':
     stochastic_estimates    = []
     stochastic_configs      = []
 
-    for object_name in sorted(os.listdir(f'{DATA_DIR}/estimations')):
+    for object_name in tqdm(sorted(os.listdir(f'{DATA_DIR}/estimations'))):
         if object_name.count('.') > 0: continue
         if object_name in EXCLUDE: continue
 
@@ -300,36 +310,37 @@ if __name__ == '__main__':
     naive_configs_ordered       = [ naive_configs[i] for i in naive_i_order ]
     hertz_configs_ordered       = [ hertz_configs[i] for i in hertz_i_order ]
     MDR_configs_ordered         = [ MDR_configs[i] for i in MDR_i_order ]
-    # stochastic_configs_ordered  = [ stochastic_configs[i] for i in stochastic_i_order ]
+    naive_stats_ordered         = [ naive_stats[i] for i in naive_i_order ]
+    hertz_stats_ordered         = [ hertz_stats[i] for i in hertz_i_order ]
+    MDR_stats_ordered           = [ MDR_stats[i] for i in MDR_i_order ]
 
-    # # Create plots showing how well each method does
-    # print('Plotting naive...')
-    # plot_performance(r'Naive Elasticity Method', naive_estimates[naive_i_order[0]], object_to_modulus)
-    # print('Plotting Hertzian...')
-    # plot_performance(r'Hertzian Method', hertz_estimates[hertz_i_order[0]], object_to_modulus)
-    # print('Plotting MDR...')
-    # plot_performance(r'MDR', MDR_estimates[MDR_i_order[0]], object_to_modulus)
-    # # print('Plotting stochastic...')
-    # # plot_performance(r'Stochastic Method', stochastic_estimates[0], object_to_modulus)
-    # print('Done.')
+    # Create plots showing how well each method does
+    print('Plotting naive...')
+    plot_performance('Naive Elasticity Method', naive_estimates[naive_i_order[0]], object_to_modulus)
+    print('Plotting Hertzian...')
+    plot_performance('Hertzian Method', hertz_estimates[hertz_i_order[0]], object_to_modulus)
+    print('Plotting MDR...')
+    plot_performance('MDR', MDR_estimates[MDR_i_order[0]], object_to_modulus)
+    # print('Plotting stochastic...')
+    # plot_performance(r'Stochastic Method', stochastic_estimates[0], object_to_modulus)
+    print('Done.')
 
-    # Write training estimations
-    contact_mask = 'ellipse_contact_mask'
-    for object_name in naive_estimates[naive_i_order[0]].keys():
-        if object_name in EXCLUDE: continue
-        if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}'):
-            os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}')
+    # # Write training estimations
+    # for object_name in naive_estimates[naive_i_order[0]].keys():
+    #     if object_name in EXCLUDE: continue
+    #     if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}'):
+    #         os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}')
 
-        for t in range(len(naive_estimates[naive_i_order[0]][object_name])):
+    #     for t in range(len(naive_estimates[naive_i_order[0]][object_name])):
             
-            E_naive = closest_non_nan_element(naive_estimates[naive_i_order[0]][object_name], t)
-            E_hertz = closest_non_nan_element(hertz_estimates[hertz_i_order[0]][object_name], t)
-            E_MDR = closest_non_nan_element(MDR_estimates[MDR_i_order[0]][object_name], t)
-            assert E_naive > 0 and E_hertz > 0 and E_MDR > 0
+    #         E_naive = closest_non_nan_element(naive_estimates[naive_i_order[0]][object_name], t)
+    #         E_hertz = closest_non_nan_element(hertz_estimates[hertz_i_order[0]][object_name], t)
+    #         E_MDR = closest_non_nan_element(MDR_estimates[MDR_i_order[0]][object_name], t)
+    #         assert E_naive > 0 and E_hertz > 0 and E_MDR > 0
 
-            if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}/t={t}'):
-                os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}/t={t}')
+    #         if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}/t={t}'):
+    #             os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}/t={t}')
 
-            E_estimates = np.array([E_naive, E_hertz, E_MDR])
-            with open(f'{DATA_DIR}/training_estimations/{object_name}/t={t}/E.pkl', 'wb') as file:
-                pickle.dump(E_estimates, file)
+    #         E_estimates = np.array([E_naive, E_hertz, E_MDR])
+    #         with open(f'{DATA_DIR}/training_estimations/{object_name}/t={t}/E.pkl', 'wb') as file:
+    #             pickle.dump(E_estimates, file)

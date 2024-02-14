@@ -27,8 +27,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
-N_FRAMES = 3
+DATA_DIR = './data' # '/media/mike/Elements/data'
+N_FRAMES = 5
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
 # Get the tree of all video files from a directory in place
@@ -826,7 +826,7 @@ class ModulusModel():
             'Foam': 'firebrick',
             'Plastic': 'forestgreen',
             'Wood': 'goldenrod',
-            'Paper': 'darkviolet',
+            'Paper': 'yellow',
             'Glass': 'darkgray',
             'Ceramic': 'pink',
             'Rubber': 'slateblue',
@@ -905,14 +905,14 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'DirectFW_LSTM_2Layers',   
+        'run_name': 'Nframes=5_4FW_LSTM_2Layers',   
 
         # Training and model parameters
         'epochs'            : 150,
         'batch_size'        : 32,
         'use_RNN'           : True,
         'img_feature_size'  : 32,
-        'fwe_feature_size'  : 8, # 24,
+        'fwe_feature_size'  : 4, # 24,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
         'learning_rate'     : 1e-4,
