@@ -814,7 +814,7 @@ if __name__ == "__main__":
         'batch_size'        : 32,
         'img_feature_size'  : 32,
         'fwe_feature_size'  : 24,
-        'val_pct'           : 0.15,
+        'val_pct'           : 0.2,
         'dropout_pct'       : 0.3,
         'learning_rate'     : 1e-4,
         'gamma'             : None,
