@@ -179,7 +179,7 @@ class DecoderFC(nn.Module):
 class DecoderRNN(nn.Module):
     def __init__(self,
                  input_dim=512,
-                 h_RNN_layers=1,
+                 h_RNN_layers=2,
                  h_RNN=512,
                  h_FC_dim=256,
                  dropout_pct=0.5,

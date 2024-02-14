@@ -893,7 +893,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'LSTM_Attempt',   
+        'run_name': 'LSTM_2Layers',   
 
         # Training and model parameters
         'epochs'            : 150,
