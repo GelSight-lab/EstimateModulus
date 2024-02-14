@@ -911,9 +911,17 @@ if __name__ == "__main__":
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
     base_run_name = config['run_name']
-    for i in range(2):
-        config['run_name'] = f'{base_run_name}__t={i}'
+    LR_to_epoch = {
+        '1e-3': 100,
+        '1e-4': 150,
+        '1e-5': 250,
+    }
+    for lr in LR_to_epoch.keys():
+        config['learning_rate'] = float(lr)
+        config['epochs'] = LR_to_epoch[lr]
+        for i in range(2):
+            config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
 
-        # Train the model over some data
-        train_modulus = ModulusModel(config, device=device)
-        train_modulus.train()
+            # Train the model over some data
+            train_modulus = ModulusModel(config, device=device)
+            train_modulus.train()
