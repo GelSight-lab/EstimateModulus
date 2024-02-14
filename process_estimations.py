@@ -134,7 +134,7 @@ MDR_configs = [{
 
 estimator = EstimateModulus(grasp_data=grasp_data, use_gripper_width=True, use_other_video=USE_MARKER_FINGER)
 
-CONTACT_MASKS = ['ellipse_contact_mask', 'constant_threshold_contact_mask', 'total_conditional_contact_mask', 'normalized_threshold_contact_mask' ] # , \
+CONTACT_MASKS = ['ellipse_contact_mask', 'constant_threshold_contact_mask', 'total_conditional_contact_mask' ] # , 'normalized_threshold_contact_mask' , \
                 #  'total_normalized_threshold_contact_mask', 'mean_threshold_contact_mask', 'total_mean_threshold_contact_mask', \
                 #  'std_above_mean_contact_mask'
                 # ]

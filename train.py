@@ -66,6 +66,7 @@ class CustomDataset(Dataset):
         # Define training parameters
         self.epochs             = config['epochs']
         self.batch_size         = config['batch_size']
+        self.use_RNN            = config['use_RNN']
         self.img_feature_size   = config['img_feature_size']
         self.fwe_feature_size   = config['fwe_feature_size']
         self.val_pct            = config['val_pct']
@@ -185,38 +186,36 @@ class ModulusModel():
         # Initialize CNN based on config
         self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size, dropout_pct=self.dropout_pct)
         # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
-            
-        '''
-        # Initialize force, width, estimation based on config
-        self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
-        self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
-        self.estimation_encoder = EstimationFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_estimation else None
+    
+        if self.use_RNN:
+            # Compute the size of the input to the decoder based on config
+            self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
+            self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
+            self.estimation_encoder = None
+            assert self.use_estimation == False
 
-        # Compute the size of the input to the decoder based on config
-        decoder_input_size = self.n_frames * self.img_feature_size
-        # decoder_input_size += self.n_frames * self.img_feature_size
-        if self.use_force: 
-            decoder_input_size += self.fwe_feature_size
-        if self.use_width: 
-            decoder_input_size += self.fwe_feature_size
-        if self.use_estimation: 
-            decoder_input_size += self.fwe_feature_size
-        self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
-        '''
+            decoder_input_size = self.img_feature_size
+            if self.use_force: 
+                decoder_input_size += self.fwe_feature_size
+            if self.use_width: 
+                decoder_input_size += self.fwe_feature_size
+            self.decoderRNN = DecoderRNN(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
+        else:
+            # Initialize force, width, estimation based on config
+            self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
+            self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
+            self.estimation_encoder = EstimationFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_estimation else None
 
-
-        # FOR TEMP. LSTM IMPLEMENTATION
-        self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
-        self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
-        self.estimation_encoder = None
-        decoder_input_size = self.img_feature_size
-        if self.use_force: 
-            decoder_input_size += self.fwe_feature_size
-        if self.use_width: 
-            decoder_input_size += self.fwe_feature_size
-        self.decoderRNN = DecoderRNN(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
-
-
+            # Compute the size of the input to the decoder based on config
+            decoder_input_size = self.n_frames * self.img_feature_size
+            # decoder_input_size += self.n_frames * self.img_feature_size
+            if self.use_force: 
+                decoder_input_size += self.fwe_feature_size
+            if self.use_width: 
+                decoder_input_size += self.fwe_feature_size
+            if self.use_estimation: 
+                decoder_input_size += self.fwe_feature_size
+            self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
 
         # Send models to device
         self.video_encoder.to(self.device)
@@ -227,8 +226,10 @@ class ModulusModel():
             self.width_encoder.to(self.device)
         if self.use_estimation:
             self.estimation_encoder.to(self.device)
-        # self.decoder.to(self.device)
-        self.decoderRNN.to(self.device)
+        if self.use_RNN:
+            self.decoderRNN.to(self.device)
+        else:
+            self.decoder.to(self.device)
 
         '''
         print('Summaries...')
@@ -282,6 +283,7 @@ class ModulusModel():
                     "n_channels": self.n_channels,
                     "img_size": self.img_size,
                     "img_style": self.img_style,
+                    "use_RNN": self.use_RNN,
                     "img_feature_size": self.img_feature_size,
                     "fwe_feature_size": self.fwe_feature_size,
                     "learning_rate": self.learning_rate,
@@ -336,6 +338,7 @@ class ModulusModel():
         # Define training parameters
         self.epochs             = config['epochs']
         self.batch_size         = config['batch_size']
+        self.use_RNN            = config['use_RNN']
         self.img_feature_size   = config['img_feature_size']
         self.fwe_feature_size   = config['fwe_feature_size']
         self.val_pct            = config['val_pct']
@@ -478,64 +481,65 @@ class ModulusModel():
             self.width_encoder.train()
         if self.use_estimation:
             self.estimation_encoder.train()
-        # self.decoder.train()
-        self.decoderRNN.train()
+        if self.use_RNN:
+            self.decoderRNN.train()
+        else:
+            self.decoder.train()
 
         train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
 
-            '''
-            # Concatenate features across frames into a single vector
-            features = []
-            for i in range(N_FRAMES):
+            if self.use_RNN:
+                # Concatenate features across frames into a single vector
+                features = []
+                for i in range(N_FRAMES):
 
-                # Execute CNN on video frames
-                features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                    frame_features = []
 
-                # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
-                
-                # # Execute FC layers on other data and append
-                # if self.use_force: # Force measurements
-                #     features.append(self.force_encoder(x_forces[:, i, :]))
-                # if self.use_width: # Width measurements
-                #     features.append(self.width_encoder(x_widths[:, i, :]))
+                    # Execute CNN on video frames
+                    frame_features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
-            # Execute FC layers on other data and append
-            if self.use_force: # Force measurements
-                features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
-            if self.use_width: # Width measurements
-                features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
-            if self.use_estimation: # Precomputed modulus estimation
-                features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
+                    # Execute FC layers on other data and append
+                    if self.use_force: # Force measurements
+                        frame_features.append(self.force_encoder(x_forces[:, i, :]))
+                    if self.use_width: # Width measurements
+                        frame_features.append(self.width_encoder(x_widths[:, i, :]))
 
-            # Send aggregated features to the FC decoder
-            features = torch.cat(features, -1)
-            outputs = self.decoder(features)
-            '''
-
-
-
-            # Concatenate features across frames into a single vector
-            features = []
-            for i in range(N_FRAMES):
-
-                frame_features = []
-
-                # Execute CNN on video frames
-                frame_features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                    frame_features = torch.cat(frame_features, -1).unsqueeze(-1)
+                    features.append(frame_features)
+            else:
+                # Concatenate features across frames into a single vector
+                features = []
+                for i in range(N_FRAMES):
+                    
+                    # Execute CNN on video frames
+                    features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                    
+                    # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
+                    
+                    # # Execute FC layers on other data and append
+                    # if self.use_force: # Force measurements
+                    #     features.append(self.force_encoder(x_forces[:, i, :]))
+                    # if self.use_width: # Width measurements
+                    #     features.append(self.width_encoder(x_widths[:, i, :]))
 
                 # Execute FC layers on other data and append
                 if self.use_force: # Force measurements
-                    frame_features.append(self.force_encoder(x_forces[:, i, :]))
+                    features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
                 if self.use_width: # Width measurements
-                    frame_features.append(self.width_encoder(x_widths[:, i, :]))
+                    features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
+                if self.use_estimation: # Precomputed modulus estimation
+                    features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
-                frame_features = torch.cat(frame_features, -1).unsqueeze(-1)
-                features.append(frame_features)
-
-            features = torch.cat(features, -1).permute((0, 2, 1))
-            outputs = self.decoderRNN(features)[:, -1, :]
+            if self.use_RNN:
+                # Send aggregated features to the RNN decoder
+                features = torch.cat(features, -1).permute((0, 2, 1))
+                outputs = self.decoderRNN(features)[:, -1, :]
+            else:
+                # Send aggregated features to the FC decoder
+                features = torch.cat(features, -1)
+                outputs = self.decoder(features)
 
 
             
@@ -575,8 +579,10 @@ class ModulusModel():
             self.width_encoder.eval()
         if self.use_estimation:
             self.estimation_encoder.eval()
-        # self.decoder.eval()
-        self.decoderRNN.eval()
+        if self.use_RNN:
+            self.decoderRNN.eval()
+        else:
+            self.decoder.eval()
 
         if track_predictions:
             predictions = { obj : [] for obj in self.objects_val }
@@ -584,58 +590,56 @@ class ModulusModel():
         val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
             
-            '''
-            # Concatenate features across frames into a single vector
-            features = []
-            for i in range(N_FRAMES):
-                
-                # Execute CNN on video frames
-                features.append(self.video_encoder(x_frames[:, i, :, :, :]))
-                
-                # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
+            if self.use_RNN:
+                # Concatenate features across frames into a single vector
+                features = []
+                for i in range(N_FRAMES):
 
+                    frame_features = []
 
-                # # Execute FC layers on other data and append
-                # if self.use_force: # Force measurements
-                #     features.append(self.force_encoder(x_forces[:, i, :]))
-                # if self.use_width: # Width measurements
-                #     features.append(self.width_encoder(x_widths[:, i, :]))
+                    # Execute CNN on video frames
+                    frame_features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
-            # Execute FC layers on other data and append
-            if self.use_force: # Force measurements
-                features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
-            if self.use_width: # Width measurements
-                features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
-            if self.use_estimation: # Precomputed modulus estimation
-                features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
+                    # Execute FC layers on other data and append
+                    if self.use_force: # Force measurements
+                        frame_features.append(self.force_encoder(x_forces[:, i, :]))
+                    if self.use_width: # Width measurements
+                        frame_features.append(self.width_encoder(x_widths[:, i, :]))
 
-            # Send aggregated features to the FC decoder
-            features = torch.cat(features, -1)
-            outputs = self.decoder(features)
-            '''
+                    frame_features = torch.cat(frame_features, -1).unsqueeze(-1)
+                    features.append(frame_features)
+            else:
+                # Concatenate features across frames into a single vector
+                features = []
+                for i in range(N_FRAMES):
+                    
+                    # Execute CNN on video frames
+                    features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                    
+                    # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
 
-
-
-            # Concatenate features across frames into a single vector
-            features = []
-            for i in range(N_FRAMES):
-
-                frame_features = []
-
-                # Execute CNN on video frames
-                frame_features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                    # # Execute FC layers on other data and append
+                    # if self.use_force: # Force measurements
+                    #     features.append(self.force_encoder(x_forces[:, i, :]))
+                    # if self.use_width: # Width measurements
+                    #     features.append(self.width_encoder(x_widths[:, i, :]))
 
                 # Execute FC layers on other data and append
                 if self.use_force: # Force measurements
-                    frame_features.append(self.force_encoder(x_forces[:, i, :]))
+                    features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
                 if self.use_width: # Width measurements
-                    frame_features.append(self.width_encoder(x_widths[:, i, :]))
+                    features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
+                if self.use_estimation: # Precomputed modulus estimation
+                    features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
-                frame_features = torch.cat(frame_features, -1).unsqueeze(-1)
-                features.append(frame_features)
-
-            features = torch.cat(features, -1).permute((0, 2, 1))
-            outputs = self.decoderRNN(features)[:, -1, :]
+            if self.use_RNN:
+                # Send aggregated features to the RNN decoder
+                features = torch.cat(features, -1).permute((0, 2, 1))
+                outputs = self.decoderRNN(features)[:, -1, :]
+            else:
+                # Send aggregated features to the FC decoder
+                features = torch.cat(features, -1)
+                outputs = self.decoder(features)
 
 
             
@@ -776,8 +780,10 @@ class ModulusModel():
         if self.use_width: torch.save(self.width_encoder.state_dict(), f'./model/{self.run_name}/width_encoder.pth')
         if self.use_estimation: torch.save(self.estimation_encoder.state_dict(), f'./model/{self.run_name}/estimation_encoder.pth')
 
-        # torch.save(self.decoder.state_dict(), f'./model/{self.run_name}/decoder.pth')
-        torch.save(self.decoderRNN.state_dict(), f'./model/{self.run_name}/decoderRNN.pth')
+        if self.use_RNN:
+            torch.save(self.decoderRNN.state_dict(), f'./model/{self.run_name}/decoderRNN.pth')
+        else:
+            torch.save(self.decoder.state_dict(), f'./model/{self.run_name}/decoder.pth')
 
         # Save performance data
         with open(f'./model/{self.run_name}/train_object_performance.json', 'w') as json_file:
@@ -795,8 +801,10 @@ class ModulusModel():
         if self.use_force: self.force_encoder.load_state_dict(torch.load(f'{folder_path}/force_encoder.pth'))
         if self.use_width: self.width_encoder.load_state_dict(torch.load(f'{folder_path}/width_encoder.pth'))
         if self.use_estimation: self.estimation_encoder.load_state_dict(torch.load(f'{folder_path}/estimation_encoder.pth'))
-        # self.decoder.load_state_dict(torch.load(f'{folder_path}/decoder.pth'))
-        self.decoderRNN.load_state_dict(torch.load(f'{folder_path}/decoderRNN.pth'))
+        if self.use_RNN:
+            self.decoderRNN.load_state_dict(torch.load(f'{folder_path}/decoderRNN.pth'))
+        else:
+            self.decoder.load_state_dict(torch.load(f'{folder_path}/decoder.pth'))
 
         with open(f'{folder_path}/train_object_performance.json', 'r') as file:
             train_object_performance = json.load(file)
@@ -898,6 +906,7 @@ if __name__ == "__main__":
         # Training and model parameters
         'epochs'            : 150,
         'batch_size'        : 32,
+        'use_RNN'           : True,
         'img_feature_size'  : 32,
         'fwe_feature_size'  : 4, # 24,
         'val_pct'           : 0.175,
