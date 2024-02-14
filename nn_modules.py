@@ -149,8 +149,8 @@ class DecoderFC(nn.Module):
         self.dropout_pct = dropout_pct
         self.output_dim = output_dim
 
-        assert len(FC_layer_nodes) == 3
-
+        assert len(FC_layer_nodes) == 4
+        
         self.fc1 = nn.Linear(self.FC_input_size, self.FC_layer_nodes[0])
         self.fc2 = nn.Linear(self.FC_layer_nodes[0], self.FC_layer_nodes[1])
         self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
