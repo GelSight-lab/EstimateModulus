@@ -812,13 +812,13 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'WideDecoder_frames=3_Img32',   
+        'run_name': 'SmallestModel',   
 
         # Training and model parameters
         'epochs'            : 150,
         'batch_size'        : 32,
-        'img_feature_size'  : 32,
-        'fwe_feature_size'  : 24,
+        'img_feature_size'  : 16, # 32,
+        'fwe_feature_size'  : 16, # 24,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
         'learning_rate'     : 1e-4,
