@@ -225,14 +225,14 @@ class DecoderRNN(nn.Module):
     #     return x, h_nc_
  
 class ForceFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim=16, dropout_pct=0.5):
+    def __init__(self, input_dim=1, hidden_size=16, output_dim=16, dropout_pct=0.5):
         super(ForceFC, self).__init__()
 
         self.hidden_size = hidden_size
         self.output_dim = output_dim
         self.dropout_pct = dropout_pct
 
-        self.fc1 = nn.Linear(1, self.hidden_size)
+        self.fc1 = nn.Linear(input_dim, self.hidden_size)
         # self.fc1 = nn.Linear(N_FRAMES, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
@@ -245,14 +245,14 @@ class ForceFC(nn.Module):
         return x
     
 class WidthFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim=16, dropout_pct=0.5):
+    def __init__(self, input_dim=1, hidden_size=16, output_dim=16, dropout_pct=0.5):
         super(WidthFC, self).__init__()
 
         self.hidden_size = hidden_size
         self.output_dim = output_dim
         self.dropout_pct = dropout_pct
 
-        self.fc1 = nn.Linear(1, self.hidden_size)
+        self.fc1 = nn.Linear(input_dim, self.hidden_size)
         # self.fc1 = nn.Linear(N_FRAMES, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
@@ -265,14 +265,14 @@ class WidthFC(nn.Module):
         return x
  
 class EstimationFC(nn.Module):
-    def __init__(self, hidden_size=16, output_dim=16, dropout_pct=0.5):
+    def __init__(self, input_dim=3, hidden_size=16, output_dim=16, dropout_pct=0.5):
         super(EstimationFC, self).__init__()
 
         self.hidden_size = hidden_size
         self.output_dim = output_dim
         self.dropout_pct = dropout_pct
 
-        self.fc1 = nn.Linear(3, self.hidden_size)
+        self.fc1 = nn.Linear(input_dim, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
 

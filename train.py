@@ -189,22 +189,22 @@ class ModulusModel():
     
         if self.use_RNN:
             # Compute the size of the input to the decoder based on config
-            self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
-            self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
+            self.force_encoder = ForceFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
+            self.width_encoder = WidthFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
             self.estimation_encoder = None
             assert self.use_estimation == False
 
             decoder_input_size = self.img_feature_size
             if self.use_force: 
-                decoder_input_size += self.fwe_feature_size
+                decoder_input_size += 1 # self.fwe_feature_size
             if self.use_width: 
-                decoder_input_size += self.fwe_feature_size
+                decoder_input_size += 1 # self.fwe_feature_size
             self.decoderRNN = DecoderRNN(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
         else:
             # Initialize force, width, estimation based on config
-            self.force_encoder = ForceFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
-            self.width_encoder = WidthFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
-            self.estimation_encoder = EstimationFC(hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_estimation else None
+            self.force_encoder = ForceFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
+            self.width_encoder = WidthFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
+            self.estimation_encoder = EstimationFC(input_dim=3, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_estimation else None
 
             # Compute the size of the input to the decoder based on config
             decoder_input_size = self.n_frames * self.img_feature_size
@@ -502,9 +502,11 @@ class ModulusModel():
 
                     # Execute FC layers on other data and append
                     if self.use_force: # Force measurements
-                        frame_features.append(self.force_encoder(x_forces[:, i, :]))
+                        # frame_features.append(self.force_encoder(x_forces[:, i, :]))
+                        frame_features.append(x_forces[:, i, :])
                     if self.use_width: # Width measurements
-                        frame_features.append(self.width_encoder(x_widths[:, i, :]))
+                        # frame_features.append(self.width_encoder(x_widths[:, i, :]))
+                        frame_features.append(x_widths[:, i, :])
 
                     frame_features = torch.cat(frame_features, -1).unsqueeze(-1)
                     features.append(frame_features)
@@ -602,9 +604,11 @@ class ModulusModel():
 
                     # Execute FC layers on other data and append
                     if self.use_force: # Force measurements
-                        frame_features.append(self.force_encoder(x_forces[:, i, :]))
+                        # frame_features.append(self.force_encoder(x_forces[:, i, :]))
+                        frame_features.append(x_forces[:, i, :])
                     if self.use_width: # Width measurements
-                        frame_features.append(self.width_encoder(x_widths[:, i, :]))
+                        # frame_features.append(self.width_encoder(x_widths[:, i, :]))
+                        frame_features.append(x_widths[:, i, :])
 
                     frame_features = torch.cat(frame_features, -1).unsqueeze(-1)
                     features.append(frame_features)
@@ -901,14 +905,14 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'LSTM_2Layers',   
+        'run_name': 'DirectFW_LSTM_2Layers',   
 
         # Training and model parameters
         'epochs'            : 150,
         'batch_size'        : 32,
         'use_RNN'           : True,
         'img_feature_size'  : 32,
-        'fwe_feature_size'  : 4, # 24,
+        'fwe_feature_size'  : 1, # 4, # 24,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
         'learning_rate'     : 1e-4,
@@ -920,17 +924,17 @@ if __name__ == "__main__":
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
     base_run_name = config['run_name']
-    LR_to_epoch = {
-        '1e-3': 100,
-        '1e-4': 150,
-        '1e-5': 250,
-    }
-    for lr in LR_to_epoch.keys():
-        config['learning_rate'] = float(lr)
-        config['epochs'] = LR_to_epoch[lr]
-        for i in range(2):
-            config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
+    # LR_to_epoch = {
+    #     '1e-3': 100,
+    #     '1e-4': 150,
+    #     '1e-5': 250,
+    # }
+    # for lr in LR_to_epoch.keys():
+    #     config['learning_rate'] = float(lr)
+    #     config['epochs'] = LR_to_epoch[lr]
+    for i in range(2):
+        config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
 
-            # Train the model over some data
-            train_modulus = ModulusModel(config, device=device)
-            train_modulus.train()
+        # Train the model over some data
+        train_modulus = ModulusModel(config, device=device)
+        train_modulus.train()
