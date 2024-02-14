@@ -1,5 +1,5 @@
 import os
-import sys
+import math
 import pickle
 import csv
 import json
@@ -10,6 +10,7 @@ import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
 import wandb
+import matplotlib.pyplot as plt
 
 # from wedge_video import WARPED_CROPPED_IMG_SIZE
 from nn_modules import *
@@ -158,6 +159,7 @@ class CustomDataset(Dataset):
 class ModulusModel():
     def __init__(self, config, device=None):
         self.config = config
+        self._unpack_config(config)
 
         # Use GPU by default
         if device is None:
@@ -165,22 +167,6 @@ class ModulusModel():
             torch.cuda.empty_cache()
         else:
             self.device = device
-
-        # Data parameters 
-        self.data_dir               = config['data_dir']
-        self.n_frames               = config['n_frames']
-        self.img_size               = config['img_size']
-        self.img_style              = config['img_style']
-        self.n_channels             = config['n_channels']
-        self.use_markers            = config['use_markers']
-        self.use_force              = config['use_force']
-        self.use_width              = config['use_width']
-        self.use_estimation         = config['use_estimation']
-        self.use_transformations    = config['use_transformations']
-        self.exclude                = config['exclude']
-        
-        self.use_wandb              = config['use_wandb']
-        self.run_name               = config['run_name']
 
         # Create max values for scaling
         self.normalization_values = { # Based on acquired data maximums
@@ -190,19 +176,6 @@ class ModulusModel():
             'max_width': 0.08,
             'max_force': 60.0,
         }
-
-        # Define training parameters
-        self.epochs             = config['epochs']
-        self.batch_size         = config['batch_size']
-        self.img_feature_size   = config['img_feature_size']
-        self.fwe_feature_size   = config['fwe_feature_size']
-        self.val_pct            = config['val_pct']
-        self.dropout_pct        = config['dropout_pct']
-        self.learning_rate      = config['learning_rate']
-        self.gamma              = config['gamma']
-        self.lr_step_size       = config['lr_step_size']
-        self.random_state       = config['random_state']
-        self.criterion          = nn.MSELoss()
 
         # Initialize CNN based on config
         self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size, dropout_pct=self.dropout_pct)
@@ -318,6 +291,37 @@ class ModulusModel():
 
         return
     
+    def _unpack_config(self, config):
+        # Data parameters 
+        self.data_dir               = config['data_dir']
+        self.n_frames               = config['n_frames']
+        self.img_size               = config['img_size']
+        self.img_style              = config['img_style']
+        self.n_channels             = config['n_channels']
+        self.use_markers            = config['use_markers']
+        self.use_force              = config['use_force']
+        self.use_width              = config['use_width']
+        self.use_estimation         = config['use_estimation']
+        self.use_transformations    = config['use_transformations']
+        self.exclude                = config['exclude']
+        
+        self.use_wandb              = config['use_wandb']
+        self.run_name               = config['run_name']
+
+        # Define training parameters
+        self.epochs             = config['epochs']
+        self.batch_size         = config['batch_size']
+        self.img_feature_size   = config['img_feature_size']
+        self.fwe_feature_size   = config['fwe_feature_size']
+        self.val_pct            = config['val_pct']
+        self.dropout_pct        = config['dropout_pct']
+        self.learning_rate      = config['learning_rate']
+        self.gamma              = config['gamma']
+        self.lr_step_size       = config['lr_step_size']
+        self.random_state       = config['random_state']
+        self.criterion          = nn.MSELoss()
+        return
+    
     # Normalize labels to maximum on log scale
     def log_normalize(self, x, x_max=None, x_min=None, use_torch=False):
         if x_max is None: x_max = self.normalization_values['max_modulus']
@@ -333,9 +337,12 @@ class ModulusModel():
         return x_min * (x_max/x_min)**(x_normal)
 
     # Create data loaders based on configuration
-    def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, training_data_folder_name=f'training_data__Nframes={N_FRAMES}'):
+    def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, csv_shape_column=2, csv_material_column=3, \
+                         training_data_folder_name=f'training_data__Nframes={N_FRAMES}'):
         # Read CSV files with objects and labels tabulated
         self.object_to_modulus = {}
+        self.object_to_material = {}
+        self.object_to_shape = {}
         csv_file_path = f'{self.data_dir}/{labels_csv_name}'
         with open(csv_file_path, 'r') as file:
             csv_reader = csv.reader(file)
@@ -346,6 +353,9 @@ class ModulusModel():
                     self.object_to_modulus[row[1]] = modulus
                     self.normalization_values['max_modulus'] = max(self.normalization_values['max_modulus'], modulus)
                     self.normalization_values['min_modulus'] = min(self.normalization_values['min_modulus'], modulus)
+
+                    self.object_to_material[row[1]] = row[csv_material_column]
+                    self.object_to_shape[row[1]] = row[csv_shape_column]
 
         self.x_max_cuda = torch.Tensor([self.normalization_values['max_modulus']]).to(device)
         self.x_min_cuda = torch.Tensor([self.normalization_values['min_modulus']]).to(device)
@@ -358,28 +368,34 @@ class ModulusModel():
         elastic_moduli = [self.object_to_modulus[x] for x in object_names]
 
         # Split objects into validation or training
-        objects_train, objects_val, _, _ = train_test_split(object_names, elastic_moduli, test_size=self.val_pct, random_state=self.random_state)
+        self.objects_train, self.objects_val, _, _ = train_test_split(object_names, elastic_moduli, test_size=self.val_pct, random_state=self.random_state)
         del object_names, elastic_moduli
 
         # Get all the paths to grasp data within directory
         paths_to_files = []
         list_files(f'{self.data_dir}/{training_data_folder_name}', paths_to_files, self.config)
+        self.paths_to_files = paths_to_files
 
+        # Create data loaders based on training / validation break-up
+        self._create_data_loaders()
+        return
+    
+    def _create_data_loaders(self):
         # Divide paths up into training and validation data
         x_train, x_val = [], []
         y_train, y_val = [], []
         self.object_names = []
-        for file_path in paths_to_files:
+        for file_path in self.paths_to_files:
             file_name = os.path.basename(file_path)
             object_name = file_name.split('__')[0]
             if object_name in self.exclude: continue
 
-            if object_name in objects_train:
+            if object_name in self.objects_train:
                 self.object_names.append(object_name)
                 x_train.append(file_path)
                 y_train.append(self.log_normalize(self.object_to_modulus[object_name]))
 
-            elif object_name in objects_val:
+            elif object_name in self.objects_val:
                 self.object_names.append(object_name)
                 x_val.append(file_path)
                 y_val.append(self.log_normalize(self.object_to_modulus[object_name]))
@@ -387,14 +403,14 @@ class ModulusModel():
         # Create some data structures for tracking performance
         self.train_object_performance = {}
         self.val_object_performance = {}
-        for object_name in objects_train:
+        for object_name in self.objects_train:
             self.train_object_performance[object_name] = {
                     'total_log_diff': 0,
                     'total_log_acc': 0,
                     'total_poorly_predicted': 0, # Off by factor of 100 or more
                     'count': 0
                 }
-        for object_name in objects_val:
+        for object_name in self.objects_val:
             self.val_object_performance[object_name] = {
                     'total_log_diff': 0,
                     'total_log_acc': 0,
@@ -458,15 +474,11 @@ class ModulusModel():
                 # if self.use_width: # Width measurements
                 #     features.append(self.width_encoder(x_widths[:, i, :]))
 
-
-
             # Execute FC layers on other data and append
             if self.use_force: # Force measurements
                 features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
             if self.use_width: # Width measurements
                 features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
-
-
             if self.use_estimation: # Precomputed modulus estimation
                 features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
@@ -502,7 +514,7 @@ class ModulusModel():
 
         return train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err
 
-    def _val_epoch(self):
+    def _val_epoch(self, track_predictions=False):
         self.video_encoder.eval()
         if self.use_force:
             self.force_encoder.eval()
@@ -511,6 +523,9 @@ class ModulusModel():
         if self.use_estimation:
             self.estimation_encoder.eval()
         self.decoder.eval()
+
+        if track_predictions:
+            predictions = { obj : [] for obj in self.objects_val }
 
         val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
@@ -531,17 +546,11 @@ class ModulusModel():
                 # if self.use_width: # Width measurements
                 #     features.append(self.width_encoder(x_widths[:, i, :]))
 
-
-
             # Execute FC layers on other data and append
             if self.use_force: # Force measurements
                 features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
             if self.use_width: # Width measurements
                 features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
-
-
-
-
             if self.use_estimation: # Precomputed modulus estimation
                 features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
@@ -566,50 +575,19 @@ class ModulusModel():
                     self.val_object_performance[object_names[i]]['total_poorly_predicted'] += 1
                     val_pct_with_100_factor_err += 1
 
+                if track_predictions:
+                    predictions[object_names[i]] = self.log_unnormalize(outputs.cpu()).detach().numpy()[i]
+
         # Return loss and accuracy
         val_loss /= batch_count
         val_log_acc /= (self.batch_size * batch_count)
         val_avg_log_diff /= (self.batch_size * batch_count)
         val_pct_with_100_factor_err /= (self.batch_size * batch_count)
 
-        return val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err
-
-    def _save_model(self):
-        if not os.path.exists(f'./model/{self.run_name}'):
-            os.mkdir(f'./model/{self.run_name}')
+        if track_predictions:
+            return predictions
         else:
-            if os.path.exists(f'./model/{self.run_name}/config.json'):
-                os.remove(f'./model/{self.run_name}/config.json')
-            if os.path.exists(f'./model/{self.run_name}/train_object_performance.json'):
-                os.remove(f'./model/{self.run_name}/train_object_performance.json')
-            if os.path.exists(f'./model/{self.run_name}/val_object_performance.json'):
-                os.remove(f'./model/{self.run_name}/val_object_performance.json')
-            if os.path.exists(f'./model/{self.run_name}/video_encoder.pth'):
-                os.remove(f'./model/{self.run_name}/video_encoder.pth')
-            if os.path.exists(f'./model/{self.run_name}/force_encoder.pth'):
-                os.remove(f'./model/{self.run_name}/force_encoder.pth')
-            if os.path.exists(f'./model/{self.run_name}/width_encoder.pth'):
-                os.remove(f'./model/{self.run_name}/width_encoder.pth')
-            if os.path.exists(f'./model/{self.run_name}/estimation_encoder.pth'):
-                os.remove(f'./model/{self.run_name}/estimation_encoder.pth')
-            if os.path.exists(f'./model/{self.run_name}/decoder.pth'):
-                os.remove(f'./model/{self.run_name}/decoder.pth')
-
-        # Save configuration dictionary and all files for the model(s)
-        with open(f'./model/{self.run_name}/config.json', 'w') as json_file:
-            json.dump(self.config, json_file)
-        torch.save(self.video_encoder.state_dict(), f'./model/{self.run_name}/video_encoder.pth')
-        if self.use_force: torch.save(self.force_encoder.state_dict(), f'./model/{self.run_name}/force_encoder.pth')
-        if self.use_width: torch.save(self.width_encoder.state_dict(), f'./model/{self.run_name}/width_encoder.pth')
-        if self.use_estimation: torch.save(self.estimation_encoder.state_dict(), f'./model/{self.run_name}/estimation_encoder.pth')
-        torch.save(self.decoder.state_dict(), f'./model/{self.run_name}/decoder.pth')
-
-        # Save performance data
-        with open(f'./model/{self.run_name}/train_object_performance.json', 'w') as json_file:
-            json.dump(self.train_object_performance, json_file)
-        with open(f'./model/{self.run_name}/val_object_performance.json', 'w') as json_file:
-            json.dump(self.val_object_performance, json_file)
-        return
+            return val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err
 
     def train(self):
         learning_rate = self.learning_rate 
@@ -661,7 +639,7 @@ class ModulusModel():
             # Save the best model based on validation loss
             if val_log_acc >= max_val_log_acc:
                 max_val_log_acc = val_log_acc
-                self._save_model()
+                self.save_model()
 
             # Log information to W&B
             if self.use_wandb:
@@ -686,6 +664,126 @@ class ModulusModel():
 
         return
     
+    def save_model(self):
+        if not os.path.exists(f'./model/{self.run_name}'):
+            os.mkdir(f'./model/{self.run_name}')
+        else:
+            if os.path.exists(f'./model/{self.run_name}/config.json'):
+                os.remove(f'./model/{self.run_name}/config.json')
+            if os.path.exists(f'./model/{self.run_name}/train_object_performance.json'):
+                os.remove(f'./model/{self.run_name}/train_object_performance.json')
+            if os.path.exists(f'./model/{self.run_name}/val_object_performance.json'):
+                os.remove(f'./model/{self.run_name}/val_object_performance.json')
+            if os.path.exists(f'./model/{self.run_name}/video_encoder.pth'):
+                os.remove(f'./model/{self.run_name}/video_encoder.pth')
+            if os.path.exists(f'./model/{self.run_name}/force_encoder.pth'):
+                os.remove(f'./model/{self.run_name}/force_encoder.pth')
+            if os.path.exists(f'./model/{self.run_name}/width_encoder.pth'):
+                os.remove(f'./model/{self.run_name}/width_encoder.pth')
+            if os.path.exists(f'./model/{self.run_name}/estimation_encoder.pth'):
+                os.remove(f'./model/{self.run_name}/estimation_encoder.pth')
+            if os.path.exists(f'./model/{self.run_name}/decoder.pth'):
+                os.remove(f'./model/{self.run_name}/decoder.pth')
+
+        # Save configuration dictionary and all files for the model(s)
+        with open(f'./model/{self.run_name}/config.json', 'w') as json_file:
+            json.dump(self.config, json_file)
+        torch.save(self.video_encoder.state_dict(), f'./model/{self.run_name}/video_encoder.pth')
+        if self.use_force: torch.save(self.force_encoder.state_dict(), f'./model/{self.run_name}/force_encoder.pth')
+        if self.use_width: torch.save(self.width_encoder.state_dict(), f'./model/{self.run_name}/width_encoder.pth')
+        if self.use_estimation: torch.save(self.estimation_encoder.state_dict(), f'./model/{self.run_name}/estimation_encoder.pth')
+        torch.save(self.decoder.state_dict(), f'./model/{self.run_name}/decoder.pth')
+
+        # Save performance data
+        with open(f'./model/{self.run_name}/train_object_performance.json', 'w') as json_file:
+            json.dump(self.train_object_performance, json_file)
+        with open(f'./model/{self.run_name}/val_object_performance.json', 'w') as json_file:
+            json.dump(self.val_object_performance, json_file)
+        return
+
+    def load_model(self, folder_path):
+        with open(f'{folder_path}/config.json', 'r') as file:
+            config = json.load(file)
+        self._unpack_config(config)
+
+        self.video_encoder.load_state_dict(torch.load(f'{folder_path}/video_encoder.pth'))
+        if self.use_force: self.force_encoder.load_state_dict(torch.load(f'{folder_path}/force_encoder.pth'))
+        if self.use_width: self.width_encoder.load_state_dict(torch.load(f'{folder_path}/width_encoder.pth'))
+        if self.use_force: self.estimation_encoder.load_state_dict(torch.load(f'{folder_path}/estimation_encoder.pth'))
+        self.decoder.load_state_dict(torch.load(f'{folder_path}/decoder.pth'))
+
+        with open(f'{folder_path}/train_object_performance.json', 'r') as file:
+            train_object_performance = json.load(file)
+        with open(f'{folder_path}/val_object_performance.json', 'r') as file:
+            val_object_performance = json.load(file)
+        self.objects_train = train_object_performance.keys()
+        self.objects_val = val_object_performance.keys()
+
+        # Create data loaders based on original training distinctions
+        self._create_data_loaders(self.objects_train, self.objects_val)
+        return
+
+    def make_performance_plot(self):
+        material_to_color = {
+            'Foam': 'firebrick',
+            'Plastic': 'forestgreen',
+            'Wood': 'goldenrod',
+            'Paper': 'darkviolet',
+            'Glass': 'darkgray',
+            'Ceramic': 'pink',
+            'Rubber': 'slateblue',
+            'Metal': 'royalblue',
+            'Food': 'darkorange',
+        }
+        material_prediction_data = {
+            mat : [] for mat in material_to_color.keys()
+        }
+        material_label_data = {
+            mat : [] for mat in material_to_color.keys()
+        }
+
+        # Run validation epoch to get out all predictions
+        predictions = self._val_epoch(track_predictions=True)
+
+        # Turn predictions into plotting data
+        for obj in predictions.keys():
+            if len(predictions[obj]) == 0: continue
+            assert obj in self.object_to_material.keys()
+            mat = self.object_to_material[obj]
+            for E in predictions[obj]:
+                if E > 0 and not math.isnan(E):
+                    assert not math.isnan(E)
+                    material_prediction_data[mat].append(E)
+                    material_label_data[mat].append(self.object_to_modulus[obj])
+
+        # Create plot
+        plt.rcParams['text.usetex'] = True
+        plt.rcParams["font.family"] = "sans-serif"
+        plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
+        plt.rc('text', usetex=True)
+        plt.figure()
+        plt.plot([100, 10**12], [100, 10**12], 'k--', label='_')
+        plt.fill_between([100, 10**12], [10**(1.5), 10**(11.5)], [10**(2.5), 10**(12.5)], color='gray', alpha=0.2)
+        plt.xscale('log')
+        plt.yscale('log')
+
+        for mat in material_to_color.keys():
+            plt.plot(material_label_data[mat], material_prediction_data[mat], '.', markersize=10, color=material_to_color[mat], label=mat)
+
+        plt.xlabel(r"Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
+        plt.ylabel(r"Predicted Modulus ($\\widetilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
+        plt.xlim([100, 10**12])
+        plt.ylim([100, 10**12])
+        plt.title('Neural Network', fontsize=14)
+
+        plt.legend()
+        plt.grid(True, which='both', linestyle='--', linewidth=0.25)
+        plt.tick_params(axis='both', which='both', labelsize=10)
+
+        plt.savefig('./figures/naive_method.png')
+        plt.show()
+        return
+
 
 if __name__ == "__main__":
 
