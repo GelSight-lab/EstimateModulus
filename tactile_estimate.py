@@ -172,8 +172,9 @@ class EstimateModulus():
         return self.grasp_data.gripper_widths()
     
     # Return depth images (in meters)
-    def depth_images(self):
-        return 0.001 * self.grasp_data.depth_images(other_finger=self.use_other_video)
+    def depth_images(self, other_finger=None):
+        if other_finger is None: other_finger = self.use_other_video
+        return 0.001 * self.grasp_data.depth_images(other_finger=other_finger)
     
     # Return maximum value from each depth image (in meters)
     def max_depths(self, depth_images=None):
@@ -203,6 +204,18 @@ class EstimateModulus():
         for i in range(len(depth_images)):
             top_percentile_depths.append(np.percentile(depth_images[i,:,:], percentile))
         return np.array(top_percentile_depths)
+    
+    # Use a user-specified contact mask
+    def input_peak_depth_method(self, depth_method_str, depth_images=None):
+        if depth_images is None: depth_images = self.depth_images()
+        peak_depth_functions = {
+            'top_percentile_depths': self.top_percentile_depths,
+            'mean_max_depths': self.mean_max_depths,
+            'max_depths': self.max_depths,
+            'mean_depths': self.mean_depths,
+        }
+        assert depth_method_str in peak_depth_functions.keys()
+        return peak_depth_functions[depth_method_str](depth_images=depth_images)
     
     # Return mask of which pixels are in contact with object based on constant threshold
     def constant_threshold_contact_mask(self, depth):
@@ -249,7 +262,7 @@ class EstimateModulus():
         if self.depth_images()[-1].max() > 10*self.depth_threshold:
             mask = self.constant_threshold_contact_mask(depth)
         else:
-            mask = self.total_mean_threshold_contact_mask(depth)
+            mask = self.total_normalized_threshold_contact_mask(depth)
         return mask
     
     # Wrap the chosen contact mask function into one place
@@ -296,9 +309,10 @@ class EstimateModulus():
         return
     
     # Return the gripper width at first contact, assuming already clipped to press
-    def length_of_first_contact(self):
-        top_percentile_depths = self.top_percentile_depths()
-        if self.mean_depths().max() < self.depth_threshold:
+    def length_of_first_contact(self, depth_images=None):
+        if depth_images is None: depth_images = self.depth_images(0)
+        top_percentile_depths = self.top_percentile_depths(depth_images=depth_images)
+        if self.mean_depths(depth_images=depth_images).max() < self.depth_threshold:
             return self.gripper_widths()[0]
         else:
             i_contact = np.argmax(top_percentile_depths >= self.depth_threshold)
@@ -310,12 +324,14 @@ class EstimateModulus():
         return
     
     # Preprocess depth by taking mean over square kernels
-    def lower_resolution_depth(self, kernel_size=10):
-        assert self.depth_images().shape[1] % kernel_size == self.depth_images().shape[2] % kernel_size == 0
+    def lower_resolution_depth(self, depth_images=None, kernel_size=10):
+        if depth_images is None:
+            depth_images = self.depth_images()
+        assert depth_images.shape[1] % kernel_size == depth_images.shape[2] % kernel_size == 0
         blurred_depth_images = []
-        for i in range(self.depth_images().shape[0]):
-            reshaped_depth_image = self.depth_images()[i].reshape(self.depth_images().shape[1] // kernel_size, kernel_size, \
-                                                                  self.depth_images().shape[2] // kernel_size, kernel_size)
+        for i in range(depth_images.shape[0]):
+            reshaped_depth_image = depth_images[i].reshape(depth_images.shape[1] // kernel_size, kernel_size, \
+                                                                  depth_images.shape[2] // kernel_size, kernel_size)
             blurred_depth_images.append(reshaped_depth_image.mean(axis=(1, 3)))
 
         # Extend such that the array becomes the same size again
@@ -382,7 +398,7 @@ class EstimateModulus():
     
     # Naively estimate modulus based on gripper width change and aggregate modulus
     # (Notably requires both gripper width and tactile depth data)
-    def fit_modulus_naive(self, contact_mask=None, use_mean=True, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_lower_resolution_depth=False):
+    def fit_modulus_naive(self, contact_mask=None, depth_method=None, use_mean=True, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_lower_resolution_depth=False):
         assert self.use_gripper_width
         assert not (use_ellipse_mask and fit_mask_to_ellipse)
 
@@ -393,9 +409,12 @@ class EstimateModulus():
             depth_images = self.lower_resolution_depth(kernel_size=5)
         else:
             depth_images = self.depth_images()
-
-        # Precompute peak depths based on percentile
-        peak_depths = self.top_percentile_depths(depth_images=depth_images)
+        
+        if depth_method is None:
+            # Precompute peak depths based on percentile
+            peak_depths = self.top_percentile_depths(depth_images=depth_images)
+        else:
+            peak_depths = self.input_peak_depth_method(depth_method, depth_images=depth_images)
         
         dL_log = []
         cA_log = []
@@ -462,6 +481,101 @@ class EstimateModulus():
 
         return E
     
+    def fit_modulus_naive_both_sides(self, contact_mask=None, depth_method=None, use_mean=True, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_lower_resolution_depth=False):
+        assert self.use_gripper_width
+        assert not (use_ellipse_mask and fit_mask_to_ellipse)
+
+        depth_images = self.depth_images()
+        other_depth_images = self.depth_images(other_finger=True)
+        
+        if use_lower_resolution_depth:
+            depth_images = self.lower_resolution_depth(depth_images=depth_images, kernel_size=5)
+            other_depth_images = self.lower_resolution_depth(depth_images=other_depth_images)
+
+        if depth_method is None:
+            # Precompute peak depths based on percentile
+            peak_depths = self.top_percentile_depths(depth_images=depth_images)
+            other_peak_depths = self.top_percentile_depths(depth_images=other_depth_images)
+        else:
+            peak_depths = self.input_peak_depth_method(depth_method, depth_images=depth_images)
+            other_peak_depths = self.input_peak_depth_method(depth_method, depth_images=other_depth_images)
+        
+        # Find initial length of first contact
+        if self.mean_depths(depth_images=depth_images).max() < self.depth_threshold and \
+            self.mean_depths(depth_images=other_depth_images).max() < self.depth_threshold:
+            L0 = self.gripper_widths()[0]
+        else:
+            i_contact = np.argmax((peak_depths >= self.depth_threshold) * (other_peak_depths >= self.depth_threshold))
+            L0 = self.gripper_widths()[i_contact] + peak_depths[i_contact] + other_peak_depths[i_contact]
+
+        dL_log = []
+        cA_log = []
+
+        contact_areas, a = [], []
+        x_data, y_data, d = [], [], []
+        for i in range(len(depth_images)):
+            depth_i = depth_images[i]
+            other_depth_i = other_depth_images[i]
+            
+            if use_ellipse_mask:
+                assert contact_mask is None
+                # Compute mask using ellipse fit
+                mask = self.ellipse_contact_mask(depth_i)
+                other_mask = self.ellipse_contact_mask(other_depth_i)
+            else:
+                # Compute mask using traditional thresholding alone
+                if contact_mask is None:
+                    mask = self.contact_mask(depth_i)
+                    other_mask = self.contact_mask(other_depth_i)
+                else:
+                    mask = self.input_contact_mask(contact_mask, depth_i)
+                    other_mask = self.input_contact_mask(contact_mask, other_depth_i)
+                if mask.max() * other_mask.max() == 0: continue
+
+                if fit_mask_to_ellipse:
+                    # Fit an ellipse to the mask and modify
+                    ellipse = fit_ellipse_from_binary(mask)
+                    mask = np.zeros_like(mask, dtype=np.uint8)
+                    cv2.ellipse(mask, ellipse, 1, -1)
+                    other_ellipse = fit_ellipse_from_binary(other_mask)
+                    other_mask = np.zeros_like(other_mask, dtype=np.uint8)
+                    cv2.ellipse(other_mask, other_ellipse, 1, -1)
+
+            if use_mean:
+                # Take average over masked contact area
+                d_i = np.sum(depth_i * mask) / np.sum(mask)
+                other_d_i = np.sum(other_depth_i * other_mask) / np.sum(other_mask)
+            else:
+                # Take deepest point
+                d_i = peak_depths[i]
+                other_d_i = other_peak_depths[i]
+                
+            # Use mask to compute contact area
+            contact_area_i = (0.001 / PX_TO_MM)**2 * (np.sum(mask) + np.sum(other_mask))/2
+            a_i = np.sqrt(contact_area_i / np.pi)
+
+            dL = -(self.gripper_widths()[i] + d_i + other_d_i - L0)
+            dL_log.append(dL)
+            cA_log.append(contact_area_i)
+            if dL >= 0 and contact_area_i >= 3e-5:
+                x_data.append(dL/L0) # Strain
+                y_data.append(abs(self.forces()[i]) / contact_area_i) # Stress
+                contact_areas.append(contact_area_i)
+                a.append(a_i)
+                d.append((d_i + other_d_i) / 2)
+
+        # Save stuff for plotting
+        self._x_data = np.array(x_data)
+        self._y_data = np.array(y_data)
+        self._contact_areas =  np.array(contact_areas)
+        self._a = np.array(a)
+        self._d = np.array(d)
+
+        # Fit to modulus
+        E = self.linear_coeff_fit(x_data, y_data)
+
+        return E
+    
     # Fit data to Hertizan model with apparent deformation
     # (Notably only requires gripper width data, not tactile depth)
     def fit_modulus_hertz(self, contact_mask=None, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_lower_resolution_depth=False):
@@ -513,6 +627,92 @@ class EstimateModulus():
                 y_data.append(self.forces()[i])
                 contact_areas.append(contact_area_i)
                 d.append(d_i)
+                a.append(a_i)
+
+        self._x_data = np.array(x_data)
+        self._y_data = np.array(y_data)
+        self._contact_areas =  np.array(contact_areas)
+        self._a = np.array(a)
+        self._d = np.array(d)
+
+        E_agg = self.linear_coeff_fit(x_data, y_data)
+        E = (1/E_agg - 1/(10*self.E_gel))**(-1)
+
+        return E
+    
+    # Fit data to Hertzian model with apparent deformation
+    # (Notably only requires gripper width data, not tactile depth)
+    def fit_modulus_hertz_both_sides(self, contact_mask=None, depth_method=None, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_lower_resolution_depth=False):
+        # Calculate apparent deformation using gripper width
+        # Pretend that the contact geometry is cylindrical
+        # This gives the relation...
+        #       F_N  =  2 E* d a
+        #       [From (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov]
+        assert not (use_ellipse_mask and fit_mask_to_ellipse)
+
+        depth_images = self.depth_images()
+        other_depth_images = self.depth_images(other_finger=True)
+        
+        if use_lower_resolution_depth:
+            depth_images = self.lower_resolution_depth(depth_images=depth_images, kernel_size=5)
+            other_depth_images = self.lower_resolution_depth(depth_images=other_depth_images)
+
+        if depth_method is None:
+            # Precompute peak depths based on percentile
+            peak_depths = self.top_percentile_depths(depth_images=depth_images)
+            other_peak_depths = self.top_percentile_depths(depth_images=other_depth_images)
+        else:
+            peak_depths = self.input_peak_depth_method(depth_method, depth_images=depth_images)
+            other_peak_depths = self.input_peak_depth_method(depth_method, depth_images=other_depth_images)
+        
+        # Find initial length of first contact
+        if self.mean_depths(depth_images=depth_images).max() < self.depth_threshold and \
+            self.mean_depths(depth_images=other_depth_images).max() < self.depth_threshold:
+            L0 = self.gripper_widths()[0]
+        else:
+            i_contact = np.argmax((peak_depths >= self.depth_threshold) * (other_peak_depths >= self.depth_threshold))
+            L0 = self.gripper_widths()[i_contact] + peak_depths[i_contact] + other_peak_depths[i_contact]
+
+        x_data, y_data = [], []
+        d, contact_areas, a = [], [], []
+        for i in range(len(depth_images)):
+            depth_i = depth_images[i]
+            other_depth_i = depth_images[i]
+            apparent_d_i = L0 - self.gripper_widths()[i]
+            
+            if use_ellipse_mask:
+                # Compute mask using ellipse fit
+                mask = self.ellipse_contact_mask(depth_i)
+                other_mask = self.ellipse_contact_mask(other_depth_i)
+                assert contact_mask is None
+            else:
+                # Compute mask using traditional thresholding alone
+                if contact_mask is None:
+                    mask = self.contact_mask(depth_i)
+                    other_mask = self.contact_mask(other_depth_i)
+                else:
+                    mask = self.input_contact_mask(contact_mask, depth_i)
+                    other_mask = self.input_contact_mask(contact_mask, other_depth_i)
+                if mask.max() * other_mask.max() == 0: continue
+
+                if fit_mask_to_ellipse:
+                    # Fit an ellipse to the mask and modify
+                    ellipse = fit_ellipse_from_binary(mask)
+                    mask = np.zeros_like(mask, dtype=np.uint8)
+                    cv2.ellipse(mask, ellipse, 1, -1)
+                    other_ellipse = fit_ellipse_from_binary(other_mask)
+                    other_mask = np.zeros_like(other_mask, dtype=np.uint8)
+                    cv2.ellipse(other_mask, other_ellipse, 1, -1)
+                
+            # Use mask to compute contact area
+            contact_area_i = (0.001 / PX_TO_MM)**2 * (np.sum(mask) + np.sum(other_mask)) / 2
+            a_i = np.sqrt(contact_area_i / np.pi)
+
+            if contact_area_i >= 3e-5 and apparent_d_i > 0:
+                x_data.append(2*apparent_d_i*a_i)
+                y_data.append(self.forces()[i])
+                contact_areas.append(contact_area_i)
+                d.append(apparent_d_i)
                 a.append(a_i)
 
         self._x_data = np.array(x_data)
@@ -600,7 +800,7 @@ class EstimateModulus():
     
     # Use Hertzian contact models and MDR to compute the modulus of unknown object
     # (Notably only requires tactile depth data, not gripper width)
-    def fit_modulus_MDR(self, contact_mask=None, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_apparent_deformation=True, use_lower_resolution_depth=False, use_mean_radius=False):
+    def fit_modulus_MDR(self, contact_mask=None, depth_method=None, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_apparent_deformation=True, use_lower_resolution_depth=False, use_mean_radius=False):
         # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
         if use_apparent_deformation:
             assert self.use_gripper_width
@@ -622,8 +822,11 @@ class EstimateModulus():
         else:
             depth_images = self.depth_images()
 
-        # Precompute peak depths by taking the mean of 5x5 neighborhood around maximum depth
-        peak_depths = self.mean_max_depths(depth_images=depth_images)
+        if depth_method is None:
+            # Precompute peak depths based on percentile
+            peak_depths = self.mean_max_depths(depth_images=depth_images)
+        else:
+            peak_depths = self.input_peak_depth_method(depth_method, depth_images=depth_images)
 
         for i in range(len(depth_images)):
             F_i = abs(self.forces()[i])
@@ -695,6 +898,126 @@ class EstimateModulus():
 
         # if math.isnan(self.Estar_to_E(E_star)[0]) or self.Estar_to_E(E_star)[0] <= 0:
         #     print('Bad prediction!')
+
+        return E_star
+    
+    # Use Hertzian contact models and MDR to compute the modulus of unknown object
+    # (Notably only requires tactile depth data, not gripper width)
+    def fit_modulus_MDR_both_sides(self, contact_mask=None, depth_method=None, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_apparent_deformation=True, use_lower_resolution_depth=False, use_mean_radius=False):
+        # Following MDR algorithm from (2.3.2) in "Handbook of Contact Mechanics" by V.L. Popov
+        if use_apparent_deformation:
+            assert self.use_gripper_width
+
+        # p_0     = f(E*, F, a)
+        # p(r)    = p_0 sqrt(1 - r^2/a^2)
+        # q_1d(x) = 2 integral(r p(r) / sqrt(r^2 - x^2) dr)
+        # w_1d(x) = (1-v^2)/E_sensor * q_1d(x)
+        # w_1d(0) = max_depth
+
+        x_data, y_data = [], []
+        d, a, F, R = [], [], [], []
+        
+        depth_images = self.depth_images()
+        other_depth_images = self.depth_images(other_finger=True)
+        
+        if use_lower_resolution_depth:
+            depth_images = self.lower_resolution_depth(depth_images=depth_images, kernel_size=5)
+            other_depth_images = self.lower_resolution_depth(depth_images=other_depth_images)
+
+        if depth_method is None:
+            # Precompute peak depths based on percentile
+            peak_depths = self.mean_max_depths(depth_images=depth_images)
+            other_peak_depths = self.mean_max_depths(depth_images=other_depth_images)
+        else:
+            peak_depths = self.input_peak_depth_method(depth_method, depth_images=depth_images)
+            other_peak_depths = self.input_peak_depth_method(depth_method, depth_images=other_depth_images)
+
+        # Find initial length of first contact
+        if self.mean_depths(depth_images=depth_images).max() < self.depth_threshold and \
+            self.mean_depths(depth_images=other_depth_images).max() < self.depth_threshold:
+            L0 = self.gripper_widths()[0]
+        else:
+            i_contact = np.argmax((peak_depths >= self.depth_threshold) * (other_peak_depths >= self.depth_threshold))
+            L0 = self.gripper_widths()[i_contact] + peak_depths[i_contact] + other_peak_depths[i_contact]
+
+        for i in range(len(depth_images)):
+            F_i = abs(self.forces()[i])
+            d_i = peak_depths[i] # Depth
+            other_d_i = other_peak_depths[i] # Depth
+            mean_d_i = (other_d_i + d_i)/2
+            apparent_d_i = (L0 - self.gripper_widths()[i]) / 2
+
+            if use_ellipse_mask:
+                # Compute mask using ellipse fit
+                mask = self.ellipse_contact_mask(depth_images[i])
+                other_mask = self.ellipse_contact_mask(other_depth_images[i])
+                assert contact_mask is None
+            else:
+                # Compute mask using traditional thresholding alone
+                if contact_mask is None:
+                    mask = self.contact_mask(depth_images[i])
+                    other_mask = self.contact_mask(other_depth_images[i])
+                else:
+                    mask = self.input_contact_mask(contact_mask, depth_images[i])
+                    other_mask = self.input_contact_mask(contact_mask, other_depth_images[i])
+            
+            if mask.max() * other_mask.max() == 0: continue
+        
+            if fit_mask_to_ellipse:
+                # Fit mask to an ellipse and take contact radius
+                ellipse = fit_ellipse_from_binary(mask, plot_result=False)
+                major_axis, minor_axis = ellipse[1]
+                contact_area_i = np.pi * (0.001 / PX_TO_MM)**2 * major_axis * minor_axis
+                other_ellipse = fit_ellipse_from_binary(other_mask, plot_result=False)
+                other_major_axis, other_minor_axis = other_ellipse[1]
+                other_contact_area_i = np.pi * (0.001 / PX_TO_MM)**2 * other_major_axis * other_minor_axis
+                contact_area_i = (contact_area_i + other_contact_area_i)/2
+                a_i = np.sqrt(contact_area_i / np.pi)
+            else:
+                # Use mask to directly compute contact area
+                contact_area_i = (0.001 / PX_TO_MM)**2 * (np.sum(mask) + np.sum(other_mask))/2
+                a_i = np.sqrt(contact_area_i / np.pi)
+
+            if use_apparent_deformation:
+                # Use apparent deformation and contact area to compute object radius
+                if apparent_d_i <= 1e-4: continue
+                R_i = a_i**2 / apparent_d_i
+            elif use_ellipse_mask:
+                # Compute circle radius using ellipse fit
+                ellipse = fit_ellipse_from_float(depth_images[i], plot_result=False)
+                major_axis, minor_axis = ellipse[1]
+                other_ellipse = fit_ellipse_from_float(other_depth_images[i], plot_result=False)
+                other_major_axis, other_minor_axis = other_ellipse[1]
+                r_i = 0.5 * (0.001 / PX_TO_MM) * (major_axis + minor_axis + other_major_axis + other_minor_axis)/2
+                R_i = (other_d_i + d_i)/2 + (r_i**2 - (mean_d_i)**2)/(2*mean_d_i)
+            else:
+                # Compute estimated radius based on depth (d) and contact radius (a)
+                R_i = mean_d_i + (a_i**2 - mean_d_i**2)/(2*mean_d_i)
+
+            if F_i > 0 and contact_area_i >= 3e-5 and d_i > self.depth_threshold:
+                p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3        # From Wiki
+                q_1D_0 = p_0 * np.pi * a_i / 2
+                w_1D_0 = (1 - self.nu_gel**2) * q_1D_0 / self.E_gel
+                d.append(mean_d_i)
+                a.append(a_i)
+                R.append(R_i)
+                x_data.append(w_1D_0)
+                y_data.append(d_i)
+
+        if use_mean_radius:
+            # Scale data to cancel radius value with mean radius
+            for i in range(len(x_data)):
+                x_data[i] = x_data[i] * R[i]**2 / (np.array(R).mean()**2)
+
+        self._d = np.array(d)
+        self._a = np.array(a)
+        self._F = np.array(F)
+        self._R = np.array(R)
+        self._x_data = np.array(x_data)
+        self._y_data = np.array(y_data)
+
+        # Fit for E_star
+        E_star = self.linear_coeff_fit(x_data, y_data)**(3/2)
 
         return E_star
     

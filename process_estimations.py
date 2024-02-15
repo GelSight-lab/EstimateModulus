@@ -1,6 +1,7 @@
 import os
 import csv
 import json
+import copy
 import pickle
 from tqdm import tqdm
 from tactile_estimate import *
@@ -37,58 +38,63 @@ with open(csv_file_path, 'r') as file:
 # Define settings configuration for each estimator method
 naive_configs = [{
         'contact_mask': None,
+        'depth_method': 'top_percentile_depths',
         'use_mean': False,
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': False,
     },{
         'contact_mask': None,
+        'depth_method': 'top_percentile_depths',
+        'use_mean': False,
+        'use_ellipse_mask': False,
+        'fit_mask_to_ellipse': False,
+        'use_lower_resolution_depth': True,
+    },{
+        'contact_mask': None,
+        'depth_method': 'top_percentile_depths',
+        'use_mean': False,
+        'use_ellipse_mask': False,
+        'fit_mask_to_ellipse': True,
+        'use_lower_resolution_depth': True,
+    },{
+        'contact_mask': None,
+        'depth_method': 'mean_max_depths',
         'use_mean': False,
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': True,
     },
-    {
-        'contact_mask': None,
-        'use_mean': True,
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
-        'use_lower_resolution_depth': True,
-    },
-    {
-        'contact_mask': None,
-        'use_mean': False,
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': True,
-        'use_lower_resolution_depth': True,
-    },
-    {
-        'contact_mask': None,
-        'use_mean': True,
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': True,
-        'use_lower_resolution_depth': True,
-    }
 ]
 hertz_configs = [{
         'contact_mask': None,
+        'depth_method': 'top_percentile_depths',
         'use_ellipse_mask': False, 
         'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': False,
     },{
         'contact_mask': None,
+        'depth_method': 'top_percentile_depths',
         'use_ellipse_mask': False, 
         'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': True,
     },{
         'contact_mask': None,
+        'depth_method': 'top_percentile_depths',
         'use_ellipse_mask': False, 
         'fit_mask_to_ellipse': True,
+        'use_lower_resolution_depth': True,
+    },{
+        'contact_mask': None,
+        'depth_method': 'mean_max_depths',
+        'use_ellipse_mask': False, 
+        'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': True,
     }
 ]
 MDR_configs = [{
         'contact_mask': None,
+        'depth_method': 'mean_max_depths',
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': False,
         'use_apparent_deformation': True,
@@ -96,6 +102,7 @@ MDR_configs = [{
         'use_mean_radius': False
     },{
         'contact_mask': None,
+        'depth_method': 'mean_max_depths',
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': False,
         'use_apparent_deformation': False,
@@ -103,6 +110,7 @@ MDR_configs = [{
         'use_mean_radius': False
     },{
         'contact_mask': None,
+        'depth_method': 'mean_max_depths',
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': False,
         'use_apparent_deformation': True,
@@ -110,13 +118,7 @@ MDR_configs = [{
         'use_mean_radius': False
     },{
         'contact_mask': None,
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
-        'use_apparent_deformation': False,
-        'use_lower_resolution_depth': False,
-        'use_mean_radius': False
-    },{
-        'contact_mask': None,
+        'depth_method': 'mean_max_depths',
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': True,
         'use_apparent_deformation': True,
@@ -124,22 +126,35 @@ MDR_configs = [{
         'use_mean_radius': False
     },{
         'contact_mask': None,
+        'depth_method': 'top_percentile_depths',
         'use_ellipse_mask': False,
         'fit_mask_to_ellipse': False,
-        'use_apparent_deformation': False,
+        'use_apparent_deformation': True,
+        'use_lower_resolution_depth': False,
+        'use_mean_radius': False
+    },{
+        'contact_mask': None,
+        'depth_method': 'top_percentile_depths',
+        'use_ellipse_mask': False,
+        'fit_mask_to_ellipse': False,
+        'use_apparent_deformation': True,
         'use_lower_resolution_depth': True,
-        'use_mean_radius': True
+        'use_mean_radius': False
     }
 ]
+naive_both_sides_configs = copy.deepcopy(naive_configs)
+hertz_both_sides_configs = copy.deepcopy(hertz_configs)
+MDR_both_sides_configs = copy.deepcopy(MDR_configs)
 
 estimator = EstimateModulus(grasp_data=grasp_data, use_gripper_width=True, use_other_video=USE_MARKER_FINGER)
 
-CONTACT_MASKS = ['ellipse_contact_mask', 'constant_threshold_contact_mask', 'total_conditional_contact_mask' ] # , 'normalized_threshold_contact_mask' , \
-                #  'total_normalized_threshold_contact_mask', 'mean_threshold_contact_mask', 'total_mean_threshold_contact_mask', \
-                #  'std_above_mean_contact_mask'
-                # ]
+CONTACT_MASKS = [
+                 'ellipse_contact_mask', 'constant_threshold_contact_mask', 'total_conditional_contact_mask', \
+                 'normalized_threshold_contact_mask', 'total_normalized_threshold_contact_mask', \
+                 'mean_threshold_contact_mask', 'total_mean_threshold_contact_mask', 'std_above_mean_contact_mask' \
+                ]
 
-max_depths = {}
+# max_depths = {}
 
 objects = sorted(os.listdir(f'{DATA_DIR}/raw_data'))
 for object_name in tqdm(objects):
@@ -165,8 +180,8 @@ for object_name in tqdm(objects):
         estimator.clip_to_press()
         assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
 
-        # Save maximum depths
-        max_depths[os.path.splitext(file_name)[0]] = (int(np.argmax(estimator.max_depths())), estimator.max_depths().max(), -1, estimator.max_depths()[-1])
+        # # Save maximum depths
+        # max_depths[os.path.splitext(file_name)[0]] = (int(np.argmax(estimator.max_depths())), estimator.max_depths().max(), -1, estimator.max_depths()[-1])
 
         # Remove stagnant gripper values across measurement frames
         estimator.interpolate_gripper_widths()
@@ -174,58 +189,61 @@ for object_name in tqdm(objects):
         # Loop through all desired contact masks to get estimations
         for contact_mask in CONTACT_MASKS:
 
-            # Fit using naive estimator
-            for i in range(len(naive_configs)):
-                naive_config = naive_configs[i]
-                naive_config['contact_mask'] = contact_mask
+            # Fit using naive estimator with both sides
+            for i in range(len(naive_both_sides_configs)):
+                naive_both_sides_config = naive_both_sides_configs[i]
+                naive_both_sides_config['contact_mask'] = contact_mask
 
-                E_naive = estimator.fit_modulus_naive(
-                            contact_mask=naive_config['contact_mask'],
-                            use_mean=naive_config['use_mean'],
-                            use_ellipse_mask=naive_config['use_ellipse_mask'],
-                            fit_mask_to_ellipse=naive_config['fit_mask_to_ellipse'],
-                            use_lower_resolution_depth=naive_config['use_lower_resolution_depth']
+                E_naive = estimator.fit_modulus_naive_both_sides(
+                            contact_mask=naive_both_sides_config['contact_mask'],
+                            depth_method=naive_both_sides_config['depth_method'],
+                            use_mean=naive_both_sides_config['use_mean'],
+                            use_ellipse_mask=naive_both_sides_config['use_ellipse_mask'],
+                            fit_mask_to_ellipse=naive_both_sides_config['fit_mask_to_ellipse'],
+                            use_lower_resolution_depth=naive_both_sides_config['use_lower_resolution_depth']
                         )
-                config_contact_mask = naive_config['contact_mask'] if naive_config['contact_mask'] is not None else 'ellipse_contact_mask'
+                config_contact_mask = naive_both_sides_config['contact_mask'] if naive_both_sides_config['contact_mask'] is not None else 'ellipse_contact_mask'
 
-                if not os.path.exists(f'{file_path_prefix}/naive'):
-                    os.mkdir(f'{file_path_prefix}/naive')
-                if not os.path.exists(f'{file_path_prefix}/naive/{config_contact_mask}'):
-                    os.mkdir(f'{file_path_prefix}/naive/{config_contact_mask}')
-                with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i}.pkl', 'wb') as file:
+                if not os.path.exists(f'{file_path_prefix}/naive_both_sides'):
+                    os.mkdir(f'{file_path_prefix}/naive_both_sides')
+                if not os.path.exists(f'{file_path_prefix}/naive_both_sides/{config_contact_mask}'):
+                    os.mkdir(f'{file_path_prefix}/naive_both_sides/{config_contact_mask}')
+                with open(f'{file_path_prefix}/naive_both_sides/{config_contact_mask}/{i}.pkl', 'wb') as file:
                     pickle.dump(E_naive, file)
-                with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i}.json', 'w') as json_file:
-                    json.dump(naive_config, json_file)
+                with open(f'{file_path_prefix}/naive_both_sides/{config_contact_mask}/{i}.json', 'w') as json_file:
+                    json.dump(naive_both_sides_config, json_file)
 
-            # Fit using Hertzian estimator
-            for i in range(len(hertz_configs)):
-                hertz_config = hertz_configs[i]
+            # Fit using Hertzian estimator with both sides
+            for i in range(len(hertz_both_sides_configs)):
+                hertz_config = hertz_both_sides_configs[i]
                 hertz_config['contact_mask'] = contact_mask
 
-                E_hertz = estimator.fit_modulus_hertz(
+                E_hertz = estimator.fit_modulus_hertz_both_sides(
                             contact_mask=hertz_config['contact_mask'],
+                            depth_method=hertz_config['depth_method'],
                             use_ellipse_mask=hertz_config['use_ellipse_mask'],
                             fit_mask_to_ellipse=hertz_config['fit_mask_to_ellipse'],
                             use_lower_resolution_depth=hertz_config['use_lower_resolution_depth']
                         )
                 config_contact_mask = hertz_config['contact_mask'] if hertz_config['contact_mask'] is not None else 'ellipse_contact_mask'
                 
-                if not os.path.exists(f'{file_path_prefix}/hertz'):
-                    os.mkdir(f'{file_path_prefix}/hertz')
-                if not os.path.exists(f'{file_path_prefix}/hertz/{config_contact_mask}'):
-                    os.mkdir(f'{file_path_prefix}/hertz/{config_contact_mask}')
-                with open(f'{file_path_prefix}/hertz/{config_contact_mask}/{i}.pkl', 'wb') as file:
+                if not os.path.exists(f'{file_path_prefix}/hertz_both_sides'):
+                    os.mkdir(f'{file_path_prefix}/hertz_both_sides')
+                if not os.path.exists(f'{file_path_prefix}/hertz_both_sides/{config_contact_mask}'):
+                    os.mkdir(f'{file_path_prefix}/hertz_both_sides/{config_contact_mask}')
+                with open(f'{file_path_prefix}/hertz_both_sides/{config_contact_mask}/{i}.pkl', 'wb') as file:
                     pickle.dump(E_hertz, file)
-                with open(f'{file_path_prefix}/hertz/{config_contact_mask}/{i}.json', 'w') as json_file:
+                with open(f'{file_path_prefix}/hertz_both_sides/{config_contact_mask}/{i}.json', 'w') as json_file:
                     json.dump(hertz_config, json_file)
 
-            # Fit using MDR estimator
-            for i in range(len(MDR_configs)):
-                MDR_config = MDR_configs[i]
+            # Fit using MDR estimator with both sides
+            for i in range(len(MDR_both_sides_configs)):
+                MDR_config = MDR_both_sides_configs[i]
                 MDR_config['contact_mask'] = contact_mask
 
-                E_MDR = estimator.fit_modulus_MDR(
+                E_MDR = estimator.fit_modulus_MDR_both_sides(
                                         contact_mask=MDR_config['contact_mask'],
+                                        depth_method=MDR_config['depth_method'],
                                         use_ellipse_mask=MDR_config['use_ellipse_mask'],
                                         fit_mask_to_ellipse=MDR_config['fit_mask_to_ellipse'],
                                         use_apparent_deformation=MDR_config['use_apparent_deformation'],
@@ -234,21 +252,90 @@ for object_name in tqdm(objects):
                                     )
                 config_contact_mask = MDR_config['contact_mask'] if MDR_config['contact_mask'] is not None else 'ellipse_contact_mask'
 
-                if not os.path.exists(f'{file_path_prefix}/MDR'):
-                    os.mkdir(f'{file_path_prefix}/MDR')
-                if not os.path.exists(f'{file_path_prefix}/MDR/{config_contact_mask}'):
-                    os.mkdir(f'{file_path_prefix}/MDR/{config_contact_mask}')
-                with open(f'{file_path_prefix}/MDR/{config_contact_mask}/{i}.pkl', 'wb') as file:
+                if not os.path.exists(f'{file_path_prefix}/MDR_both_sides'):
+                    os.mkdir(f'{file_path_prefix}/MDR_both_sides')
+                if not os.path.exists(f'{file_path_prefix}/MDR_both_sides/{config_contact_mask}'):
+                    os.mkdir(f'{file_path_prefix}/MDR_both_sides/{config_contact_mask}')
+                with open(f'{file_path_prefix}/MDR_both_sides/{config_contact_mask}/{i}.pkl', 'wb') as file:
                     pickle.dump(E_MDR, file)
-                with open(f'{file_path_prefix}/MDR/{config_contact_mask}/{i}.json', 'w') as json_file:
+                with open(f'{file_path_prefix}/MDR_both_sides/{config_contact_mask}/{i}.json', 'w') as json_file:
                     json.dump(MDR_config, json_file)
+                    
+        #     # Fit using naive estimator
+        #     for i in range(len(naive_configs)):
+        #         naive_config = naive_configs[i]
+        #         naive_config['contact_mask'] = contact_mask
 
-        # Fit using the stochastic estimator
-        E_stochastic = estimator.fit_modulus_stochastic()
-        if not os.path.exists(f'{file_path_prefix}/stochastic'):
-            os.mkdir(f'{file_path_prefix}/stochastic')
-        with open(f'{file_path_prefix}/stochastic/0.pkl', 'wb') as file:
-            pickle.dump(E_stochastic, file)
+        #         E_naive = estimator.fit_modulus_naive(
+        #                     contact_mask=naive_config['contact_mask'],
+        #                     use_mean=naive_config['use_mean'],
+        #                     use_ellipse_mask=naive_config['use_ellipse_mask'],
+        #                     fit_mask_to_ellipse=naive_config['fit_mask_to_ellipse'],
+        #                     use_lower_resolution_depth=naive_config['use_lower_resolution_depth']
+        #                 )
+        #         config_contact_mask = naive_config['contact_mask'] if naive_config['contact_mask'] is not None else 'ellipse_contact_mask'
+
+        #         if not os.path.exists(f'{file_path_prefix}/naive'):
+        #             os.mkdir(f'{file_path_prefix}/naive')
+        #         if not os.path.exists(f'{file_path_prefix}/naive/{config_contact_mask}'):
+        #             os.mkdir(f'{file_path_prefix}/naive/{config_contact_mask}')
+        #         with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i}.pkl', 'wb') as file:
+        #             pickle.dump(E_naive, file)
+        #         with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i}.json', 'w') as json_file:
+        #             json.dump(naive_config, json_file)
+
+        #     # Fit using Hertzian estimator
+        #     for i in range(len(hertz_configs)):
+        #         hertz_config = hertz_configs[i]
+        #         hertz_config['contact_mask'] = contact_mask
+
+        #         E_hertz = estimator.fit_modulus_hertz(
+        #                     contact_mask=hertz_config['contact_mask'],
+        #                     use_ellipse_mask=hertz_config['use_ellipse_mask'],
+        #                     fit_mask_to_ellipse=hertz_config['fit_mask_to_ellipse'],
+        #                     use_lower_resolution_depth=hertz_config['use_lower_resolution_depth']
+        #                 )
+        #         config_contact_mask = hertz_config['contact_mask'] if hertz_config['contact_mask'] is not None else 'ellipse_contact_mask'
+                
+        #         if not os.path.exists(f'{file_path_prefix}/hertz'):
+        #             os.mkdir(f'{file_path_prefix}/hertz')
+        #         if not os.path.exists(f'{file_path_prefix}/hertz/{config_contact_mask}'):
+        #             os.mkdir(f'{file_path_prefix}/hertz/{config_contact_mask}')
+        #         with open(f'{file_path_prefix}/hertz/{config_contact_mask}/{i}.pkl', 'wb') as file:
+        #             pickle.dump(E_hertz, file)
+        #         with open(f'{file_path_prefix}/hertz/{config_contact_mask}/{i}.json', 'w') as json_file:
+        #             json.dump(hertz_config, json_file)
+
+        #     # Fit using MDR estimator
+        #     for i in range(len(MDR_configs)):
+        #         MDR_config = MDR_configs[i]
+        #         MDR_config['contact_mask'] = contact_mask
+
+        #         E_MDR = estimator.fit_modulus_MDR(
+        #                                 contact_mask=MDR_config['contact_mask'],
+        #                                 use_ellipse_mask=MDR_config['use_ellipse_mask'],
+        #                                 fit_mask_to_ellipse=MDR_config['fit_mask_to_ellipse'],
+        #                                 use_apparent_deformation=MDR_config['use_apparent_deformation'],
+        #                                 use_lower_resolution_depth=MDR_config['use_lower_resolution_depth'],
+        #                                 use_mean_radius=MDR_config['use_mean_radius'],
+        #                             )
+        #         config_contact_mask = MDR_config['contact_mask'] if MDR_config['contact_mask'] is not None else 'ellipse_contact_mask'
+
+        #         if not os.path.exists(f'{file_path_prefix}/MDR'):
+        #             os.mkdir(f'{file_path_prefix}/MDR')
+        #         if not os.path.exists(f'{file_path_prefix}/MDR/{config_contact_mask}'):
+        #             os.mkdir(f'{file_path_prefix}/MDR/{config_contact_mask}')
+        #         with open(f'{file_path_prefix}/MDR/{config_contact_mask}/{i}.pkl', 'wb') as file:
+        #             pickle.dump(E_MDR, file)
+        #         with open(f'{file_path_prefix}/MDR/{config_contact_mask}/{i}.json', 'w') as json_file:
+        #             json.dump(MDR_config, json_file)
+
+        # # Fit using the stochastic estimator
+        # E_stochastic = estimator.fit_modulus_stochastic()
+        # if not os.path.exists(f'{file_path_prefix}/stochastic'):
+        #     os.mkdir(f'{file_path_prefix}/stochastic')
+        # with open(f'{file_path_prefix}/stochastic/0.pkl', 'wb') as file:
+        #     pickle.dump(E_stochastic, file)
         
-with open(f'{DATA_DIR}/max_depths.json', 'w') as json_file:
-    json.dump(max_depths, json_file)
+# with open(f'{DATA_DIR}/max_depths.json', 'w') as json_file:
+#     json.dump(max_depths, json_file)

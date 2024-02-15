@@ -857,10 +857,11 @@ class ModulusModel():
                     count += 1
 
         # Create plot
-        plt.rcParams['text.usetex'] = True
-        plt.rcParams["font.family"] = "sans-serif"
-        plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
-        plt.rc('text', usetex=True)
+        plt.rcParams["font.family"] = "times-new-roman"
+        # plt.rcParams['text.usetex'] = True
+        # plt.rcParams["font.family"] = "sans-serif"
+        # plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
+        # plt.rc('text', usetex=True)
         plt.figure()
         plt.plot([100, 10**12], [100, 10**12], 'k--', label='_')
         plt.fill_between([100, 10**12], [10**(1.5), 10**(11.5)], [10**(2.5), 10**(12.5)], color='gray', alpha=0.2)
@@ -870,8 +871,8 @@ class ModulusModel():
         for mat in material_to_color.keys():
             plt.plot(material_label_data[mat], material_prediction_data[mat], '.', markersize=10, color=material_to_color[mat], label=mat)
 
-        plt.xlabel(r"Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
-        plt.ylabel(r"Predicted Modulus ($\\widetilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
+        plt.xlabel("Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
+        plt.ylabel("Predicted Modulus ($\\tilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
         plt.xlim([100, 10**12])
         plt.ylim([100, 10**12])
         plt.title('Neural Network', fontsize=14)

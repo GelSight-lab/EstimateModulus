@@ -65,7 +65,7 @@ with open(csv_file_path, 'r') as file:
             object_to_material[row[1]] = row[3]
 
 # Find an optimal linear scaling for a set of modulus predictions
-def scale_predictions(prediction_dict, label_dict, linear_log_fit=True, exp_fit=False):
+def scale_predictions(prediction_dict, linear_log_fit=True, exp_fit=False):
     assert linear_log_fit ^ exp_fit
     x, y = [], []
     nan_count, total_count = 0, 0
@@ -74,7 +74,7 @@ def scale_predictions(prediction_dict, label_dict, linear_log_fit=True, exp_fit=
         for E in prediction_dict[object_name]:
             if E > 0 and not math.isnan(E):
                 x.append(E)
-                y.append(label_dict[object_name])
+                y.append(object_to_modulus[object_name])
             else:
                 nan_count += 1
         total_count += len(prediction_dict[object_name])
@@ -113,7 +113,7 @@ def scale_predictions(prediction_dict, label_dict, linear_log_fit=True, exp_fit=
     return scaled_prediction_dict
 
 # Compute statistics to evaluate the performance of estimation method
-def compute_estimation_stats(prediction_dict, label_dict):
+def compute_estimation_stats(prediction_dict):
     log_diff = []
     nan_count, total_count = 0, 0
     for object_name in prediction_dict.keys():
@@ -121,7 +121,7 @@ def compute_estimation_stats(prediction_dict, label_dict):
         for E in prediction_dict[object_name]:
             if E > 0 and not math.isnan(E):
                 assert not math.isnan(E)
-                log_diff.append(abs(np.log10(E) - np.log10(label_dict[object_name])))
+                log_diff.append(abs(np.log10(E) - np.log10(object_to_modulus[object_name])))
             else:
                 nan_count += 1
         total_count += len(prediction_dict[object_name])
@@ -133,6 +133,25 @@ def compute_estimation_stats(prediction_dict, label_dict):
         'log_accuracy': np.sum(log_diff < 0.5) / len(log_diff),
         'nan_pct': nan_count / total_count,
     }
+
+# Compute log difference of predictions per object to see whcih object is worst
+def compute_object_performance(prediction_dicts):
+    object_names = list(prediction_dicts[0].keys())
+    obj_prediction_log_diff = { obj:[] for obj in object_names }
+    objects_avg_log_diff = { obj:0 for obj in object_names }
+
+    for prediction_dict in prediction_dicts:
+        for object_name in object_names:
+            for E in prediction_dict[object_name]:
+                if E > 0:
+                    log_diff = np.log10(E) - np.log10(object_to_modulus[object_name])
+                    obj_prediction_log_diff[object_name].append(log_diff)
+
+    for object_name in object_names:
+        if len(obj_prediction_log_diff[object_name]) > 0:
+            objects_avg_log_diff[object_name] = sum(obj_prediction_log_diff[object_name]) / len(obj_prediction_log_diff[object_name])
+
+    return obj_prediction_log_diff, objects_avg_log_diff
 
 # Plot on log scale to see how performance is
 def plot_performance(plot_title, prediction_dict, label_dict):
@@ -165,6 +184,7 @@ def plot_performance(plot_title, prediction_dict, label_dict):
                 material_label_data[mat].append(label_dict[obj])
 
     # Create plot
+    plt.rcParams["font.family"] = "times-new-roman"
     # plt.rcParams['text.usetex'] = True
     # plt.rcParams["font.family"] = "sans-serif"
     # plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
@@ -178,10 +198,8 @@ def plot_performance(plot_title, prediction_dict, label_dict):
     for mat in material_to_color.keys():
         plt.plot(material_label_data[mat], material_prediction_data[mat], '.', markersize=10, color=material_to_color[mat], label=mat)
 
-    # plt.xlabel(r"Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
-    # plt.ylabel(r"Predicted Modulus ($\\widetilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
-    plt.xlabel("Ground Truth Modulus (E)", fontsize=12)
-    plt.ylabel("Predicted Modulus (E)", fontsize=12)
+    plt.xlabel("Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
+    plt.ylabel("Predicted Modulus ($\\tilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
     plt.xlim([100, 10**12])
     plt.ylim([100, 10**12])
     plt.title(plot_title, fontsize=14)
@@ -277,25 +295,26 @@ if __name__ == '__main__':
             #     E_i = pickle.load(file)
             # stochastic_estimates[0][object_name].append(E_i)
 
+
     # Find a linear scaling for each set of predictions to minimize error
     print('Scaling naive...\n')
-    naive_estimates      = [ scale_predictions(x, object_to_modulus) for x in naive_estimates ]
+    naive_estimates      = [ scale_predictions(x) for x in naive_estimates ]
     print('Scaling Hertzian...\n')
-    hertz_estimates      = [ scale_predictions(x, object_to_modulus) for x in hertz_estimates ]
+    hertz_estimates      = [ scale_predictions(x) for x in hertz_estimates ]
     print('Scaling MDR...\n')
-    MDR_estimates        = [ scale_predictions(x, object_to_modulus) for x in MDR_estimates ]
+    MDR_estimates        = [ scale_predictions(x) for x in MDR_estimates ]
     # print('Scaling stochastic...\n')
     # stochastic_estimates = [ scale_predictions(x, object_to_modulus) for x in stochastic_estimates ]
 
     # Evaluate each set of estimates and pick the best
     naive_stats = [
-        compute_estimation_stats(naive_estimates[i], object_to_modulus) for i in range(len(naive_estimates))
+        compute_estimation_stats(naive_estimates[i]) for i in range(len(naive_estimates))
     ]
     hertz_stats = [
-        compute_estimation_stats(hertz_estimates[i], object_to_modulus) for i in range(len(hertz_estimates))
+        compute_estimation_stats(hertz_estimates[i]) for i in range(len(hertz_estimates))
     ]
     MDR_stats = [
-        compute_estimation_stats(MDR_estimates[i], object_to_modulus) for i in range(len(MDR_estimates))
+        compute_estimation_stats(MDR_estimates[i]) for i in range(len(MDR_estimates))
     ]
     # stochastic_stats = [
     #     compute_estimation_stats(stochastic_estimates[i], object_to_modulus) for i in range(len(stochastic_estimates))
@@ -313,6 +332,17 @@ if __name__ == '__main__':
     naive_stats_ordered         = [ naive_stats[i] for i in naive_i_order ]
     hertz_stats_ordered         = [ hertz_stats[i] for i in hertz_i_order ]
     MDR_stats_ordered           = [ MDR_stats[i] for i in MDR_i_order ]
+
+
+
+    obj_prediction_log_diff, obj_avg_log_diff = compute_object_performance([naive_estimates[naive_i_order[0]], MDR_estimates[naive_i_order[0]]])
+
+    object_names = list(obj_prediction_log_diff.keys())
+    obj_i_ordered = sorted(range(len(object_names)), key=lambda i: obj_avg_log_diff[object_names[i]])
+    obj_avg_log_diff_ordered = [ (object_names[i], obj_avg_log_diff[object_names[i]]) for i in obj_i_ordered ]
+    obj_predictions_log_diff_ordered = [ (object_names[i], obj_prediction_log_diff[object_names[i]]) for i in obj_i_ordered ]
+
+
 
     # Create plots showing how well each method does
     print('Plotting naive...')
