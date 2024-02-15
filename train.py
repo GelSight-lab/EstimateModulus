@@ -4,6 +4,7 @@ import pickle
 import csv
 import json
 import numpy as np
+import random
 
 import torch
 import torchvision
@@ -27,8 +28,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
-N_FRAMES = 5
+DATA_DIR = '/media/mike/Elements/data'
+N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
 # Get the tree of all video files from a directory in place
@@ -244,16 +245,18 @@ class ModulusModel():
         '''
 
         # Concatenate parameters of all models
-        self.params         = list(self.video_encoder.parameters())
-        # self.params         += list(self.other_video_encoder.parameters())
+        self.params = list(self.video_encoder.parameters())
+        # self.params += list(self.other_video_encoder.parameters())
         if self.use_force: 
             self.params += list(self.force_encoder.parameters())
         if self.use_width: 
             self.params += list(self.width_encoder.parameters())
         if self.use_estimation: 
             self.params += list(self.estimation_encoder.parameters())
-        # self.params         += list(self.decoder.parameters())
-        self.params         += list(self.decoderRNN.parameters())
+        if self.use_RNN:
+            self.params += list(self.decoderRNN.parameters())
+        else:
+            self.params += list(self.decoder.parameters())
         
         # Create optimizer, use Adam
         self.optimizer      = torch.optim.Adam(self.params, lr=self.learning_rate)
@@ -906,14 +909,14 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Nframes=5_4FW_LSTM_2Layers',   
+        'run_name': 'AutoEncoder_Nframes=3',   
 
         # Training and model parameters
         'epochs'            : 150,
         'batch_size'        : 32,
-        'use_RNN'           : True,
+        'use_RNN'           : False, # True
         'img_feature_size'  : 32,
-        'fwe_feature_size'  : 4, # 24,
+        'fwe_feature_size'  : 24, # 4
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
         'learning_rate'     : 1e-4,
@@ -925,18 +928,18 @@ if __name__ == "__main__":
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
     base_run_name = config['run_name']
-    # LR_to_epoch = {
-    #     '1e-3': 100,
-    #     '1e-4': 150,
-    #     '1e-5': 250,
-    # }
-    # for lr in LR_to_epoch.keys():
-    #     config['learning_rate'] = float(lr)
-    #     config['epochs'] = LR_to_epoch[lr]
-    for i in range(2):
-        # config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
-        config['run_name'] = f'{base_run_name}__t={i}'
+    LR_to_epoch = {
+        '1e-4': 180,
+        '1e-5': 300,
+    }
+    for lr in LR_to_epoch.keys():
+        config['learning_rate'] = float(lr)
+        config['epochs'] = LR_to_epoch[lr]
+        for i in range(5):
+            config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
+            
+            config['random_state'] = random.randint(1, 100)
 
-        # Train the model over some data
-        train_modulus = ModulusModel(config, device=device)
-        train_modulus.train()
+            # Train the model over some data
+            train_modulus = ModulusModel(config, device=device)
+            train_modulus.train()
