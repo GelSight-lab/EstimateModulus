@@ -58,6 +58,8 @@ def fit_ellipse_from_binary(binary_array, plot_result=False):
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
+    if max_ellipse_area == 0: return None
+
     return max_ellipse
 
 # Fit an ellipse bounding the True space of a 2D non-binary array
@@ -246,6 +248,8 @@ class EstimateModulus():
     def ellipse_contact_mask(self, depth):
         ellipse = fit_ellipse_from_float(depth)
         ellipse_mask = np.zeros_like(depth, dtype=np.uint8)
+        if ellipse is None:
+            return ellipse_mask
         cv2.ellipse(ellipse_mask, ellipse, 1, -1)
         return ellipse_mask
     
@@ -439,6 +443,7 @@ class EstimateModulus():
                 if fit_mask_to_ellipse:
                     # Fit an ellipse to the mask and modify
                     ellipse = fit_ellipse_from_binary(mask)
+                    if ellipse is None: continue
                     mask = np.zeros_like(mask, dtype=np.uint8)
                     cv2.ellipse(mask, ellipse, 1, -1)
 
@@ -535,9 +540,11 @@ class EstimateModulus():
                 if fit_mask_to_ellipse:
                     # Fit an ellipse to the mask and modify
                     ellipse = fit_ellipse_from_binary(mask)
+                    if ellipse is None: continue
                     mask = np.zeros_like(mask, dtype=np.uint8)
                     cv2.ellipse(mask, ellipse, 1, -1)
                     other_ellipse = fit_ellipse_from_binary(other_mask)
+                    if other_ellipse is None: continue
                     other_mask = np.zeros_like(other_mask, dtype=np.uint8)
                     cv2.ellipse(other_mask, other_ellipse, 1, -1)
 
@@ -615,6 +622,7 @@ class EstimateModulus():
                 if fit_mask_to_ellipse:
                     # Fit an ellipse to the mask and modify
                     ellipse = fit_ellipse_from_binary(mask)
+                    if ellipse is None: continue
                     mask = np.zeros_like(mask, dtype=np.uint8)
                     cv2.ellipse(mask, ellipse, 1, -1)
                 
@@ -698,9 +706,11 @@ class EstimateModulus():
                 if fit_mask_to_ellipse:
                     # Fit an ellipse to the mask and modify
                     ellipse = fit_ellipse_from_binary(mask)
+                    if ellipse is None: continue
                     mask = np.zeros_like(mask, dtype=np.uint8)
                     cv2.ellipse(mask, ellipse, 1, -1)
                     other_ellipse = fit_ellipse_from_binary(other_mask)
+                    if other_ellipse is None: continue
                     other_mask = np.zeros_like(other_mask, dtype=np.uint8)
                     cv2.ellipse(other_mask, other_ellipse, 1, -1)
                 
@@ -849,6 +859,7 @@ class EstimateModulus():
             if fit_mask_to_ellipse:
                 # Fit mask to an ellipse and take contact radius
                 ellipse = fit_ellipse_from_binary(mask, plot_result=False)
+                if ellipse is None: continue
                 major_axis, minor_axis = ellipse[1]
                 contact_area_i = np.pi * (0.001 / PX_TO_MM)**2 * major_axis * minor_axis
                 a_i = np.sqrt(contact_area_i / np.pi)
@@ -864,6 +875,7 @@ class EstimateModulus():
             elif use_ellipse_mask:
                 # Compute circle radius using ellipse fit
                 ellipse = fit_ellipse_from_float(depth_images[i], plot_result=False)
+                if ellipse is None: continue
                 major_axis, minor_axis = ellipse[1]
                 r_i = 0.5 * (0.001 / PX_TO_MM) * (major_axis + minor_axis)/2
                 R_i = d_i + (r_i**2 - d_i**2)/(2*d_i)
@@ -966,9 +978,11 @@ class EstimateModulus():
             if fit_mask_to_ellipse:
                 # Fit mask to an ellipse and take contact radius
                 ellipse = fit_ellipse_from_binary(mask, plot_result=False)
+                if ellipse is None: continue
                 major_axis, minor_axis = ellipse[1]
                 contact_area_i = np.pi * (0.001 / PX_TO_MM)**2 * major_axis * minor_axis
                 other_ellipse = fit_ellipse_from_binary(other_mask, plot_result=False)
+                if other_ellipse is None: continue
                 other_major_axis, other_minor_axis = other_ellipse[1]
                 other_contact_area_i = np.pi * (0.001 / PX_TO_MM)**2 * other_major_axis * other_minor_axis
                 contact_area_i = (contact_area_i + other_contact_area_i)/2
@@ -985,8 +999,10 @@ class EstimateModulus():
             elif use_ellipse_mask:
                 # Compute circle radius using ellipse fit
                 ellipse = fit_ellipse_from_float(depth_images[i], plot_result=False)
+                if ellipse is None: continue
                 major_axis, minor_axis = ellipse[1]
                 other_ellipse = fit_ellipse_from_float(other_depth_images[i], plot_result=False)
+                if other_ellipse is None: continue
                 other_major_axis, other_minor_axis = other_ellipse[1]
                 r_i = 0.5 * (0.001 / PX_TO_MM) * (major_axis + minor_axis + other_major_axis + other_minor_axis)/2
                 R_i = (other_d_i + d_i)/2 + (r_i**2 - (mean_d_i)**2)/(2*mean_d_i)
