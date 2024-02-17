@@ -910,7 +910,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'AutoEncoder_Nframes=3',   
+        'run_name': 'MoreData_AutoEncoder_Nframes=3',   
 
         # Training and model parameters
         'epochs'            : 150,
@@ -936,7 +936,7 @@ if __name__ == "__main__":
     for lr in LR_to_epoch.keys():
         config['learning_rate'] = float(lr)
         config['epochs'] = LR_to_epoch[lr]
-        for i in range(5):
+        for i in range(3):
             config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
             
             config['random_state'] = random.randint(1, 100)
