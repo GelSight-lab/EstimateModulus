@@ -47,8 +47,9 @@ BOTH_SIDES = True
 
 # Objects to exclude from evaluation
 EXCLUDE = ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
-            'red_foam_brick', 'blue_foam_brick', 'yellow_foam_brick', 'green_foam_brick', 
-            'apple', 'orange', 'strawberry', 'lacrosse_ball', 'rubber_washer_stack']
+            'red_foam_brick', 'blue_foam_brick', 'yellow_foam_brick', 'green_foam_brick',
+            'apple', 'orange', 'strawberry', 'lacrosse_ball', 'rubber_washer_stack', 
+            'ripe_banana', 'unripe_banana']
 
 # Read CSV files with objects and labels tabulated
 object_to_modulus = {}

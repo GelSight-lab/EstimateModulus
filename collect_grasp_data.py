@@ -31,7 +31,7 @@ def close_gripper(_franka_arm): {
     _franka_arm.goto_gripper(
         0.0, # Minimum width in meters [m]
         force=100, # Maximum force in Newtons [N]
-        speed=0.04, # Desired operation speed in [m/s]
+        speed=0.0375, # Desired operation speed in [m/s]
         epsilon_inner=0.005, # Maximum tolerated deviation [m]
         epsilon_outer=0.005, # Maximum tolerated deviation [m]
         grasp=True,     
@@ -163,7 +163,7 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
         grasp_data.contact_force.clip(shift, len(grasp_data.contact_force.forces()))
         grasp_data.gripper_width.clip(shift, len(grasp_data.gripper_width.widths()))
 
-        if plot_collected_data or i == 0:
+        if plot_collected_data: # or i == 0:
             plt.plot(abs(grasp_data.forces()) / abs(grasp_data.forces()).max(), label="Forces")
             plt.plot(grasp_data.gripper_widths() / grasp_data.gripper_widths().max(), label="Gripper Widths")
             plt.plot(grasp_data.max_depths() / grasp_data.max_depths().max(), label="Max Depths")
@@ -191,8 +191,8 @@ def collect_data_for_object(object_name, num_trials, folder_name=None, plot_coll
 
 if __name__ == "__main__":
     # Record grasp data for the given object
-    object_name     = "foam_square"
-    num_trials      = 8
+    object_name     = "unripe_banana"
+    num_trials      = 5
     collect_data_for_object(
         object_name, \
         num_trials, \
