@@ -142,14 +142,6 @@ class GraspData():
             assert len(self.contact_force.forces()) == len(self.gripper_width.widths()) == len(self.wedge_video._raw_rgb_frames)
         else:
             assert len(self.contact_force.forces()) == len(self.wedge_video._raw_rgb_frames)
-
-        # # Adjust by 2 frames for HDMI latency
-        # self.wedge_video.clip(2, len(self.wedge_video._raw_rgb_frames))
-        # if self._wedge_video_count > 1:
-        #     self.other_wedge_video.clip(2, len(self.other_wedge_video._raw_rgb_frames))
-        # self.contact_force.clip(0, len(self.contact_force.forces())-2)
-        # if self.use_gripper_width:
-        #     self.gripper_width.clip(0, len(self.gripper_width.widths())-2)
         return
     
     # Clip data between frame indices

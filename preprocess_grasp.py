@@ -10,14 +10,16 @@ from gripper_width import GripperWidth
 from contact_force import ContactForce, FORCE_THRESHOLD
 from grasp_data import GraspData
 
-HARDDRIVE_DIR = './'
+HARDDRIVE_DIR = '.'
 
 '''
 Preprocess recorded data for training...
     - Clip to the static loading sequence only
     - Down sample frames to small number
 '''
-def preprocess(path_to_file, grasp_data=GraspData(), destination_dir=f'{HARDDRIVE_DIR}/data/training_data__N=3', auto_clip=False, num_frames_to_sample=3, max_num_augmentations=5):
+def preprocess_grasp(path_to_file, grasp_data=GraspData(), destination_dir=f'{HARDDRIVE_DIR}/data/training_data', \
+                     auto_clip=False, num_frames_to_sample=3, max_num_augmentations=7, plot_sampled_frames=False):
+    
     _, file_name = os.path.split(path_to_file)
     object_name = file_name.split('__')[0]
     trial = int(file_name.split('__')[1][2:])
@@ -43,7 +45,10 @@ def preprocess(path_to_file, grasp_data=GraspData(), destination_dir=f'{HARDDRIV
     i_start = np.argmax(grasp_data.forces() >= FORCE_THRESHOLD)
     i_peak = np.argmax(grasp_data.forces()) + 1
 
-    assert (i_peak - i_start + 1) >= num_frames_to_sample
+    if (i_peak - i_start + 1) < num_frames_to_sample:
+        print('Skipping!')
+        return
+    
     max_num_augmentations = min(max_num_augmentations, round((i_peak - i_start)/ num_frames_to_sample) - 1)
     grasp_data.clip(i_start, i_peak + max_num_augmentations)
 
@@ -56,41 +61,6 @@ def preprocess(path_to_file, grasp_data=GraspData(), destination_dir=f'{HARDDRIV
         if grasp_data.forces()[sample_indices[-1] + i] <= 0.9*grasp_data.forces().max():
             num_augmentations = i
             break
-        
-    # Check that peaks and force follow each other
-    shift = 0
-    other_shift = 0
-    for i in range(num_augmentations):
-        indices = sample_indices + i
-        depth_images = grasp_data.wedge_video.depth_images()[indices, :, :]
-        other_diff_images = grasp_data.other_wedge_video.diff_images()[indices, :, :]
-        other_depth_images = grasp_data.other_wedge_video.depth_images()[indices, :, :]
-        forces = grasp_data.forces()[indices]
-        
-        asked = False
-        for k in range(len(indices)):
-            if (depth_images[k-1,:,:].max() > 1.2*depth_images[k,:,:].max() and 1.2*forces[k-1] < forces[k]) or \
-                (other_depth_images[k-1,:,:].max() > 1.2*other_depth_images[k,:,:].max() and 1.2*forces[k-1] < forces[k]):
-
-                grasp_data.plot_grasp_data()
-                _, axs = plt.subplots(1, 3, figsize=(12, 8))
-                for j in range(num_frames_to_sample):
-                    axs[j].imshow(grasp_data.other_wedge_video.diff_images()[indices[j], :, :])
-                    axs[j].axis('off')  # Turn off axis ticks and labels
-                    axs[j].set_title(f'Sampled Frame #{j + 1}')
-                plt.tight_layout()
-                plt.show()
-
-                asked = True
-                if input('Adjust? ').upper() == 'Y':
-                    shift = int(input('Shift? '))
-                    other_shift = int(input('Other shift? '))
-                break
-        if asked:
-            break
-    
-    other_frame_sample_indices = np.maximum(sample_indices - other_shift, 1)
-    frame_sample_indices = np.maximum(sample_indices - shift, 1)
 
     for i in range(num_augmentations):
 
@@ -102,12 +72,22 @@ def preprocess(path_to_file, grasp_data=GraspData(), destination_dir=f'{HARDDRIV
         output_path_prefix = f'{aug_dir}/{output_name_prefix}'
 
         # Get out all the sampled data
-        diff_images = grasp_data.wedge_video.diff_images()[frame_sample_indices + i, :, :]
-        depth_images = grasp_data.wedge_video.depth_images()[frame_sample_indices + i, :, :]
-        other_diff_images = grasp_data.other_wedge_video.diff_images()[other_frame_sample_indices + i, :, :]
-        other_depth_images = grasp_data.other_wedge_video.depth_images()[other_frame_sample_indices + i, :, :]
+        diff_images = grasp_data.wedge_video.diff_images()[sample_indices + i, :, :]
+        depth_images = grasp_data.wedge_video.depth_images()[sample_indices + i, :, :]
+        other_diff_images = grasp_data.other_wedge_video.diff_images()[sample_indices + i, :, :]
+        other_depth_images = grasp_data.other_wedge_video.depth_images()[sample_indices + i, :, :]
         forces = grasp_data.forces()[sample_indices + i]
         widths = grasp_data.gripper_widths()[sample_indices + i]
+            
+        # Plot chosen frames to make sure they look good
+        if plot_sampled_frames:
+            _, axs = plt.subplots(1, 3, figsize=(12, 8))
+            for j in range(num_frames_to_sample):
+                axs[j].imshow(grasp_data.other_wedge_video.diff_images()[sample_indices[j] + i, :, :])
+                axs[j].axis('off')  # Turn off axis ticks and labels
+                axs[j].set_title(f'Sampled Frame #{j + 1}')
+            plt.tight_layout()
+            plt.show()
 
         # Save to respective areas
         with open(f'{output_path_prefix}_diff.pkl', 'wb') as file:
@@ -135,12 +115,16 @@ if __name__ == "__main__":
     #   raw_data/{object_name}/{object_name}__t={n}
     #   training_data/{object_name}/t={n}/aug={n}/{object_name}__t={n}_a={n}_diff/depth
 
+    n_frames = 3
+    DESTINATION_DIR = f'{HARDDRIVE_DIR}/data/training_data__Nframes={n_frames}'
+
     # Loop through all data files
-    DATA_DIR = f'{HARDDRIVE_DIR}/data/raw_data'
+    DATA_DIR = f'{HARDDRIVE_DIR}/data/raw_data_1'
     for object_name in tqdm(os.listdir(DATA_DIR)):
         for file_name in os.listdir(f'{DATA_DIR}/{object_name}'):
             if os.path.splitext(file_name)[1] != '.avi' or file_name.count("_other") > 0:
                 continue
 
             # Preprocess the file
-            preprocess(f'{DATA_DIR}/{object_name}/{os.path.splitext(file_name)[0]}', grasp_data=grasp_data)
+            preprocess_grasp(f'{DATA_DIR}/{object_name}/{os.path.splitext(file_name)[0]}', destination_dir=DESTINATION_DIR, \
+                             num_frames_to_sample=n_frames, grasp_data=grasp_data)
