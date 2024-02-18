@@ -930,8 +930,9 @@ if __name__ == "__main__":
 
     base_run_name = config['run_name']
     LR_to_epoch = {
+        '1e-3': 150,
         '1e-4': 180,
-        '1e-5': 300,
+        '1e-5': 200,
     }
     for lr in LR_to_epoch.keys():
         config['learning_rate'] = float(lr)
