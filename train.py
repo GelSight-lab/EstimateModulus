@@ -930,14 +930,13 @@ if __name__ == "__main__":
 
     base_run_name = config['run_name']
     LR_to_epoch = {
-        '1e-3': 150,
-        '1e-4': 180,
-        '1e-5': 200,
+        '1e-4': 100,
+        '1e-5': 100,
     }
     for lr in LR_to_epoch.keys():
         config['learning_rate'] = float(lr)
         config['epochs'] = LR_to_epoch[lr]
-        for i in range(3):
+        for i in range(2):
             config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
             
             config['random_state'] = random.randint(1, 100)
