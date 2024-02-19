@@ -923,23 +923,27 @@ if __name__ == "__main__":
         'learning_rate'     : 1e-4,
         'gamma'             : None,
         'lr_step_size'      : None,
-        'random_state'      : 40,
+        'random_state'      : 95,
     }
     assert config['img_style'] in ['diff', 'depth']
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
     base_run_name = config['run_name']
-    LR_to_epoch = {
-        '1e-4': 100,
-        '1e-5': 100,
+    LR_to_epoch_dropout = {
+        '1e-2': [40, 0.3],
+        '1e-3': [50, 0.3],
+        '1e-3': [50, 0.5],
+        '1e-5': [120, 0.3],
     }
-    for lr in LR_to_epoch.keys():
+    for lr in LR_to_epoch_dropout.keys():
         config['learning_rate'] = float(lr)
-        config['epochs'] = LR_to_epoch[lr]
+        config['epochs'] = LR_to_epoch_dropout[lr][0]
+        config['dropout'] = LR_to_epoch_dropout[lr][1]
+
         for i in range(2):
-            config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
+            config['run_name'] = f'{base_run_name}__LR={lr}__drop={config['dropout']}__t={i}'
             
-            config['random_state'] = random.randint(1, 100)
+            # config['random_state'] = random.randint(1, 100)
 
             # Train the model over some data
             train_modulus = ModulusModel(config, device=device)
