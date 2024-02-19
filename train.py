@@ -910,17 +910,17 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'MoreData_LSTM_LR=1e-5_Nframes=3',   
+        'run_name': 'MoreData_AutoEncoder_Nframes=3',   
 
         # Training and model parameters
         'epochs'            : 150,
         'batch_size'        : 32,
-        'use_RNN'           : True, # False
+        'use_RNN'           : False, # True,
         'img_feature_size'  : 32,
-        'fwe_feature_size'  : 4, # 24,
+        'fwe_feature_size'  : 24, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
-        'learning_rate'     : 1e-5,
+        'learning_rate'     : 1e-3,
         'gamma'             : None,
         'lr_step_size'      : None,
         'random_state'      : 95,
@@ -952,7 +952,7 @@ if __name__ == "__main__":
     for i in range(2):
         config['run_name'] = f'{base_run_name}__t={i}'
         
-        # config['random_state'] = random.randint(1, 100)
+        config['random_state'] = random.randint(1, 100)
 
         # Train the model over some data
         train_modulus = ModulusModel(config, device=device)
