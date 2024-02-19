@@ -141,7 +141,7 @@ class ModifiedResNet18(nn.Module):
     def __init__(self, CNN_embed_dim=128):
         super(ModifiedResNet18, self).__init__()
 
-        self.resnet18 = models.resnet18(weights='imagenet')
+        self.resnet18 = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
         self.fc = nn.Linear(1000, CNN_embed_dim)
 
     def forward(self, x):
