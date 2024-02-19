@@ -924,7 +924,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'FrozenPretrainedCNN_LR=1e-4_AutoEncoder_Nframes=3',   
+        'run_name': 'FrozenPretrainedCNN_AutoEncoder_Nframes=3',   
 
         # Training and model parameters
         'epochs'            : 80,
