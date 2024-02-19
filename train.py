@@ -941,7 +941,7 @@ if __name__ == "__main__":
         config['dropout'] = LR_to_epoch_dropout[lr][1]
 
         for i in range(2):
-            config['run_name'] = f'{base_run_name}__LR={lr}__drop={config['dropout']}__t={i}'
+            config['run_name'] = f'{base_run_name}__LR={lr}__drop={config["dropout"]}__t={i}'
             
             # config['random_state'] = random.randint(1, 100)
 
