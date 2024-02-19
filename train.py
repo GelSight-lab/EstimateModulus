@@ -910,17 +910,17 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'MoreData_AutoEncoder_Nframes=3',   
+        'run_name': 'MoreData_LSTM_Nframes=3',   
 
         # Training and model parameters
         'epochs'            : 150,
         'batch_size'        : 32,
-        'use_RNN'           : False, # True
+        'use_RNN'           : True, # False
         'img_feature_size'  : 32,
-        'fwe_feature_size'  : 24, # 4
+        'fwe_feature_size'  : 4, # 24,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
-        'learning_rate'     : 1e-4,
+        'learning_rate'     : 1e-3,
         'gamma'             : None,
         'lr_step_size'      : None,
         'random_state'      : 95,
@@ -929,22 +929,31 @@ if __name__ == "__main__":
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
     base_run_name = config['run_name']
-    LR_to_epoch_dropout = {
-        # '1e-3': [50, 0.3],
-        # '1e-3': [50, 0.5],
-        # '1e-5': [120, 0.3],
-        '1e-4': [120, 0.3],
-    }
-    for lr in LR_to_epoch_dropout.keys():
-        config['learning_rate'] = float(lr)
-        config['epochs'] = LR_to_epoch_dropout[lr][0]
-        config['dropout'] = LR_to_epoch_dropout[lr][1]
+    # LR_to_epoch_dropout = {
+    #     '1e-3': [50, 0.3],
+    #     '1e-3': [50, 0.5],
+    #     '1e-5': [120, 0.3],
+    #     '1e-4': [120, 0.3],
+    # }
+    # for lr in LR_to_epoch_dropout.keys():
+    #     config['learning_rate'] = float(lr)
+    #     config['epochs'] = LR_to_epoch_dropout[lr][0]
+    #     config['dropout'] = LR_to_epoch_dropout[lr][1]
 
-        for i in range(2):
-            config['run_name'] = f'{base_run_name}__LR={lr}__drop={config["dropout"]}__t={i}'
+    #     for i in range(2):
+    #         config['run_name'] = f'{base_run_name}__LR={lr}__drop={config["dropout"]}__t={i}'
             
-            # config['random_state'] = random.randint(1, 100)
+    #         # config['random_state'] = random.randint(1, 100)
 
-            # Train the model over some data
-            train_modulus = ModulusModel(config, device=device)
-            train_modulus.train()
+    #         # Train the model over some data
+    #         train_modulus = ModulusModel(config, device=device)
+    #         train_modulus.train()
+
+    for i in range(2):
+        config['run_name'] = f'{base_run_name}__t={i}'
+        
+        # config['random_state'] = random.randint(1, 100)
+
+        # Train the model over some data
+        train_modulus = ModulusModel(config, device=device)
+        train_modulus.train()
