@@ -218,9 +218,9 @@ class ModulusModel():
             decoder_input_size = self.n_frames * self.img_feature_size
             # decoder_input_size += self.n_frames * self.img_feature_size
             if self.use_force: 
-                decoder_input_size += self.fwe_feature_size
+                decoder_input_size += self.n_frames * self.fwe_feature_size
             if self.use_width: 
-                decoder_input_size += self.fwe_feature_size
+                decoder_input_size += self.n_frames * self.fwe_feature_size
             if self.use_estimation: 
                 decoder_input_size += self.fwe_feature_size
             self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
