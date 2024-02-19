@@ -913,7 +913,7 @@ if __name__ == "__main__":
         'run_name': 'MoreData_AutoEncoder_Nframes=3',   
 
         # Training and model parameters
-        'epochs'            : 150,
+        'epochs'            : 80,
         'batch_size'        : 32,
         'use_RNN'           : False, # True,
         'img_feature_size'  : 32,
