@@ -930,10 +930,10 @@ if __name__ == "__main__":
 
     base_run_name = config['run_name']
     LR_to_epoch_dropout = {
-        '1e-2': [40, 0.3],
         '1e-3': [50, 0.3],
         '1e-3': [50, 0.5],
         '1e-5': [120, 0.3],
+        '1e-4': [70, 0.3],
     }
     for lr in LR_to_epoch_dropout.keys():
         config['learning_rate'] = float(lr)
