@@ -910,7 +910,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'MoreData_LSTM_LR=1e-4_Nframes=3',   
+        'run_name': 'MoreData_LSTM_LR=1e-5_Nframes=3',   
 
         # Training and model parameters
         'epochs'            : 150,
@@ -920,7 +920,7 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 4, # 24,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
-        'learning_rate'     : 1e-4,
+        'learning_rate'     : 1e-5,
         'gamma'             : None,
         'lr_step_size'      : None,
         'random_state'      : 95,
