@@ -7,9 +7,9 @@ import numpy as np
 import random
 
 import torch
-import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision
 import wandb
 
 import matplotlib as mpl
@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -185,8 +185,13 @@ class ModulusModel():
         }
 
         # Initialize CNN based on config
-        self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size, dropout_pct=self.dropout_pct)
-        # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
+        if self.pretrained_CNN:
+            self.normalize_frame = torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            self.video_encoder = ModifiedResNet18(CNN_embed_dim=self.img_feature_size)
+            # self.other_video_encoder = ModifiedResNet18(CNN_embed_dim=self.img_feature_size)
+        else:
+            self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size, dropout_pct=self.dropout_pct)
+            # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
     
         if self.use_RNN:
             # Compute the size of the input to the decoder based on config
@@ -341,6 +346,7 @@ class ModulusModel():
         # Define training parameters
         self.epochs             = config['epochs']
         self.batch_size         = config['batch_size']
+        self.pretrained_CNN     = config['pretrained_CNN']
         self.use_RNN            = config['use_RNN']
         self.img_feature_size   = config['img_feature_size']
         self.fwe_feature_size   = config['fwe_feature_size']
@@ -497,11 +503,14 @@ class ModulusModel():
                 # Concatenate features across frames into a single vector
                 features = []
                 for i in range(N_FRAMES):
-
                     frame_features = []
 
                     # Execute CNN on video frames
-                    frame_features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                    if self.pretrained_CNN:
+                        x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
+                    else:
+                        x_frame = x_frames[:, i, :, :, :]
+                    frame_features.append(self.video_encoder(x_frame))
 
                     # Execute FC layers on other data and append
                     if self.use_force: # Force measurements
@@ -519,9 +528,11 @@ class ModulusModel():
                 for i in range(N_FRAMES):
                     
                     # Execute CNN on video frames
-                    features.append(self.video_encoder(x_frames[:, i, :, :, :]))
-                    
-                    # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
+                    if self.pretrained_CNN:
+                        x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
+                    else:
+                        x_frame = x_frames[:, i, :, :, :]
+                    features.append(self.video_encoder(x_frame))
                     
                     # # Execute FC layers on other data and append
                     # if self.use_force: # Force measurements
@@ -599,11 +610,14 @@ class ModulusModel():
                 # Concatenate features across frames into a single vector
                 features = []
                 for i in range(N_FRAMES):
-
                     frame_features = []
 
                     # Execute CNN on video frames
-                    frame_features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                    if self.pretrained_CNN:
+                        x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
+                    else:
+                        x_frame = x_frames[:, i, :, :, :]
+                    frame_features.append(self.video_encoder(x_frame))
 
                     # Execute FC layers on other data and append
                     if self.use_force: # Force measurements
@@ -621,9 +635,11 @@ class ModulusModel():
                 for i in range(N_FRAMES):
                     
                     # Execute CNN on video frames
-                    features.append(self.video_encoder(x_frames[:, i, :, :, :]))
-                    
-                    # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
+                    if self.pretrained_CNN:
+                        x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
+                    else:
+                        x_frame = x_frames[:, i, :, :, :]
+                    features.append(self.video_encoder(x_frame))
 
                     # # Execute FC layers on other data and append
                     # if self.use_force: # Force measurements
@@ -647,8 +663,6 @@ class ModulusModel():
                 # Send aggregated features to the FC decoder
                 features = torch.cat(features, -1)
                 outputs = self.decoder(features)
-
-
             
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             val_loss += loss.item()
@@ -915,6 +929,7 @@ if __name__ == "__main__":
         # Training and model parameters
         'epochs'            : 80,
         'batch_size'        : 32,
+        'pretrained_CNN'    : True,
         'use_RNN'           : False, # True,
         'img_feature_size'  : 32,
         'fwe_feature_size'  : 24, # 4,

@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.models as models
 
 from train import N_FRAMES
 
@@ -136,6 +137,33 @@ class EncoderCNN(nn.Module):
         x = self.fc2(x) # CNN embedding
         return x
 
+class ModifiedResNet18(nn.Module):
+    def __init__(self, CNN_embed_dim=128):
+        super(ModifiedResNet18, self).__init__()
+
+        self.resnet18 = models.resnet18(pretrained=True)
+        self.fc = nn.Linear(1000, CNN_embed_dim)
+
+    def forward(self, x):
+        x = self.resnet18(x)
+        x = self.fc(x)
+        return x
+    
+    def eval(self):
+        super(ModifiedResNet18, self).eval()
+        self.resnet18.eval()
+        return
+    
+    def train(self):
+        super(ModifiedResNet18, self).train()
+        self.resnet18.train()
+        return
+    
+    def to(self, device):
+        self = super(ModifiedResNet18, self).to(device)
+        self.resnet18 = self.resnet18.to(device)
+        return self
+    
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
