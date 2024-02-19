@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -924,7 +924,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'MoreData_PretrainedCNN_AutoEncoder_Nframes=3',   
+        'run_name': 'PretrainedCNN_LR=1e-4_AutoEncoder_Nframes=3',   
 
         # Training and model parameters
         'epochs'            : 80,
@@ -935,7 +935,7 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 24, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
-        'learning_rate'     : 1e-3,
+        'learning_rate'     : 1e-4,
         'gamma'             : None,
         'lr_step_size'      : None,
         'random_state'      : 95,
