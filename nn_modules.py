@@ -149,14 +149,13 @@ class ModifiedResNet18(nn.Module):
         x = self.fc(x)
         return x
     
-    def eval(self):
-        super(ModifiedResNet18, self).eval()
-        self.resnet18.eval()
+    def train(self, mode=True):
+        super(ModifiedResNet18, self).train(mode)
+        self.resnet18.train(mode)
         return
     
-    def train(self):
-        super(ModifiedResNet18, self).train()
-        self.resnet18.train()
+    def eval(self):
+        self.train(mode=False)
         return
     
     def to(self, device):
