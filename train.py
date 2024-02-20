@@ -969,7 +969,7 @@ if __name__ == "__main__":
     for i in range(2):
         config['run_name'] = f'{base_run_name}__t={i}'
         
-        config['random_state'] = random.randint(1, 100)
+        # config['random_state'] = random.randint(1, 100)
 
         # Train the model over some data
         train_modulus = ModulusModel(config, device=device)
