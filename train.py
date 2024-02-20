@@ -929,7 +929,7 @@ if __name__ == "__main__":
         'run_name': 'PretrainedCNN__CombinedFWE__DecoderBigger',   
 
         # Training and model parameters
-        'epochs'            : 100,
+        'epochs'            : 50,
         'batch_size'        : 32,
         'pretrained_CNN'    : True,
         'use_RNN'           : False, # True,
