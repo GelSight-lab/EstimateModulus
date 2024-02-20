@@ -922,7 +922,7 @@ if __name__ == "__main__":
         'exclude': ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'yellow_foam_brick', 'green_foam_brick', 
                     'apple', 'orange', 'strawberry', 'lacrosse_ball', 'rubber_washer_stack',
-                    'ripe_banana', 'unripe_banana'],
+                    'ripe_banana', 'unripe_banana', 'scotch_brite'],
 
         # Logging on/off
         'use_wandb': True,
@@ -952,7 +952,7 @@ if __name__ == "__main__":
     #     '1e-5': [120, 0.3],
     #     '1e-4': [120, 0.3],
     # }
-    for lr in ['5e-5', '1e-5', '5e-4']:
+    for lr in ['1e-5', '5e-4']:
         config['learning_rate'] = float(lr)
 
         for i in range(1):
