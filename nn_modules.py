@@ -143,7 +143,7 @@ class ModifiedResNet18(nn.Module):
 
         self.resnet18 = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
         self.resnet18.eval()
-        for param in self.resnet1.parameters():
+        for param in self.resnet18.parameters():
             param.requires_grad = False
         self.fc = nn.Linear(1000, CNN_embed_dim)
 
