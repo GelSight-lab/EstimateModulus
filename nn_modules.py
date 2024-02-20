@@ -191,6 +191,7 @@ class DecoderFC(nn.Module):
         self.drop = nn.Dropout(self.dropout_pct)
 
     def forward(self, x):
+        x = self.drop(x)
         x = self.fc1(x)
         x = F.silu(x)
         x = self.drop(x)

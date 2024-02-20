@@ -270,6 +270,8 @@ class ModulusModel():
         if self.gamma is not None:
             self.scheduler  = lr_scheduler.StepLR(self.optimizer, step_size=self.lr_step_size, gamma=self.gamma)
 
+        self.scheduler = lr_scheduler.StepLR(self.optimizer, step_size=1, gamma=10**(1/10))
+
         # Load data
         self.object_names = []
         self.object_to_modulus = {}
@@ -730,6 +732,10 @@ class ModulusModel():
             if self.gamma is not None:
                 self.scheduler.step()
 
+                
+            self.scheduler.step()
+
+
             print(f'Epoch: {epoch}, Training Loss: {train_loss:.4f},',
                 f'Validation Loss: {val_loss:.4f},',
                 f'Validation Avg. Log Diff: {val_avg_log_diff:.4f}',
@@ -926,7 +932,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'PretrainedCNN__CombinedFWE__DecoderBigger',   
+        'run_name': 'PretrainedCNN__LRFinder',   
 
         # Training and model parameters
         'epochs'            : 50,
@@ -936,8 +942,8 @@ if __name__ == "__main__":
         'img_feature_size'  : 64, # 32
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
-        'dropout_pct'       : 0.3,
-        'learning_rate'     : 1e-3,
+        'dropout_pct'       : 0.4,
+        'learning_rate'     : 1e-6,
         'gamma'             : None,
         'lr_step_size'      : None,
         'random_state'      : 95,
