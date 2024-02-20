@@ -142,9 +142,9 @@ class ModifiedResNet18(nn.Module):
         super(ModifiedResNet18, self).__init__()
 
         self.resnet18 = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
-        # self.resnet18.eval()
-        # for param in self.resnet18.parameters():
-        #     param.requires_grad = False
+        self.resnet18.eval()
+        for param in self.resnet18.parameters():
+            param.requires_grad = False
         self.fc = nn.Linear(1000, CNN_embed_dim)
 
     def forward(self, x):
@@ -154,8 +154,8 @@ class ModifiedResNet18(nn.Module):
     
     def train(self, mode=True):
         super(ModifiedResNet18, self).train(mode)
-        self.resnet18.train(mode)
-        # self.resnet18.train(mode=False)
+        # self.resnet18.train(mode)
+        self.resnet18.train(mode=False)
         return
     
     def eval(self):

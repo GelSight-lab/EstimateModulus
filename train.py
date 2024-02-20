@@ -973,7 +973,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'PretrainedCNN__LRFinder',   
+        'run_name': 'FrozenPretrainedCNN__LRFinder',   
 
         # Training and model parameters
         'epochs'            : 50,
