@@ -208,19 +208,19 @@ class ModulusModel():
             self.decoderRNN = DecoderRNN(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
         else:
             # Initialize force, width, estimation based on config
-            self.force_encoder = ForceFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
-            self.width_encoder = WidthFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
-            # self.force_encoder = ForceFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
-            # self.width_encoder = WidthFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
+            # self.force_encoder = ForceFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
+            # self.width_encoder = WidthFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
+            self.force_encoder = ForceFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
+            self.width_encoder = WidthFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
             self.estimation_encoder = EstimationFC(input_dim=3, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_estimation else None
 
             # Compute the size of the input to the decoder based on config
             decoder_input_size = self.n_frames * self.img_feature_size
             # decoder_input_size += self.n_frames * self.img_feature_size
             if self.use_force: 
-                decoder_input_size += self.n_frames * self.fwe_feature_size
+                decoder_input_size += self.fwe_feature_size
             if self.use_width: 
-                decoder_input_size += self.n_frames * self.fwe_feature_size
+                decoder_input_size += self.fwe_feature_size
             if self.use_estimation: 
                 decoder_input_size += self.fwe_feature_size
             self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
@@ -536,17 +536,17 @@ class ModulusModel():
                         x_frame = x_frames[:, i, :, :, :]
                     features.append(self.video_encoder(x_frame))
                     
-                    # Execute FC layers on other data and append
-                    if self.use_force: # Force measurements
-                        features.append(self.force_encoder(x_forces[:, i, :]))
-                    if self.use_width: # Width measurements
-                        features.append(self.width_encoder(x_widths[:, i, :]))
+                    # # Execute FC layers on other data and append
+                    # if self.use_force: # Force measurements
+                    #     features.append(self.force_encoder(x_forces[:, i, :]))
+                    # if self.use_width: # Width measurements
+                    #     features.append(self.width_encoder(x_widths[:, i, :]))
 
                 # Execute FC layers on other data and append
-                # if self.use_force: # Force measurements
-                #     features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
-                # if self.use_width: # Width measurements
-                #     features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
+                if self.use_force: # Force measurements
+                    features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
+                if self.use_width: # Width measurements
+                    features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
                 if self.use_estimation: # Precomputed modulus estimation
                     features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
@@ -643,17 +643,17 @@ class ModulusModel():
                         x_frame = x_frames[:, i, :, :, :]
                     features.append(self.video_encoder(x_frame))
 
-                    # Execute FC layers on other data and append
-                    if self.use_force: # Force measurements
-                        features.append(self.force_encoder(x_forces[:, i, :]))
-                    if self.use_width: # Width measurements
-                        features.append(self.width_encoder(x_widths[:, i, :]))
+                    # # Execute FC layers on other data and append
+                    # if self.use_force: # Force measurements
+                    #     features.append(self.force_encoder(x_forces[:, i, :]))
+                    # if self.use_width: # Width measurements
+                    #     features.append(self.width_encoder(x_widths[:, i, :]))
 
                 # Execute FC layers on other data and append
-                # if self.use_force: # Force measurements
-                #     features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
-                # if self.use_width: # Width measurements
-                #     features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
+                if self.use_force: # Force measurements
+                    features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
+                if self.use_width: # Width measurements
+                    features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
                 if self.use_estimation: # Precomputed modulus estimation
                     features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
@@ -926,18 +926,18 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'FrozenPretrainedCNN_DecoderBigger_LR=5e-4',   
+        'run_name': 'FrozenPretrainedCNN_CombinedFWE_DecoderBigger_LR=1e-4',   
 
         # Training and model parameters
         'epochs'            : 80,
         'batch_size'        : 32,
         'pretrained_CNN'    : True,
         'use_RNN'           : False, # True,
-        'img_feature_size'  : 128, # 32
-        'fwe_feature_size'  : 8, # 24, # 4,
+        'img_feature_size'  : 64, # 32
+        'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
-        'learning_rate'     : 5e-4,
+        'learning_rate'     : 1e-4,
         'gamma'             : None,
         'lr_step_size'      : None,
         'random_state'      : 95,
