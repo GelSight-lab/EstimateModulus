@@ -83,7 +83,7 @@ for key in poorly_predicted_pct.keys():
         poorly_predicted_pct[key] = 0
 
     # Save the worst ones for display
-    if poorly_predicted_pct > 0.3:
+    if poorly_predicted_pct[key] > 0.3:
         most_poorly_predicted[key] = poorly_predicted_pct[key]
 
 print('shape_log_acc', shape_log_acc)
