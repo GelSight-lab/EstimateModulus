@@ -926,10 +926,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'DefinitelyFrozenPretrainedCNN__CombinedFWE__DecoderBigger__LR=1e-3',   
+        'run_name': 'PretrainedCNN__CombinedFWE__DecoderBigger',   
 
         # Training and model parameters
-        'epochs'            : 80,
+        'epochs'            : 100,
         'batch_size'        : 32,
         'pretrained_CNN'    : True,
         'use_RNN'           : False, # True,
@@ -952,25 +952,23 @@ if __name__ == "__main__":
     #     '1e-5': [120, 0.3],
     #     '1e-4': [120, 0.3],
     # }
-    # for lr in LR_to_epoch_dropout.keys():
-    #     config['learning_rate'] = float(lr)
-    #     config['epochs'] = LR_to_epoch_dropout[lr][0]
-    #     config['dropout'] = LR_to_epoch_dropout[lr][1]
+    for lr in ['1e-4', '5e-3', '1e-3', '5e-5', '1e-5']:
+        config['learning_rate'] = float(lr)
 
-    #     for i in range(2):
-    #         config['run_name'] = f'{base_run_name}__LR={lr}__drop={config["dropout"]}__t={i}'
+        for i in range(1):
+            config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
             
-    #         # config['random_state'] = random.randint(1, 100)
+            # config['random_state'] = random.randint(1, 100)
 
-    #         # Train the model over some data
-    #         train_modulus = ModulusModel(config, device=device)
-    #         train_modulus.train()
+            # Train the model over some data
+            train_modulus = ModulusModel(config, device=device)
+            train_modulus.train()
 
-    for i in range(2):
-        config['run_name'] = f'{base_run_name}__t={i}'
+    # for i in range(2):
+    #     config['run_name'] = f'{base_run_name}__t={i}'
         
-        # config['random_state'] = random.randint(1, 100)
+    #     # config['random_state'] = random.randint(1, 100)
 
-        # Train the model over some data
-        train_modulus = ModulusModel(config, device=device)
-        train_modulus.train()
+    #     # Train the model over some data
+    #     train_modulus = ModulusModel(config, device=device)
+    #     train_modulus.train()
