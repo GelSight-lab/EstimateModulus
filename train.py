@@ -700,9 +700,9 @@ class ModulusModel():
                 self.val_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i][0]
                 self.val_object_performance[object_names[i]]['count'] += 1
                 if self.object_to_modulus[object_names[i]] < 1e8:
-                    val_stats['soft_log_acc'] += abs_log_diff[i]
+                    val_stats['soft_avg_log_diff'] += abs_log_diff[i]
                 else:
-                    val_stats['hard_log_acc'] += abs_log_diff[i]
+                    val_stats['hard_avg_log_diff'] += abs_log_diff[i]
 
                 if abs_log_diff[i] <= 0.5:
                     self.val_object_performance[object_names[i]]['total_log_acc'] += 1
@@ -814,8 +814,8 @@ class ModulusModel():
                     "val_pct_with_100_factor_err": val_stats['pct_w_100_factor_err'],
                     "val_soft_avg_log_diff": val_stats['soft_avg_log_diff'],
                     "val_soft_log_acc": val_stats['soft_log_acc'],
-                    "hard_soft_avg_log_diff": val_stats['hard_avg_log_diff'],
-                    "hard_soft_log_acc": val_stats['hard_log_acc'],
+                    "val_hard_avg_log_diff": val_stats['hard_avg_log_diff'],
+                    "val_hard_log_acc": val_stats['hard_log_acc'],
                 })
 
         if self.use_wandb: wandb.finish()
