@@ -738,10 +738,10 @@ class ModulusModel():
             )
 
             for name, param in self.video_encoder.named_parameters():
-                print(f'{name}: {param.data}')
+                print(f'{name} : {param.data} : {name}')
                 break
             for name, param in self.force_encoder.named_parameters():
-                print(f'{name}: {param.data}')
+                print(f'{name} : {param.data} : {name}')
                 break
 
             # Save the best model based on validation loss
@@ -926,7 +926,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'FrozenPretrainedCNN_CombinedFWE_DecoderBigger_LR=1e-4',   
+        'run_name': 'DefinitelyFrozenPretrainedCNN__CombinedFWE__DecoderBigger__LR=1e-4',   
 
         # Training and model parameters
         'epochs'            : 80,
