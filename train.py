@@ -776,10 +776,10 @@ class ModulusModel():
 
 
 
-            print(f'Epoch: {epoch}, Training Loss: {train_stats['loss']:.4f},',
-                f'Validation Loss: {val_stats['loss']:.4f},',
-                f'Validation Avg. Log Diff: {val_stats['avg_log_diff']:.4f}',
-                f'Validation Log Accuracy: {val_stats['log_acc']:.4f}',
+            print(f'Epoch: {epoch}, Training Loss: {train_stats["loss"]:.4f},',
+                f'Validation Loss: {val_stats["loss"]:.4f},',
+                f'Validation Avg. Log Diff: {val_stats["avg_log_diff"]:.4f}',
+                f'Validation Log Accuracy: {val_stats["log_acc"]:.4f}',
                 '\n'
             )
 
