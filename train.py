@@ -926,7 +926,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'FrozenPretrainedCNN_DecoderBigger_LR=1e-4',   
+        'run_name': 'FrozenPretrainedCNN_DecoderBigger_LR=5e-4',   
 
         # Training and model parameters
         'epochs'            : 80,
@@ -937,7 +937,7 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 8, # 24, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
-        'learning_rate'     : 1e-4,
+        'learning_rate'     : 5e-4,
         'gamma'             : None,
         'lr_step_size'      : None,
         'random_state'      : 95,
