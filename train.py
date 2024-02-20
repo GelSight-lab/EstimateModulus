@@ -973,12 +973,12 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'FrozenPretrainedCNN__LRFinder',   
+        'run_name': 'CustomCNN__LRFinder',   
 
         # Training and model parameters
         'epochs'            : 50,
         'batch_size'        : 32,
-        'pretrained_CNN'    : True,
+        'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
         'img_feature_size'  : 64, # 32
         'fwe_feature_size'  : 32, # 4,
