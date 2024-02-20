@@ -270,7 +270,12 @@ class ModulusModel():
         if self.gamma is not None:
             self.scheduler  = lr_scheduler.StepLR(self.optimizer, step_size=self.lr_step_size, gamma=self.gamma)
 
+
+
+        # TEMPORARY FOR LR FINDER
         self.scheduler = lr_scheduler.StepLR(self.optimizer, step_size=1, gamma=10**(1/10))
+
+
 
         # Load data
         self.object_names = []
@@ -499,7 +504,13 @@ class ModulusModel():
         else:
             self.decoder.train()
 
-        train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
+        train_stats = {
+            'loss': 0,
+            'log_acc': 0,
+            'avg_log_diff': 0,
+            'pct_w_100_factor_err': 0,
+            'batch_count': 0,
+        }
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
 
@@ -560,36 +571,34 @@ class ModulusModel():
                 # Send aggregated features to the FC decoder
                 features = torch.cat(features, -1)
                 outputs = self.decoder(features)
-
-
-            
+           
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             loss.backward()
             self.optimizer.step()
 
-            train_loss += loss.item()
-            batch_count += 1
+            train_stats['loss'] += loss.item()
+            train_stats['batch_count'] += 1
 
             # Calculate performance metrics
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs.cpu())) - torch.log10(self.log_unnormalize(y.cpu()))).detach().numpy()
-            train_avg_log_diff += abs_log_diff.sum()
+            train_stats['avg_log_diff'] += abs_log_diff.sum()
             for i in range(self.batch_size):
                 self.train_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i][0]
                 self.train_object_performance[object_names[i]]['count'] += 1
                 if abs_log_diff[i] <= 0.5:
                     self.train_object_performance[object_names[i]]['total_log_acc'] += 1
-                    train_log_acc += 1
+                    train_stats['log_acc'] += 1
                 if abs_log_diff[i] >= 2:
                     self.train_object_performance[object_names[i]]['total_poorly_predicted'] += 1
-                    train_pct_with_100_factor_err += 1
+                    train_stats['avg_log_diff'] += 1
                     
         # Return loss
-        train_loss /= batch_count
-        train_log_acc /= (self.batch_size * batch_count)
-        train_avg_log_diff /= (self.batch_size * batch_count)
-        train_pct_with_100_factor_err /= (self.batch_size * batch_count)
+        train_stats['loss']                     /= train_stats['batch_count']
+        train_stats['log_acc']                  /= (self.batch_size * train_stats['batch_count'])
+        train_stats['avg_log_diff']             /= (self.batch_size * train_stats['batch_count'])
+        train_stats['pct_w_100_factor_err']     /= (self.batch_size * train_stats['batch_count'])
 
-        return train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err
+        return train_stats
 
     def _val_epoch(self, track_predictions=False):
         self.video_encoder.eval()
@@ -607,7 +616,19 @@ class ModulusModel():
         if track_predictions:
             predictions = { obj : [] for obj in self.objects_val }
 
-        val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err, batch_count = 0, 0, 0, 0, 0
+        val_stats = {
+            'loss': 0,
+            'log_acc': 0,
+            'soft_log_acc': 0,
+            'hard_log_acc': 0,
+            'avg_log_diff': 0,
+            'soft_avg_log_diff': 0,
+            'hard_avg_log_diff': 0,
+            'pct_w_100_factor_err': 0,
+            'soft_count': 0,
+            'hard_count': 0,
+            'batch_count': 0,
+        }
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
             
             if self.use_RNN:
@@ -669,35 +690,52 @@ class ModulusModel():
                 outputs = self.decoder(features)
             
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
-            val_loss += loss.item()
-            batch_count += 1
+            val_stats['loss'] += loss.item()
+            val_stats['batch_count'] += 1
 
             # Calculate performance metrics
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs.cpu())) - torch.log10(self.log_unnormalize(y.cpu()))).detach().numpy()
-            val_avg_log_diff += abs_log_diff.sum()
+            val_stats['avg_log_diff'] += abs_log_diff.sum()
             for i in range(self.batch_size):
                 self.val_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i][0]
                 self.val_object_performance[object_names[i]]['count'] += 1
+                if self.object_to_modulus[object_names[i]] < 1e8:
+                    val_stats['soft_log_acc'] += abs_log_diff[i]
+                else:
+                    val_stats['hard_log_acc'] += abs_log_diff[i]
+
                 if abs_log_diff[i] <= 0.5:
                     self.val_object_performance[object_names[i]]['total_log_acc'] += 1
-                    val_log_acc += 1
+                    val_stats['log_acc'] += 1
+                    if self.object_to_modulus[object_names[i]] < 1e8:
+                        val_stats['soft_log_acc'] += 1
+                    else:
+                        val_stats['hard_log_acc'] += 1
+
                 if abs_log_diff[i] >= 2:
                     self.val_object_performance[object_names[i]]['total_poorly_predicted'] += 1
-                    val_pct_with_100_factor_err += 1
+                    val_stats['pct_w_100_factor_err'] += 1
+
+                if self.object_to_modulus[object_names[i]] < 1e8: val_stats['soft_count'] += 1
+                else: val_stats['hard_count'] += 1
 
                 if track_predictions:
                     predictions[object_names[i]].append(self.log_unnormalize(outputs.cpu()).detach().numpy()[i][0])
 
         # Return loss and accuracy
-        val_loss /= batch_count
-        val_log_acc /= (self.batch_size * batch_count)
-        val_avg_log_diff /= (self.batch_size * batch_count)
-        val_pct_with_100_factor_err /= (self.batch_size * batch_count)
+        val_stats['loss']                   /= val_stats['batch_count']
+        val_stats['log_acc']                /= (self.batch_size * val_stats['batch_count'])
+        val_stats['avg_log_diff']           /= (self.batch_size * val_stats['batch_count'])
+        val_stats['pct_w_100_factor_err']   /= (self.batch_size * val_stats['batch_count'])
+        val_stats['soft_log_acc']           /= val_stats['soft_count']
+        val_stats['soft_avg_log_diff']      /= val_stats['soft_count']
+        val_stats['hard_log_acc']           /= val_stats['hard_count']
+        val_stats['hard_avg_log_diff']      /= val_stats['hard_count']
 
         if track_predictions:
             return predictions
         else:
-            return val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err
+            return val_stats
 
     def train(self):
         learning_rate = self.learning_rate 
@@ -721,10 +759,10 @@ class ModulusModel():
                 }
 
             # Train batch
-            train_loss, train_log_acc, train_avg_log_diff, train_pct_with_100_factor_err = self._train_epoch()
+            train_stats = self._train_epoch()
 
             # Validation statistics
-            val_loss, val_log_acc, val_avg_log_diff, val_pct_with_100_factor_err = self._val_epoch()
+            val_stats = self._val_epoch()
 
             # Increment learning rate
             for param_group in self.optimizer.param_groups:
@@ -733,13 +771,15 @@ class ModulusModel():
                 self.scheduler.step()
 
                 
+            # TEMPORARY FOR LR FINDER
             self.scheduler.step()
 
 
-            print(f'Epoch: {epoch}, Training Loss: {train_loss:.4f},',
-                f'Validation Loss: {val_loss:.4f},',
-                f'Validation Avg. Log Diff: {val_avg_log_diff:.4f}',
-                f'Validation Log Accuracy: {val_log_acc:.4f}',
+
+            print(f'Epoch: {epoch}, Training Loss: {train_stats['loss']:.4f},',
+                f'Validation Loss: {val_stats['loss']:.4f},',
+                f'Validation Avg. Log Diff: {val_stats['avg_log_diff']:.4f}',
+                f'Validation Log Accuracy: {val_stats['log_acc']:.4f}',
                 '\n'
             )
 
@@ -751,8 +791,8 @@ class ModulusModel():
                 break
 
             # Save the best model based on validation loss
-            if val_log_acc >= max_val_log_acc:
-                max_val_log_acc = val_log_acc
+            if val_stats['log_acc'] >= max_val_log_acc:
+                max_val_log_acc = val_stats['log_acc']
                 self.save_model()
 
             # Log information to W&B
@@ -764,14 +804,18 @@ class ModulusModel():
                     "learning_rate": learning_rate,
                     "memory_allocated": self.memory_allocated,
                     "memory_reserved": self.memory_cached,
-                    "train_loss": train_loss,
-                    "train_avg_log_diff": train_avg_log_diff,
-                    "train_log_accuracy": train_log_acc,
-                    "train_pct_with_100_factor_err": train_pct_with_100_factor_err,
-                    "val_loss": val_loss,
-                    "val_avg_log_diff": val_avg_log_diff,
-                    "val_log_accuracy": val_log_acc,
-                    "val_pct_with_100_factor_err": val_pct_with_100_factor_err,
+                    "train_loss": train_stats['loss'],
+                    "train_avg_log_diff": train_stats['avg_log_diff'],
+                    "train_log_accuracy": train_stats['log_acc'],
+                    "train_pct_with_100_factor_err": train_stats['pct_w_100_factor_err'],
+                    "val_loss": val_stats['loss'],
+                    "val_avg_log_diff": val_stats['avg_log_diff'],
+                    "val_log_accuracy": val_stats['log_acc'],
+                    "val_pct_with_100_factor_err": val_stats['pct_w_100_factor_err'],
+                    "val_soft_avg_log_diff": val_stats['soft_avg_log_diff'],
+                    "val_soft_log_acc": val_stats['soft_log_acc'],
+                    "hard_soft_avg_log_diff": val_stats['hard_avg_log_diff'],
+                    "hard_soft_log_acc": val_stats['hard_log_acc'],
                 })
 
         if self.use_wandb: wandb.finish()
@@ -882,11 +926,8 @@ class ModulusModel():
                     count += 1
 
         # Create plot
-        plt.rcParams["font.family"] = "times-new-roman"
-        # plt.rcParams['text.usetex'] = True
-        # plt.rcParams["font.family"] = "sans-serif"
-        # plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
-        # plt.rc('text', usetex=True)
+        mpl.rcParams['font.family'] = ['serif']
+        mpl.rcParams['font.serif'] = ['Times New Roman']
         plt.figure()
         plt.plot([100, 10**12], [100, 10**12], 'k--', label='_')
         plt.fill_between([100, 10**12], [10**(1.5), 10**(11.5)], [10**(2.5), 10**(12.5)], color='gray', alpha=0.2)
@@ -943,7 +984,7 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 1e-6,
+        'learning_rate'     : 1e-7,
         'gamma'             : None,
         'lr_step_size'      : None,
         'random_state'      : 95,
@@ -951,24 +992,28 @@ if __name__ == "__main__":
     assert config['img_style'] in ['diff', 'depth']
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
-    base_run_name = config['run_name']
-    # LR_to_epoch_dropout = {
-    #     '1e-3': [50, 0.3],
-    #     '1e-3': [50, 0.5],
-    #     '1e-5': [120, 0.3],
-    #     '1e-4': [120, 0.3],
-    # }
-    for lr in ['1e-5', '5e-4']:
-        config['learning_rate'] = float(lr)
+    # Train the model over some data
+    train_modulus = ModulusModel(config, device=device)
+    train_modulus.train()
+    
+    # base_run_name = config['run_name']
+    # # LR_to_epoch_dropout = {
+    # #     '1e-3': [50, 0.3],
+    # #     '1e-3': [50, 0.5],
+    # #     '1e-5': [120, 0.3],
+    # #     '1e-4': [120, 0.3],
+    # # }
+    # for lr in ['1e-5', '5e-4']:
+    #     config['learning_rate'] = float(lr)
 
-        for i in range(1):
-            config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
+    #     for i in range(1):
+    #         config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
             
-            # config['random_state'] = random.randint(1, 100)
+    #         # config['random_state'] = random.randint(1, 100)
 
-            # Train the model over some data
-            train_modulus = ModulusModel(config, device=device)
-            train_modulus.train()
+    #         # Train the model over some data
+    #         train_modulus = ModulusModel(config, device=device)
+    #         train_modulus.train()
 
     # for i in range(2):
     #     config['run_name'] = f'{base_run_name}__t={i}'

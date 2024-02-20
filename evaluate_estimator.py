@@ -188,10 +188,6 @@ def plot_performance(plot_title, prediction_dict, label_dict):
     # Create plot
     mpl.rcParams['font.family'] = ['serif']
     mpl.rcParams['font.serif'] = ['Times New Roman']
-    # plt.rcParams['text.usetex'] = True
-    # plt.rcParams["font.family"] = "sans-serif"
-    # plt.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
-    # plt.rc('text', usetex=True)
     plt.figure()
     plt.plot([100, 10**12], [100, 10**12], 'k--', label='_')
     plt.fill_between([100, 10**12], [10**(1.5), 10**(11.5)], [10**(2.5), 10**(12.5)], color='gray', alpha=0.2)
