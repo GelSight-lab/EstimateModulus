@@ -952,7 +952,7 @@ if __name__ == "__main__":
     #     '1e-5': [120, 0.3],
     #     '1e-4': [120, 0.3],
     # }
-    for lr in ['1e-4', '5e-3', '1e-3', '5e-5', '1e-5']:
+    for lr in ['5e-5', '1e-5', '5e-4']:
         config['learning_rate'] = float(lr)
 
         for i in range(1):
