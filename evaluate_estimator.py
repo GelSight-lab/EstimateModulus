@@ -64,27 +64,18 @@ with open(csv_file_path, 'r') as file:
 # Find an optimal linear scaling for a set of modulus predictions
 def scale_predictions(prediction_dict, scale_cutoff=1e11):
     x, y = [], []
-    nan_count, total_count = 0, 0
     for object_name in prediction_dict.keys():
         if object_name in EXCLUDE: continue
         for E in prediction_dict[object_name]:
-            if E > 0 and not math.isnan(E) and E < 1e8 and object_to_modulus[object_name] < scale_cutoff:
+            if E > 0 and not math.isnan(E) and E < 1e7 and object_to_modulus[object_name] < scale_cutoff:
                 x.append(E)
                 y.append(object_to_modulus[object_name])
-            else:
-                nan_count += 1
-        total_count += len(prediction_dict[object_name])
 
     # Filter out outliers for fitting
     x, y = np.array(x), np.array(y)
     outlier_mask = np.abs(x - np.mean(x)) < np.std(x)
     x_filtered, y_filtered = x[outlier_mask], y[outlier_mask]
-
-    # print('Percent of Predictions NaN:', nan_count / total_count)
-    # print('Number of datapoints before filtering:', len(x))
-    # print('Number of datapoints after filtering:', len(x_filtered))
-    # print('\n')
-
+    
     if len(x_filtered) < 10: return prediction_dict
 
     poly = np.polyfit(np.log10(x_filtered), np.log10(y_filtered), 1)
