@@ -960,10 +960,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'CustomCNN__WithScheduler',   
+        'run_name': 'CustomCNN__WithNewScheduler',
 
         # Training and model parameters
-        'epochs'            : 150,
+        'epochs'            : 100,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
@@ -971,8 +971,8 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 2.5e-4,
-        'gamma'             : 100**(-5/150), # 100**(-lr_step_size / epochs)
+        'learning_rate'     : 5e-4,
+        'gamma'             : 100**(-5/100), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 95,
     }
@@ -981,7 +981,7 @@ if __name__ == "__main__":
 
     # Train the model over some data
     base_run_name = config['run_name']
-    for i in range(2):
+    for i in range(3):
         config['run_name'] = f'{base_run_name}__t={i}'
         train_modulus = ModulusModel(config, device=device)
         train_modulus.train()
