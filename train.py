@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -413,7 +413,14 @@ class ModulusModel():
         # Get all the paths to grasp data within directory
         paths_to_files = []
         list_files(f'{self.data_dir}/{training_data_folder_name}', paths_to_files, self.config)
-        self.paths_to_files = paths_to_files
+
+
+
+        # self.paths_to_files = paths_to_files
+        self.paths_to_files = [ x for x in paths_to_files if "aug=0" in x ]
+
+
+
 
         # Create data loaders based on training / validation break-up
         self._create_data_loaders()
@@ -952,8 +959,9 @@ if __name__ == "__main__":
         'use_force': True,
         'use_width': True,
         'use_estimation': False,
-        'use_transformations': False,
-        'exclude': ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
+        'use_transformations': True,
+        'exclude': [
+                    'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'green_foam_brick', # 'green_foam_brick', 
                     'apple', 'orange', 'strawberry', 'ripe_banana', 'unripe_banana', 
                     'lacrosse_ball', 'scotch_brite', 'cork', 'baseball',
