@@ -770,12 +770,6 @@ class ModulusModel():
             if self.gamma is not None:
                 self.scheduler.step()
 
-                
-            # TEMPORARY FOR LR FINDER
-            self.scheduler.step()
-
-
-
             print(f'Epoch: {epoch}, Training Loss: {train_stats["loss"]:.4f},',
                 f'Validation Loss: {val_stats["loss"]:.4f},',
                 f'Validation Avg. Log Diff: {val_stats["avg_log_diff"]:.4f}',
@@ -973,10 +967,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'CustomCNN__LRFinder',   
+        'run_name': 'CustomCNN__WithScheduler',   
 
         # Training and model parameters
-        'epochs'            : 50,
+        'epochs'            : 150,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
@@ -984,42 +978,17 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 1e-7,
-        'gamma'             : None,
-        'lr_step_size'      : None,
+        'learning_rate'     : 2.5e-4,
+        'gamma'             : 100**(-5/50), # 100**(-lr_step_size / epochs)
+        'lr_step_size'      : 5,
         'random_state'      : 95,
     }
     assert config['img_style'] in ['diff', 'depth']
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
     # Train the model over some data
-    train_modulus = ModulusModel(config, device=device)
-    train_modulus.train()
-    
-    # base_run_name = config['run_name']
-    # # LR_to_epoch_dropout = {
-    # #     '1e-3': [50, 0.3],
-    # #     '1e-3': [50, 0.5],
-    # #     '1e-5': [120, 0.3],
-    # #     '1e-4': [120, 0.3],
-    # # }
-    # for lr in ['1e-5', '5e-4']:
-    #     config['learning_rate'] = float(lr)
-
-    #     for i in range(1):
-    #         config['run_name'] = f'{base_run_name}__LR={lr}__t={i}'
-            
-    #         # config['random_state'] = random.randint(1, 100)
-
-    #         # Train the model over some data
-    #         train_modulus = ModulusModel(config, device=device)
-    #         train_modulus.train()
-
-    # for i in range(2):
-    #     config['run_name'] = f'{base_run_name}__t={i}'
-        
-    #     # config['random_state'] = random.randint(1, 100)
-
-    #     # Train the model over some data
-    #     train_modulus = ModulusModel(config, device=device)
-    #     train_modulus.train()
+    base_run_name = config['run_name']
+    for i in range(2):
+        config['run_name'] = f'{base_run_name}__t={i}'
+        train_modulus = ModulusModel(config, device=device)
+        train_modulus.train()
