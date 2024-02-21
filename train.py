@@ -960,7 +960,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'CustomCNN__WithNewScheduler',
+        'run_name': 'CustomCNN__NoScheduler',
 
         # Training and model parameters
         'epochs'            : 150,
@@ -971,8 +971,8 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 5e-4,
-        'gamma'             : 100**(-5/150), # 100**(-lr_step_size / epochs)
+        'learning_rate'     : 2.5e-5,
+        'gamma'             : None, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 95,
     }
