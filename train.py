@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -57,6 +57,7 @@ class CustomDataset(Dataset):
         self.img_size = config['img_size']
         self.img_style = config['img_style']
         self.n_channels = config['n_channels']
+        self.regression = config['regression']
         self.use_markers = config['use_markers']
         self.use_force = config['use_force']
         self.use_width = config['use_width']
@@ -157,7 +158,10 @@ class CustomDataset(Dataset):
                 self.x_estimations[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
         
         # Unpack label
-        self.y_label[0] = self.normalized_modulus_labels[idx]
+        if self.regression:
+            self.y_label[0] = self.normalized_modulus_labels[idx]
+        else:
+            self.y_label[:] = self.normalized_modulus_labels[idx]
 
         # return self.x_frames.clone(), self.x_frames_other.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
         return self.x_frames.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
@@ -205,7 +209,11 @@ class ModulusModel():
                 decoder_input_size += self.fwe_feature_size
             if self.use_width: 
                 decoder_input_size += self.fwe_feature_size
-            self.decoderRNN = DecoderRNN(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
+
+
+            decoder_output_dim = 1 if self.regression else 9
+            self.decoderRNN = DecoderRNN(input_dim=decoder_input_size, output_dim=decoder_output_dim, dropout_pct=self.dropout_pct)
+
         else:
             # Initialize force, width, estimation based on config
             # self.force_encoder = ForceFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
@@ -223,7 +231,9 @@ class ModulusModel():
                 decoder_input_size += self.fwe_feature_size
             if self.use_estimation: 
                 decoder_input_size += self.fwe_feature_size
-            self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
+
+            decoder_output_dim = 1 if self.regression else 9
+            self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=decoder_output_dim, dropout_pct=self.dropout_pct)
 
         # Send models to device
         self.video_encoder.to(self.device)
@@ -291,6 +301,7 @@ class ModulusModel():
                     "val_inputs": len(self.val_loader) * self.batch_size,
                     "n_frames": self.n_frames,
                     "n_channels": self.n_channels,
+                    "regression": self.regression,
                     "img_size": self.img_size,
                     "img_style": self.img_style,
                     "use_RNN": self.use_RNN,
@@ -302,11 +313,12 @@ class ModulusModel():
                     "validation_pct": self.val_pct,
                     "dropout_pct": self.dropout_pct,
                     "random_state": self.random_state,
-                    "architecture": "ENCODE_DECODE",
                     "num_params": len(self.params),
                     "optimizer": "Adam",
                     "loss": "MSE",
                     "scheduler": "StepLR",
+                    "use_RNN": self.use_RNN,
+                    "pretrained_CNN": self.pretrained_CNN,
                     "use_markers": self.use_markers,
                     "use_force": self.use_force,
                     "use_width": self.use_width,
@@ -335,6 +347,7 @@ class ModulusModel():
         self.img_size               = config['img_size']
         self.img_style              = config['img_style']
         self.n_channels             = config['n_channels']
+        self.regression             = config['regression']
         self.use_markers            = config['use_markers']
         self.use_force              = config['use_force']
         self.use_width              = config['use_width']
@@ -358,7 +371,7 @@ class ModulusModel():
         self.gamma              = config['gamma']
         self.lr_step_size       = config['lr_step_size']
         self.random_state       = config['random_state']
-        self.criterion          = nn.MSELoss()
+        self.criterion          = nn.MSELoss() if self.regression else nn.BCELoss()
         return
     
     # Normalize labels to maximum on log scale
@@ -390,8 +403,9 @@ class ModulusModel():
                 if row[csv_modulus_column] != '' and float(row[csv_modulus_column]) > 0:
                     modulus = float(row[csv_modulus_column])
                     self.object_to_modulus[row[1]] = modulus
-                    self.normalization_values['max_modulus'] = max(self.normalization_values['max_modulus'], modulus)
-                    self.normalization_values['min_modulus'] = min(self.normalization_values['min_modulus'], modulus)
+                    if not (row[1] in self.exclude):
+                        self.normalization_values['max_modulus'] = max(self.normalization_values['max_modulus'], modulus)
+                        self.normalization_values['min_modulus'] = min(self.normalization_values['min_modulus'], modulus)
 
                     self.object_to_material[row[1]] = row[csv_material_column]
                     self.object_to_shape[row[1]] = row[csv_shape_column]
@@ -420,6 +434,13 @@ class ModulusModel():
         return
     
     def _create_data_loaders(self):
+
+
+        total_bins = int(np.round(np.log10(self.normalization_values['max_modulus']) - np.log10(self.normalization_values['min_modulus'])))
+        zero_bin_vector = torch.zeros((total_bins+1), device=self.device)
+
+
+
         # Divide paths up into training and validation data
         x_train, x_val = [], []
         y_train, y_val = [], []
@@ -429,15 +450,33 @@ class ModulusModel():
             object_name = file_name.split('__')[0]
             if object_name in self.exclude: continue
 
+
+            
+
+
+            unnormalized_modulus = self.object_to_modulus[object_name]
+            log_bin = int(np.round(np.log10(unnormalized_modulus) - np.log10(self.normalization_values['min_modulus'])))
+            y_label = zero_bin_vector.clone()
+            y_label[log_bin] = 1
+
+
+
+
             if object_name in self.objects_train:
                 self.object_names.append(object_name)
                 x_train.append(file_path)
-                y_train.append(self.log_normalize(self.object_to_modulus[object_name]))
+                if self.regression:
+                    y_train.append(self.log_normalize(self.object_to_modulus[object_name]))
+                else:
+                    y_train.append(y_label)
 
             elif object_name in self.objects_val:
                 self.object_names.append(object_name)
                 x_val.append(file_path)
-                y_val.append(self.log_normalize(self.object_to_modulus[object_name]))
+                if self.regression:
+                    y_val.append(self.log_normalize(self.object_to_modulus[object_name]))
+                else:
+                    y_val.append(y_label)
 
         # Create some data structures for tracking performance
         self.train_object_performance = {}
@@ -458,11 +497,14 @@ class ModulusModel():
                 }
 
         # Create tensor's on device to send to dataset
-        empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device)
-        empty_force_tensor        = torch.zeros((self.n_frames, 1), device=device)
-        empty_width_tensor        = torch.zeros((self.n_frames, 1), device=device)
-        empty_estimation_tensor   = torch.zeros((3, 1), device=device)
-        empty_label_tensor        = torch.zeros((1), device=device)
+        empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=self.device)
+        empty_force_tensor        = torch.zeros((self.n_frames, 1), device=self.device)
+        empty_width_tensor        = torch.zeros((self.n_frames, 1), device=self.device)
+        empty_estimation_tensor   = torch.zeros((3, 1), device=self.device)
+        if self.regression: 
+            empty_label_tensor    = torch.zeros((1), device=self.device)
+        else:
+            empty_label_tensor    = zero_bin_vector.clone()
     
         # Construct datasets
         kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
@@ -572,24 +614,26 @@ class ModulusModel():
             train_stats['loss'] += loss.item()
             train_stats['batch_count'] += 1
 
-            # Calculate performance metrics
-            abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs.cpu())) - torch.log10(self.log_unnormalize(y.cpu()))).detach().numpy()
-            train_stats['avg_log_diff'] += abs_log_diff.sum()
-            for i in range(self.batch_size):
-                self.train_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i][0]
-                self.train_object_performance[object_names[i]]['count'] += 1
-                if abs_log_diff[i] <= 0.5:
-                    self.train_object_performance[object_names[i]]['total_log_acc'] += 1
-                    train_stats['log_acc'] += 1
-                if abs_log_diff[i] >= 2:
-                    self.train_object_performance[object_names[i]]['total_poorly_predicted'] += 1
-                    train_stats['avg_log_diff'] += 1
+            train_stats['log_acc'] += torch.sum(torch.argmax(outputs.cpu(), axis=1) == torch.argmax(y.cpu(), axis=1)).item()
+
+            # # Calculate performance metrics
+            # abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs.cpu())) - torch.log10(self.log_unnormalize(y.cpu()))).detach().numpy()
+            # train_stats['avg_log_diff'] += abs_log_diff.sum()
+            # for i in range(self.batch_size):
+            #     self.train_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i][0]
+            #     self.train_object_performance[object_names[i]]['count'] += 1
+            #     if abs_log_diff[i] <= 0.5:
+            #         self.train_object_performance[object_names[i]]['total_log_acc'] += 1
+            #         train_stats['log_acc'] += 1
+            #     if abs_log_diff[i] >= 2:
+            #         self.train_object_performance[object_names[i]]['total_poorly_predicted'] += 1
+            #         train_stats['avg_log_diff'] += 1
                     
         # Return loss
         train_stats['loss']                     /= train_stats['batch_count']
         train_stats['log_acc']                  /= (self.batch_size * train_stats['batch_count'])
-        train_stats['avg_log_diff']             /= (self.batch_size * train_stats['batch_count'])
-        train_stats['pct_w_100_factor_err']     /= (self.batch_size * train_stats['batch_count'])
+        # train_stats['avg_log_diff']             /= (self.batch_size * train_stats['batch_count'])
+        # train_stats['pct_w_100_factor_err']     /= (self.batch_size * train_stats['batch_count'])
 
         return train_stats
 
@@ -686,44 +730,47 @@ class ModulusModel():
             val_stats['loss'] += loss.item()
             val_stats['batch_count'] += 1
 
-            # Calculate performance metrics
-            abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs.cpu())) - torch.log10(self.log_unnormalize(y.cpu()))).detach().numpy()
-            val_stats['avg_log_diff'] += abs_log_diff.sum()
-            for i in range(self.batch_size):
-                self.val_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i][0]
-                self.val_object_performance[object_names[i]]['count'] += 1
-                if self.object_to_modulus[object_names[i]] < 1e8:
-                    val_stats['soft_avg_log_diff'] += abs_log_diff[i]
-                else:
-                    val_stats['hard_avg_log_diff'] += abs_log_diff[i]
+            val_stats['log_acc'] += torch.sum(torch.argmax(outputs.cpu(), axis=1) == torch.argmax(y.cpu(), axis=1)).item()
 
-                if abs_log_diff[i] <= 0.5:
-                    self.val_object_performance[object_names[i]]['total_log_acc'] += 1
-                    val_stats['log_acc'] += 1
-                    if self.object_to_modulus[object_names[i]] < 1e8:
-                        val_stats['soft_log_acc'] += 1
-                    else:
-                        val_stats['hard_log_acc'] += 1
+            # # Calculate performance metrics
+            # abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs.cpu())) - torch.log10(self.log_unnormalize(y.cpu()))).detach().numpy()
+            # val_stats['avg_log_diff'] += abs_log_diff.sum()
+            # for i in range(self.batch_size):
+            #     self.val_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i][0]
+            #     self.val_object_performance[object_names[i]]['count'] += 1
+            #     if self.object_to_modulus[object_names[i]] < 1e8:
+            #         val_stats['soft_avg_log_diff'] += abs_log_diff[i]
+            #     else:
+            #         val_stats['hard_avg_log_diff'] += abs_log_diff[i]
 
-                if abs_log_diff[i] >= 2:
-                    self.val_object_performance[object_names[i]]['total_poorly_predicted'] += 1
-                    val_stats['pct_w_100_factor_err'] += 1
+            #     if abs_log_diff[i] <= 0.5:
+            #         self.val_object_performance[object_names[i]]['total_log_acc'] += 1
+            #         val_stats['log_acc'] += 1
+            #         if self.object_to_modulus[object_names[i]] < 1e8:
+            #             val_stats['soft_log_acc'] += 1
+            #         else:
+            #             val_stats['hard_log_acc'] += 1
 
-                if self.object_to_modulus[object_names[i]] < 1e8: val_stats['soft_count'] += 1
-                else: val_stats['hard_count'] += 1
+            #     if abs_log_diff[i] >= 2:
+            #         self.val_object_performance[object_names[i]]['total_poorly_predicted'] += 1
+            #         val_stats['pct_w_100_factor_err'] += 1
 
-                if track_predictions:
-                    predictions[object_names[i]].append(self.log_unnormalize(outputs.cpu()).detach().numpy()[i][0])
+            #     if self.object_to_modulus[object_names[i]] < 1e8: val_stats['soft_count'] += 1
+            #     else: val_stats['hard_count'] += 1
+
+            #     if track_predictions:
+            #         predictions[object_names[i]].append(self.log_unnormalize(outputs.cpu()).detach().numpy()[i][0])
+            
 
         # Return loss and accuracy
         val_stats['loss']                   /= val_stats['batch_count']
         val_stats['log_acc']                /= (self.batch_size * val_stats['batch_count'])
-        val_stats['avg_log_diff']           /= (self.batch_size * val_stats['batch_count'])
-        val_stats['pct_w_100_factor_err']   /= (self.batch_size * val_stats['batch_count'])
-        val_stats['soft_log_acc']           /= val_stats['soft_count']
-        val_stats['soft_avg_log_diff']      /= val_stats['soft_count']
-        val_stats['hard_log_acc']           /= val_stats['hard_count']
-        val_stats['hard_avg_log_diff']      /= val_stats['hard_count']
+        # val_stats['avg_log_diff']           /= (self.batch_size * val_stats['batch_count'])
+        # val_stats['pct_w_100_factor_err']   /= (self.batch_size * val_stats['batch_count'])
+        # val_stats['soft_log_acc']           /= val_stats['soft_count']
+        # val_stats['soft_avg_log_diff']      /= val_stats['soft_count']
+        # val_stats['hard_log_acc']           /= val_stats['hard_count']
+        # val_stats['hard_avg_log_diff']      /= val_stats['hard_count']
 
         if track_predictions:
             return predictions
@@ -792,17 +839,17 @@ class ModulusModel():
                     "memory_allocated": self.memory_allocated,
                     "memory_reserved": self.memory_cached,
                     "train_loss": train_stats['loss'],
-                    "train_avg_log_diff": train_stats['avg_log_diff'],
+                    # "train_avg_log_diff": train_stats['avg_log_diff'],
                     "train_log_accuracy": train_stats['log_acc'],
-                    "train_pct_with_100_factor_err": train_stats['pct_w_100_factor_err'],
+                    # "train_pct_with_100_factor_err": train_stats['pct_w_100_factor_err'],
                     "val_loss": val_stats['loss'],
-                    "val_avg_log_diff": val_stats['avg_log_diff'],
+                    # "val_avg_log_diff": val_stats['avg_log_diff'],
                     "val_log_accuracy": val_stats['log_acc'],
-                    "val_pct_with_100_factor_err": val_stats['pct_w_100_factor_err'],
-                    "val_soft_avg_log_diff": val_stats['soft_avg_log_diff'],
-                    "val_soft_log_acc": val_stats['soft_log_acc'],
-                    "val_hard_avg_log_diff": val_stats['hard_avg_log_diff'],
-                    "val_hard_log_acc": val_stats['hard_log_acc'],
+                    # "val_pct_with_100_factor_err": val_stats['pct_w_100_factor_err'],
+                    # "val_soft_avg_log_diff": val_stats['soft_avg_log_diff'],
+                    # "val_soft_log_acc": val_stats['soft_log_acc'],
+                    # "val_hard_avg_log_diff": val_stats['hard_avg_log_diff'],
+                    # "val_hard_log_acc": val_stats['hard_log_acc'],
                 })
 
         if self.use_wandb: wandb.finish()
@@ -948,6 +995,7 @@ if __name__ == "__main__":
         'n_frames': N_FRAMES,
         'img_size': WARPED_CROPPED_IMG_SIZE,
         'img_style': 'diff',
+        'regression': False,
         'use_markers': True,
         'use_force': True,
         'use_width': True,
@@ -963,7 +1011,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'CustomCNN__WithNewScheduler',
+        'run_name': 'Classification__CustomCNN',
 
         # Training and model parameters
         'epochs'            : 150,
