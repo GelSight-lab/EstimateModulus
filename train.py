@@ -270,13 +270,6 @@ class ModulusModel():
         if self.gamma is not None:
             self.scheduler  = lr_scheduler.StepLR(self.optimizer, step_size=self.lr_step_size, gamma=self.gamma)
 
-
-
-        # TEMPORARY FOR LR FINDER
-        self.scheduler = lr_scheduler.StepLR(self.optimizer, step_size=1, gamma=10**(1/10))
-
-
-
         # Load data
         self.object_names = []
         self.object_to_modulus = {}
