@@ -423,8 +423,6 @@ for object_name in tqdm(objects):
                 with open(f'{file_path_prefix}/MDR_both_sides/{config_contact_mask}/{i}.json', 'w') as json_file:
                     json.dump(MDR_config, json_file)
 
-            print(E_hertz)
-
         # Fit using the stochastic estimator
         E_stochastic = estimator.fit_modulus_stochastic()
         if not os.path.exists(f'{file_path_prefix}/stochastic'):
