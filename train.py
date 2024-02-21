@@ -414,19 +414,19 @@ class ModulusModel():
         #         foam_metal_objects.append(object_name)
         # object_names = foam_metal_objects
 
-        wood_foam_metal_objects = []
-        for object_name in object_names:
-            if self.object_to_modulus[object_name] >= 8e9 or \
-                self.object_to_modulus[object_name] < 1e7:
-                wood_foam_metal_objects.append(object_name)
-        object_names = wood_foam_metal_objects
-
-        # rubber_foam_metal_objects = []
+        # wood_foam_metal_objects = []
         # for object_name in object_names:
-        #     if self.object_to_modulus[object_name] >= 5e10 or \
+        #     if self.object_to_modulus[object_name] >= 8e9 or \
         #         self.object_to_modulus[object_name] < 1e7:
-        #         rubber_foam_metal_objects.append(object_name)
-        # object_names = rubber_foam_metal_objects
+        #         wood_foam_metal_objects.append(object_name)
+        # object_names = wood_foam_metal_objects
+
+        rubber_foam_metal_objects = []
+        for object_name in object_names:
+            if self.object_to_modulus[object_name] >= 5e10 or \
+                self.object_to_modulus[object_name] < 1e7:
+                rubber_foam_metal_objects.append(object_name)
+        object_names = rubber_foam_metal_objects
 
 
 
@@ -988,7 +988,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'WoodMetalFoam__CustomCNN__WithNewScheduler',
+        'run_name': 'RubberMetalFoam__CustomCNN__WithNewScheduler',
 
         # Training and model parameters
         'epochs'            : 150,
