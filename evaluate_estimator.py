@@ -45,7 +45,9 @@ DATA_DIR = './data' # '/media/mike/Elements/data'
 EXCLUDE = ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
             'red_foam_brick', 'blue_foam_brick', 'green_foam_brick', # 'yellow_foam_brick',
             'apple', 'orange', 'strawberry', 'lacrosse_ball', 'rubber_washer_stack', 
-            'ripe_banana', 'unripe_banana', 'scotch_brite', 'cork']
+            'ripe_banana', 'unripe_banana', 'scotch_brite', 'cork',
+            'baseball', 'plastic_measuring_cup', 'whiteboard_eraser', 'lifesaver_hard', 'cutting_board',
+        ]
 
 # Read CSV files with objects and labels tabulated
 object_to_modulus = {}

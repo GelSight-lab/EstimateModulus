@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -402,20 +402,6 @@ class ModulusModel():
         # Extract object names as keys from data
         object_names = self.object_to_modulus.keys()
         object_names = [x for x in object_names if x not in self.exclude]
-
-
-
-
-
-        removed_middle = []
-        for object_name in object_names:
-            if self.object_to_modulus[object_name] >= 2e9 or \
-                self.object_to_modulus[object_name] < 1e7:
-                removed_middle.append(object_name)
-        object_names = removed_middle
-
-
-
 
         # Extract corresponding elastic modulus labels for each object
         elastic_moduli = [self.object_to_modulus[x] for x in object_names]
@@ -966,15 +952,17 @@ if __name__ == "__main__":
         'use_force': True,
         'use_width': True,
         'use_estimation': False,
-        'use_transformations': True,
+        'use_transformations': False,
         'exclude': ['playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'green_foam_brick', # 'green_foam_brick', 
-                    'apple', 'orange', 'strawberry', 'lacrosse_ball', 'rubber_washer_stack',
-                    'ripe_banana', 'unripe_banana', 'scotch_brite', 'cork'],
+                    'apple', 'orange', 'strawberry', 'ripe_banana', 'unripe_banana', 
+                    'lacrosse_ball', 'scotch_brite', 'cork', 'baseball',
+                    'plastic_measuring_cup', 'whiteboard_eraser', 'lifesaver_hard', 'cutting_board'
+                ],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'RemovedMiddleObj__CustomCNN__WithNewScheduler',
+        'run_name': 'NoTransforms__CustomCNN__WithNewScheduler',
 
         # Training and model parameters
         'epochs'            : 150,
