@@ -970,7 +970,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoTransforms__CustomCNN__WithNewScheduler',
+        'run_name': 'NoAugs__CustomCNN__WithNewScheduler',
 
         # Training and model parameters
         'epochs'            : 150,
