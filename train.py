@@ -413,14 +413,7 @@ class ModulusModel():
         # Get all the paths to grasp data within directory
         paths_to_files = []
         list_files(f'{self.data_dir}/{training_data_folder_name}', paths_to_files, self.config)
-
-
-
-        # self.paths_to_files = paths_to_files
-        self.paths_to_files = [ x for x in paths_to_files if "aug=0" in x ]
-
-
-
+        self.paths_to_files = paths_to_files
 
         # Create data loaders based on training / validation break-up
         self._create_data_loaders()
@@ -970,7 +963,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoAugs__CustomCNN__WithNewScheduler',
+        'run_name': 'CustomCNN__WithNewScheduler',
 
         # Training and model parameters
         'epochs'            : 150,
