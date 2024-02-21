@@ -403,7 +403,22 @@ class ModulusModel():
         object_names = self.object_to_modulus.keys()
         object_names = [x for x in object_names if x not in self.exclude]
 
-        # Extract elastic modulus labels for each object
+
+
+
+
+        foam_metal_objects = []
+        for object_name in object_names:
+            if self.object_to_modulus[object_name] >= 5e10 or \
+                self.object_to_modulus[object_name] <= 5e5:
+                foam_metal_objects.append(object_name)
+        object_names = foam_metal_objects
+
+
+
+
+
+        # Extract corresponding elastic modulus labels for each object
         elastic_moduli = [self.object_to_modulus[x] for x in object_names]
 
         # Split objects into validation or training
@@ -960,7 +975,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'CustomCNN__NoScheduler',
+        'run_name': 'OnlyMetalFoam__CustomCNN__WithNewScheduler',
 
         # Training and model parameters
         'epochs'            : 150,
@@ -971,8 +986,8 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 2.5e-5,
-        'gamma'             : None, # 100**(-5/150), # 100**(-lr_step_size / epochs)
+        'learning_rate'     : 4e-4,
+        'gamma'             : 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 95,
     }
