@@ -141,13 +141,6 @@ hertz_configs = [{
         'use_deflection': False,
     },{
         'contact_mask': None,
-        'depth_method': 'mean_max_depths',
-        'use_ellipse_mask': False, 
-        'fit_mask_to_ellipse': False,
-        'use_lower_resolution_depth': True,
-        'use_deflection': False,
-    },{
-        'contact_mask': None,
         'depth_method': 'top_percentile_depths',
         'use_ellipse_mask': False, 
         'fit_mask_to_ellipse': False,
@@ -339,7 +332,6 @@ for object_name in tqdm(objects):
 
                 E_hertz = estimator.fit_modulus_hertz(
                             contact_mask=hertz_config['contact_mask'],
-                            depth_method=hertz_config['depth_method'],
                             use_ellipse_mask=hertz_config['use_ellipse_mask'],
                             fit_mask_to_ellipse=hertz_config['fit_mask_to_ellipse'],
                             use_lower_resolution_depth=hertz_config['use_lower_resolution_depth'],
@@ -363,7 +355,6 @@ for object_name in tqdm(objects):
 
                 E_hertz = estimator.fit_modulus_hertz_both_sides(
                             contact_mask=hertz_config['contact_mask'],
-                            depth_method=hertz_config['depth_method'],
                             use_ellipse_mask=hertz_config['use_ellipse_mask'],
                             fit_mask_to_ellipse=hertz_config['fit_mask_to_ellipse'],
                             use_lower_resolution_depth=hertz_config['use_lower_resolution_depth'],
@@ -431,6 +422,8 @@ for object_name in tqdm(objects):
                     pickle.dump(E_MDR, file)
                 with open(f'{file_path_prefix}/MDR_both_sides/{config_contact_mask}/{i}.json', 'w') as json_file:
                     json.dump(MDR_config, json_file)
+
+            print(E_hertz)
 
         # Fit using the stochastic estimator
         E_stochastic = estimator.fit_modulus_stochastic()

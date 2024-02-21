@@ -627,9 +627,9 @@ class EstimateModulus():
         d, contact_areas, a = [], [], []
         for i in range(len(depth_images)):
             depth_i = depth_images[i]
-            d_i = (L0 - self.gripper_widths()[i]) / 2
+            d_i = (L0 - self.gripper_widths()[i])
             if use_deflection:
-                d_i -= finger_deflection(self.forces()[i]) / 2
+                d_i -= finger_deflection(self.forces()[i])
             
             if use_ellipse_mask:
                 # Compute mask using ellipse fit
@@ -674,7 +674,7 @@ class EstimateModulus():
     
     # Fit data to Hertzian model with apparent deformation
     # (Notably only requires gripper width data, not tactile depth)
-    def fit_modulus_hertz_both_sides(self, contact_mask=None, depth_method=None, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_lower_resolution_depth=False, use_deflection=False):
+    def fit_modulus_hertz_both_sides(self, contact_mask=None, use_ellipse_mask=True, fit_mask_to_ellipse=False, use_lower_resolution_depth=False, use_deflection=False):
         # Calculate apparent deformation using gripper width
         # Pretend that the contact geometry is cylindrical
         # This gives the relation...
@@ -689,14 +689,10 @@ class EstimateModulus():
             depth_images = self.lower_resolution_depth(depth_images=depth_images, kernel_size=5)
             other_depth_images = self.lower_resolution_depth(depth_images=other_depth_images)
 
-        if depth_method is None:
-            # Precompute peak depths based on percentile
-            peak_depths = self.top_percentile_depths(depth_images=depth_images)
-            other_peak_depths = self.top_percentile_depths(depth_images=other_depth_images)
-        else:
-            peak_depths = self.input_peak_depth_method(depth_method, depth_images=depth_images)
-            other_peak_depths = self.input_peak_depth_method(depth_method, depth_images=other_depth_images)
-        
+        # Precompute peak depths based on percentile
+        peak_depths = self.top_percentile_depths(depth_images=depth_images)
+        other_peak_depths = self.top_percentile_depths(depth_images=other_depth_images)
+
         # Find initial length of first contact
         if self.mean_depths(depth_images=depth_images).max() < self.depth_threshold and \
             self.mean_depths(depth_images=other_depth_images).max() < self.depth_threshold:
@@ -714,9 +710,9 @@ class EstimateModulus():
         for i in range(len(depth_images)):
             depth_i = depth_images[i]
             other_depth_i = depth_images[i]
-            apparent_d_i = (L0 - self.gripper_widths()[i]) / 2
+            apparent_d_i = (L0 - self.gripper_widths()[i])
             if use_deflection:
-                apparent_d_i -= finger_deflection(self.forces()[i]) / 2
+                apparent_d_i -= finger_deflection(self.forces()[i])
             
             if use_ellipse_mask:
                 # Compute mask using ellipse fit
