@@ -407,26 +407,12 @@ class ModulusModel():
 
 
 
-        # foam_metal_objects = []
-        # for object_name in object_names:
-        #     if self.object_to_modulus[object_name] >= 5e10 or \
-        #         self.object_to_modulus[object_name] <= 5e5:
-        #         foam_metal_objects.append(object_name)
-        # object_names = foam_metal_objects
-
-        # wood_foam_metal_objects = []
-        # for object_name in object_names:
-        #     if self.object_to_modulus[object_name] >= 8e9 or \
-        #         self.object_to_modulus[object_name] < 1e7:
-        #         wood_foam_metal_objects.append(object_name)
-        # object_names = wood_foam_metal_objects
-
-        rubber_foam_metal_objects = []
+        removed_middle = []
         for object_name in object_names:
-            if self.object_to_modulus[object_name] >= 5e10 or \
+            if self.object_to_modulus[object_name] >= 2e9 or \
                 self.object_to_modulus[object_name] < 1e7:
-                rubber_foam_metal_objects.append(object_name)
-        object_names = rubber_foam_metal_objects
+                removed_middle.append(object_name)
+        object_names = removed_middle
 
 
 
@@ -988,7 +974,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'RubberMetalFoam__CustomCNN__WithNewScheduler',
+        'run_name': 'RemovedMiddleObj__CustomCNN__WithNewScheduler',
 
         # Training and model parameters
         'epochs'            : 150,
@@ -1012,7 +998,7 @@ if __name__ == "__main__":
     for i in range(3):
         config['run_name'] = f'{base_run_name}__t={i}'
 
-        config['random_state'] = random.randint(1, 100)
+        # config['random_state'] = random.randint(1, 100)
 
         train_modulus = ModulusModel(config, device=device)
         train_modulus.train()
