@@ -963,7 +963,7 @@ if __name__ == "__main__":
         'run_name': 'CustomCNN__WithNewScheduler',
 
         # Training and model parameters
-        'epochs'            : 100,
+        'epochs'            : 150,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
@@ -972,7 +972,7 @@ if __name__ == "__main__":
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'learning_rate'     : 5e-4,
-        'gamma'             : 100**(-5/100), # 100**(-lr_step_size / epochs)
+        'gamma'             : 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 95,
     }
@@ -983,5 +983,8 @@ if __name__ == "__main__":
     base_run_name = config['run_name']
     for i in range(3):
         config['run_name'] = f'{base_run_name}__t={i}'
+
+        config['random_state'] = random.randint(1, 100)
+
         train_modulus = ModulusModel(config, device=device)
         train_modulus.train()
