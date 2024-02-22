@@ -462,22 +462,22 @@ if __name__ == '__main__':
     # plot_performance(r'Stochastic Method', stochastic_estimates[0], object_to_modulus)
     print('Done.')
 
-    # # Write training estimations
-    # for object_name in naive_estimates[naive_i_order[0]].keys():
-    #     if object_name in EXCLUDE: continue
-    #     if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}'):
-    #         os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}')
+    # Write training estimations
+    for object_name in naive_estimates[naive_i_order[0]].keys():
+        if object_name in EXCLUDE: continue
+        if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}'):
+            os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}')
 
-    #     for t in range(len(naive_estimates[naive_i_order[0]][object_name])):
+        for t in range(len(naive_estimates[naive_i_order[0]][object_name])):
             
-    #         E_naive = closest_non_nan_element(naive_estimates[naive_i_order[0]][object_name], t)
-    #         E_hertz = closest_non_nan_element(hertz_estimates[hertz_i_order[0]][object_name], t)
-    #         E_MDR = closest_non_nan_element(MDR_estimates[MDR_i_order[0]][object_name], t)
-    #         assert E_naive > 0 and E_hertz > 0 and E_MDR > 0
+            E_naive = closest_non_nan_element(naive_estimates[naive_i_order[0]][object_name], t)
+            E_hertz = closest_non_nan_element(hertz_estimates[hertz_i_order[0]][object_name], t)
+            E_MDR = closest_non_nan_element(MDR_estimates[MDR_i_order[0]][object_name], t)
+            assert E_naive > 0 and E_hertz > 0 and E_MDR > 0
 
-    #         if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}/t={t}'):
-    #             os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}/t={t}')
+            if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}/t={t}'):
+                os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}/t={t}')
 
-    #         E_estimates = np.array([E_naive, E_hertz, E_MDR])
-    #         with open(f'{DATA_DIR}/training_estimations/{object_name}/t={t}/E.pkl', 'wb') as file:
-    #             pickle.dump(E_estimates, file)
+            E_estimates = np.array([E_naive, E_hertz, E_MDR])
+            with open(f'{DATA_DIR}/training_estimations/{object_name}/t={t}/E.pkl', 'wb') as file:
+                pickle.dump(E_estimates, file)

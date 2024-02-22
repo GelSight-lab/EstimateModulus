@@ -62,6 +62,7 @@ class CustomDataset(Dataset):
         self.use_width = config['use_width']
         self.use_estimation = config['use_estimation']
         self.use_transformations  = config['use_transformations']
+        self.use_fw_transforms  = config['use_fw_transforms']
         self.exclude = config['exclude']
 
         # Define training parameters
@@ -87,6 +88,14 @@ class CustomDataset(Dataset):
             self.normalized_modulus_labels = labels
             self.flip_horizontal = [False for i in range(len(self.input_paths))]
             self.flip_vertical = [False for i in range(len(self.input_paths))]
+
+        if self.use_fw_transforms:
+            self.input_paths = 2*self.input_paths
+            self.normalized_modulus_labels = 2*self.normalized_modulus_labels
+            self.flip_horizontal = 2*self.flip_horizontal
+            self.flip_vertical = 2*self.flip_vertical
+            self.noise_force = [ i > len(self.input_paths)/2 and i % 2 == 1 for i in range(len(self.input_paths)) ]
+            self.noise_width = [ i > len(self.input_paths)/2 for i in range(len(self.input_paths)) ]
 
         # Define attributes to use to conserve memory
         self.base_name      = ''
@@ -139,6 +148,14 @@ class CustomDataset(Dataset):
                 self.x_forces[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
                 self.x_forces /= self.normalization_values['max_force']
 
+            # if self.use_fw_transforms:
+            #     if self.noise_force[idx]:
+            #         noise_amplitude = 0.025
+            #         if random.random() > 0.5:
+            #             self.x_forces += noise_amplitude * random.random()
+            #         else:
+            #             self.x_forces -= noise_amplitude * random.random()
+
         # Unpack gripper width measurements
         if self.use_width:
             with open(self.base_name + '_widths.pkl', 'rb') as file:
@@ -148,6 +165,17 @@ class CustomDataset(Dataset):
                 # self.x_widths[:self.n_frames] /= self.normalization_values['max_width'] 
                 self.x_widths[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
                 self.x_widths[:] /= self.normalization_values['max_width']
+
+            if self.use_fw_transforms:
+                if self.noise_width[idx]:
+                    noise_amplitude = min(
+                        1 - self.x_widths.max(),
+                        self.x_widths.min()
+                    )
+                    if random.random() > 0.5:
+                        self.x_widths += noise_amplitude * random.random()
+                    else:
+                        self.x_widths -= noise_amplitude * random.random()
         
         # Unpack modulus estimations
         if self.use_estimation:
@@ -314,6 +342,7 @@ class ModulusModel():
                     "use_width": self.use_width,
                     "use_estimation": self.use_estimation,
                     "use_transformations": self.use_transformations,
+                    "use_fw_transforms": self.use_fw_transforms,
                     "exclude": self.exclude,
                 }
             )
@@ -342,6 +371,7 @@ class ModulusModel():
         self.use_width              = config['use_width']
         self.use_estimation         = config['use_estimation']
         self.use_transformations    = config['use_transformations']
+        self.use_fw_transforms      = config['use_fw_transforms']
         self.exclude                = config['exclude']
         
         self.use_wandb              = config['use_wandb']
@@ -957,6 +987,7 @@ if __name__ == "__main__":
         'use_width': True,
         'use_estimation': False,
         'use_transformations': True,
+        'use_fw_transforms': True,
         'exclude': [
                     'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'green_foam_brick', # 'green_foam_brick', 
@@ -989,7 +1020,10 @@ if __name__ == "__main__":
 
     # Train the model over some data
     base_run_name = config['run_name']
-    for j in range(2):
+    for j in range(1):
+        if j == 0:
+            base_run_name = 'OnlyWTransforms__CustomCNN'
+            config['use_fw_transforms'] = True
 
         for i in range(2):
             config['run_name'] = f'{base_run_name}__t={i}'
