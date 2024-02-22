@@ -999,7 +999,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'LR=5e-4__WTransforms__CustomCNN',
+        'run_name': 'LR=3e-4__WTransforms__CustomCNN',
 
         # Training and model parameters
         'epochs'            : 50,
@@ -1010,7 +1010,7 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 5e-4,
+        'learning_rate'     : 3e-4,
         'gamma'             : 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 40, # 95,
