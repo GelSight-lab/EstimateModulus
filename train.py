@@ -62,7 +62,7 @@ class CustomDataset(Dataset):
         self.use_width = config['use_width']
         self.use_estimation = config['use_estimation']
         self.use_transformations  = config['use_transformations']
-        self.use_fw_transforms  = config['use_fw_transforms']
+        self.use_width_transforms  = config['use_width_transforms']
         self.exclude = config['exclude']
 
         # Define training parameters
@@ -89,7 +89,7 @@ class CustomDataset(Dataset):
             self.flip_horizontal = [False for i in range(len(self.input_paths))]
             self.flip_vertical = [False for i in range(len(self.input_paths))]
 
-        if self.use_fw_transforms:
+        if self.use_width_transforms:
             self.input_paths = 2*self.input_paths
             self.normalized_modulus_labels = 2*self.normalized_modulus_labels
             self.flip_horizontal = 2*self.flip_horizontal
@@ -148,7 +148,7 @@ class CustomDataset(Dataset):
                 self.x_forces[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
                 self.x_forces /= self.normalization_values['max_force']
 
-            # if self.use_fw_transforms:
+            # if self.use_width_transforms:
             #     if self.noise_force[idx]:
             #         noise_amplitude = 0.025
             #         if random.random() > 0.5:
@@ -166,7 +166,7 @@ class CustomDataset(Dataset):
                 self.x_widths[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
                 self.x_widths[:] /= self.normalization_values['max_width']
 
-            if self.use_fw_transforms:
+            if self.use_width_transforms:
                 if self.noise_width[idx]:
                     noise_amplitude = min(
                         1 - self.x_widths.max(),
@@ -342,7 +342,7 @@ class ModulusModel():
                     "use_width": self.use_width,
                     "use_estimation": self.use_estimation,
                     "use_transformations": self.use_transformations,
-                    "use_fw_transforms": self.use_fw_transforms,
+                    "use_width_transforms": self.use_width_transforms,
                     "exclude": self.exclude,
                 }
             )
@@ -371,7 +371,7 @@ class ModulusModel():
         self.use_width              = config['use_width']
         self.use_estimation         = config['use_estimation']
         self.use_transformations    = config['use_transformations']
-        self.use_fw_transforms      = config['use_fw_transforms']
+        self.use_width_transforms      = config['use_width_transforms']
         self.exclude                = config['exclude']
         
         self.use_wandb              = config['use_wandb']
@@ -987,7 +987,7 @@ if __name__ == "__main__":
         'use_width': True,
         'use_estimation': False,
         'use_transformations': True,
-        'use_fw_transforms': True,
+        'use_width_transforms': True,
         'exclude': [
                     'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'green_foam_brick', # 'green_foam_brick', 
@@ -1023,7 +1023,7 @@ if __name__ == "__main__":
     for j in range(1):
         if j == 0:
             base_run_name = 'OnlyWTransforms__CustomCNN'
-            config['use_fw_transforms'] = True
+            config['use_width_transforms'] = True
 
         for i in range(2):
             config['run_name'] = f'{base_run_name}__t={i}'
