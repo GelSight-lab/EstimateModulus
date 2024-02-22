@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -62,6 +62,7 @@ class CustomDataset(Dataset):
         self.use_width = config['use_width']
         self.use_estimation = config['use_estimation']
         self.use_transformations  = config['use_transformations']
+        self.use_FW_transforms  = config['use_FW_transforms']
         self.exclude = config['exclude']
 
         # Define training parameters
@@ -87,6 +88,14 @@ class CustomDataset(Dataset):
             self.normalized_modulus_labels = labels
             self.flip_horizontal = [False for i in range(len(self.input_paths))]
             self.flip_vertical = [False for i in range(len(self.input_paths))]
+
+        if self.use_FW_transforms:
+            self.input_paths = 2*self.input_paths
+            self.normalized_modulus_labels = 2*self.normalized_modulus_labels
+            self.flip_horizontal = 2*self.flip_horizontal
+            self.flip_vertical = 2*self.flip_vertical
+            self.noise_force = [ i > len(self.input_paths)/2 and i % 2 == 1 for i in range(len(self.input_paths)) ]
+            self.noise_width = [ i > len(self.input_paths)/2 for i in range(len(self.input_paths)) ]
 
         # Define attributes to use to conserve memory
         self.base_name      = ''
@@ -139,6 +148,14 @@ class CustomDataset(Dataset):
                 self.x_forces[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
                 self.x_forces /= self.normalization_values['max_force']
 
+            if self.use_FW_transforms:
+                if self.noise_force[idx]:
+                    noise_amplitude = 0.025
+                    if random.random() > 0.5:
+                        self.x_forces += noise_amplitude * random.random()
+                    else:
+                        self.x_forces -= noise_amplitude * random.random()
+
         # Unpack gripper width measurements
         if self.use_width:
             with open(self.base_name + '_widths.pkl', 'rb') as file:
@@ -147,7 +164,18 @@ class CustomDataset(Dataset):
                 # self.x_widths[self.n_frames:] /= self.x_widths.max()
                 # self.x_widths[:self.n_frames] /= self.normalization_values['max_width'] 
                 self.x_widths[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
-                self.x_widths[:] /= self.normalization_values['max_width'] 
+                self.x_widths[:] /= self.normalization_values['max_width']
+
+            if self.use_FW_transforms:
+                if self.noise_width[idx]:
+                    noise_amplitude = min(
+                        1 - self.x_widths.max(),
+                        self.x_widths.min()
+                    )
+                    if random.random() > 0.5:
+                        self.x_widths += noise_amplitude * random.random()
+                    else:
+                        self.x_widths -= noise_amplitude * random.random()
         
         # Unpack modulus estimations
         if self.use_estimation:
@@ -314,6 +342,7 @@ class ModulusModel():
                     "use_width": self.use_width,
                     "use_estimation": self.use_estimation,
                     "use_transformations": self.use_transformations,
+                    "use_FW_transforms": self.use_FW_transforms,
                     "exclude": self.exclude,
                 }
             )
@@ -342,6 +371,7 @@ class ModulusModel():
         self.use_width              = config['use_width']
         self.use_estimation         = config['use_estimation']
         self.use_transformations    = config['use_transformations']
+        self.use_FW_transforms      = config['use_FW_transforms']
         self.exclude                = config['exclude']
         
         self.use_wandb              = config['use_wandb']
@@ -957,20 +987,22 @@ if __name__ == "__main__":
         'use_width': True,
         'use_estimation': False,
         'use_transformations': True,
+        'use_FW_transforms': True,
         'exclude': [
                     'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'green_foam_brick', # 'green_foam_brick', 
                     'apple', 'orange', 'strawberry', 'ripe_banana', 'unripe_banana', 
                     'lacrosse_ball', 'scotch_brite', 'cork', 'baseball', 'fake_washer_stack',
                     'plastic_measuring_cup', 'whiteboard_eraser', 'lifesaver_hard', 'cutting_board'
+                    'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white',
                 ],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Regression__CustomCNN',
+        'run_name': 'CustomCNN',
 
         # Training and model parameters
-        'epochs'            : 150,
+        'epochs'            : 50,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
@@ -988,10 +1020,23 @@ if __name__ == "__main__":
 
     # Train the model over some data
     base_run_name = config['run_name']
-    for i in range(3):
-        config['run_name'] = f'{base_run_name}__t={i}'
+    for j in range(2):
+        if j == 0:
+            base_run_name = 'FWTransforms__CustomCNN'
+            config['use_FW_transforms'] = True
+        else:
+            base_run_name = 'NoFWTransforms__CustomCNN'
+            config['use_FW_transforms'] = False
 
-        # config['random_state'] = random.randint(1, 100)
+        for i in range(2):
+            config['run_name'] = f'{base_run_name}__t={i}'
 
-        train_modulus = ModulusModel(config, device=device)
-        train_modulus.train()
+            if i == 0:
+                config['random_state'] = 95
+            else:
+                config['random_state'] = 40
+
+            # config['random_state'] = random.randint(1, 100)
+
+            train_modulus = ModulusModel(config, device=device)
+            train_modulus.train()
