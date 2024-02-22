@@ -961,7 +961,7 @@ if __name__ == "__main__":
                     'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'red_foam_brick', 'blue_foam_brick', 'green_foam_brick', # 'green_foam_brick', 
                     'apple', 'orange', 'strawberry', 'ripe_banana', 'unripe_banana', 
-                    'lacrosse_ball', 'scotch_brite', 'cork', 'baseball',
+                    'lacrosse_ball', 'scotch_brite', 'cork', 'baseball', 'fake_washer_stack',
                     'plastic_measuring_cup', 'whiteboard_eraser', 'lifesaver_hard', 'cutting_board'
                 ],
 

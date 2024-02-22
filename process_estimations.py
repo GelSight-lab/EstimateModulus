@@ -41,192 +41,51 @@ naive_configs = [{
         'depth_method': 'top_percentile_depths',
         'use_mean': False,
         'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': False,
-        'use_deflection': False,
     },{
         'contact_mask': None,
         'depth_method': 'top_percentile_depths',
         'use_mean': False,
         'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': True,
-        'use_deflection': False,
-    },{
-        'contact_mask': None,
-        'depth_method': 'top_percentile_depths',
-        'use_mean': False,
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': True,
-        'use_lower_resolution_depth': True,
-        'use_deflection': False,
-    },{
-        'contact_mask': None,
-        'depth_method': 'mean_max_depths',
-        'use_mean': False,
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
-        'use_lower_resolution_depth': True,
-        'use_deflection': False,
     },{
         'contact_mask': None,
         'depth_method': 'top_percentile_depths',
         'use_mean': True,
         'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': True,
-        'use_deflection': False,
-    },{
-        'contact_mask': None,
-        'depth_method': 'mean_max_depths',
-        'use_mean': False,
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
-        'use_lower_resolution_depth': False,
-        'use_deflection': False,
-    },{
-        'contact_mask': None,
-        'depth_method': 'top_percentile_depths',
-        'use_mean': False,
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
-        'use_lower_resolution_depth': False,
-        'use_deflection': False,
-    },{
-        'contact_mask': None,
-        'depth_method': 'top_percentile_depths',
-        'use_mean': False,
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
-        'use_lower_resolution_depth': False,
-        'use_deflection': True,
-    },{
-        'contact_mask': None,
-        'depth_method': 'top_percentile_depths',
-        'use_mean': False,
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
-        'use_lower_resolution_depth': True,
-        'use_deflection': True,
-    },{
-        'contact_mask': None,
-        'depth_method': 'top_percentile_depths',
-        'use_mean': False,
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': True,
-        'use_lower_resolution_depth': False,
-        'use_deflection': True,
-    },
+    }
 ]
 hertz_configs = [{
         'contact_mask': None,
         'depth_method': 'top_percentile_depths',
         'use_ellipse_mask': False, 
-        'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': False,
-        'use_deflection': False,
     },{
         'contact_mask': None,
         'depth_method': 'top_percentile_depths',
         'use_ellipse_mask': False, 
-        'fit_mask_to_ellipse': False,
         'use_lower_resolution_depth': True,
-        'use_deflection': False,
-    },{
-        'contact_mask': None,
-        'depth_method': 'top_percentile_depths',
-        'use_ellipse_mask': False, 
-        'fit_mask_to_ellipse': True,
-        'use_lower_resolution_depth': True,
-        'use_deflection': False,
-    },{
-        'contact_mask': None,
-        'depth_method': 'top_percentile_depths',
-        'use_ellipse_mask': False, 
-        'fit_mask_to_ellipse': False,
-        'use_lower_resolution_depth': False,
-        'use_deflection': True,
-    },{
-        'contact_mask': None,
-        'depth_method': 'top_percentile_depths',
-        'use_ellipse_mask': False, 
-        'fit_mask_to_ellipse': False,
-        'use_lower_resolution_depth': True,
-        'use_deflection': True,
-    },
+    }
 ]
 MDR_configs = [{
         'contact_mask': None,
         'depth_method': 'mean_max_depths',
         'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
         'use_apparent_deformation': True,
         'use_lower_resolution_depth': True,
-        'use_mean_radius': False,
-        'use_deflection': False,
     },{
         'contact_mask': None,
         'depth_method': 'mean_max_depths',
         'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
         'use_apparent_deformation': False,
         'use_lower_resolution_depth': True,
-        'use_mean_radius': False,
-        'use_deflection': False,
     },{
         'contact_mask': None,
         'depth_method': 'mean_max_depths',
         'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
         'use_apparent_deformation': True,
         'use_lower_resolution_depth': False,
-        'use_mean_radius': False,
-        'use_deflection': False,
-    },{
-        'contact_mask': None,
-        'depth_method': 'mean_max_depths',
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': True,
-        'use_apparent_deformation': True,
-        'use_lower_resolution_depth': True,
-        'use_mean_radius': False,
-        'use_deflection': False,
-    },{
-        'contact_mask': None,
-        'depth_method': 'top_percentile_depths',
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
-        'use_apparent_deformation': True,
-        'use_lower_resolution_depth': False,
-        'use_mean_radius': False,
-        'use_deflection': False,
-    },{
-        'contact_mask': None,
-        'depth_method': 'top_percentile_depths',
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
-        'use_apparent_deformation': True,
-        'use_lower_resolution_depth': True,
-        'use_mean_radius': False,
-        'use_deflection': False,
-    },{
-        'contact_mask': None,
-        'depth_method': 'mean_max_depths',
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
-        'use_apparent_deformation': True,
-        'use_lower_resolution_depth': True,
-        'use_mean_radius': False,
-        'use_deflection': True,
-    },{
-        'contact_mask': None,
-        'depth_method': 'mean_max_depths',
-        'use_ellipse_mask': False,
-        'fit_mask_to_ellipse': False,
-        'use_apparent_deformation': False,
-        'use_lower_resolution_depth': True,
-        'use_mean_radius': False,
-        'use_deflection': True,
     }
 ]
 naive_both_sides_configs = copy.deepcopy(naive_configs)
@@ -238,7 +97,7 @@ estimator = EstimateModulus(grasp_data=grasp_data, use_gripper_width=True, use_o
 CONTACT_MASKS = [
                  'ellipse_contact_mask', 'constant_threshold_contact_mask', 'total_conditional_contact_mask', \
                  'normalized_threshold_contact_mask', 'total_normalized_threshold_contact_mask', \
-                 'mean_threshold_contact_mask', 'total_mean_threshold_contact_mask', 'std_above_mean_contact_mask' \
+                 # 'mean_threshold_contact_mask', 'total_mean_threshold_contact_mask', 'std_above_mean_contact_mask' \
                 ]
 
 max_depths = {}
@@ -285,9 +144,7 @@ for object_name in tqdm(objects):
                             depth_method=naive_config['depth_method'],
                             use_mean=naive_config['use_mean'],
                             use_ellipse_mask=naive_config['use_ellipse_mask'],
-                            fit_mask_to_ellipse=naive_config['fit_mask_to_ellipse'],
                             use_lower_resolution_depth=naive_config['use_lower_resolution_depth'],
-                            use_deflection=naive_config['use_deflection'],
                         )
                 config_contact_mask = naive_config['contact_mask'] if naive_config['contact_mask'] is not None else 'ellipse_contact_mask'
 
@@ -310,9 +167,7 @@ for object_name in tqdm(objects):
                             depth_method=naive_both_sides_config['depth_method'],
                             use_mean=naive_both_sides_config['use_mean'],
                             use_ellipse_mask=naive_both_sides_config['use_ellipse_mask'],
-                            fit_mask_to_ellipse=naive_both_sides_config['fit_mask_to_ellipse'],
                             use_lower_resolution_depth=naive_both_sides_config['use_lower_resolution_depth'],
-                            use_deflection=naive_both_sides_config['use_deflection'],
                         )
                 config_contact_mask = naive_both_sides_config['contact_mask'] if naive_both_sides_config['contact_mask'] is not None else 'ellipse_contact_mask'
 
@@ -333,9 +188,7 @@ for object_name in tqdm(objects):
                 E_hertz = estimator.fit_modulus_hertz(
                             contact_mask=hertz_config['contact_mask'],
                             use_ellipse_mask=hertz_config['use_ellipse_mask'],
-                            fit_mask_to_ellipse=hertz_config['fit_mask_to_ellipse'],
                             use_lower_resolution_depth=hertz_config['use_lower_resolution_depth'],
-                            use_deflection=hertz_config['use_deflection'],
                         )
                 config_contact_mask = hertz_config['contact_mask'] if hertz_config['contact_mask'] is not None else 'ellipse_contact_mask'
                 
@@ -356,9 +209,7 @@ for object_name in tqdm(objects):
                 E_hertz = estimator.fit_modulus_hertz_both_sides(
                             contact_mask=hertz_config['contact_mask'],
                             use_ellipse_mask=hertz_config['use_ellipse_mask'],
-                            fit_mask_to_ellipse=hertz_config['fit_mask_to_ellipse'],
                             use_lower_resolution_depth=hertz_config['use_lower_resolution_depth'],
-                            use_deflection=hertz_config['use_deflection'],
                         )
                 config_contact_mask = hertz_config['contact_mask'] if hertz_config['contact_mask'] is not None else 'ellipse_contact_mask'
                 
@@ -380,11 +231,8 @@ for object_name in tqdm(objects):
                                         contact_mask=MDR_config['contact_mask'],
                                         depth_method=MDR_config['depth_method'],
                                         use_ellipse_mask=MDR_config['use_ellipse_mask'],
-                                        fit_mask_to_ellipse=MDR_config['fit_mask_to_ellipse'],
                                         use_apparent_deformation=MDR_config['use_apparent_deformation'],
                                         use_lower_resolution_depth=MDR_config['use_lower_resolution_depth'],
-                                        use_mean_radius=MDR_config['use_mean_radius'],
-                                        use_deflection=MDR_config['use_deflection'],
                                     )
                 config_contact_mask = MDR_config['contact_mask'] if MDR_config['contact_mask'] is not None else 'ellipse_contact_mask'
 
@@ -406,11 +254,8 @@ for object_name in tqdm(objects):
                                         contact_mask=MDR_config['contact_mask'],
                                         depth_method=MDR_config['depth_method'],
                                         use_ellipse_mask=MDR_config['use_ellipse_mask'],
-                                        fit_mask_to_ellipse=MDR_config['fit_mask_to_ellipse'],
                                         use_apparent_deformation=MDR_config['use_apparent_deformation'],
                                         use_lower_resolution_depth=MDR_config['use_lower_resolution_depth'],
-                                        use_mean_radius=MDR_config['use_mean_radius'],
-                                        use_deflection=MDR_config['use_deflection'],
                                     )
                 config_contact_mask = MDR_config['contact_mask'] if MDR_config['contact_mask'] is not None else 'ellipse_contact_mask'
 
