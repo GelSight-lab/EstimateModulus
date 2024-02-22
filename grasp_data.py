@@ -239,6 +239,7 @@ class GraspData():
         max_depths  = self.max_depths()
         if self._wedge_video_count > 1:
             other_max_depths = self.max_depths(other_finger=True)
+        plt.figure()
         plt.plot(forces / forces.max(), label="Normalized Contact Forces")
         plt.plot(widths / widths.max(), label="Normalized Gripper Widths")
         plt.plot(max_depths / max_depths.max(), label="Normalized Max Depths")

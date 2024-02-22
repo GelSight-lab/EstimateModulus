@@ -18,7 +18,7 @@ Preprocess recorded data for training...
     - Down sample frames to small number
 '''
 def preprocess_grasp(path_to_file, grasp_data=GraspData(), destination_dir=f'{HARDDRIVE_DIR}/data/training_data', \
-                     auto_clip=False, num_frames_to_sample=3, max_num_augmentations=7, plot_sampled_frames=False):
+                     auto_clip=False, num_frames_to_sample=3, max_num_augmentations=7, plot_sampled_frames=True):
     
     _, file_name = os.path.split(path_to_file)
     object_name = file_name.split('__')[0]
@@ -28,12 +28,12 @@ def preprocess_grasp(path_to_file, grasp_data=GraspData(), destination_dir=f'{HA
     object_dir      = f'{destination_dir}/{object_name}'
     trial_dir       = f'{object_dir}/t={str(trial)}'
     
-    if not os.path.exists(object_dir):
-        os.mkdir(object_dir)
-    if not os.path.exists(trial_dir):
-        os.mkdir(trial_dir)
-    else:
-        return
+    # if not os.path.exists(object_dir):
+    #     os.mkdir(object_dir)
+    # if not os.path.exists(trial_dir):
+    #     os.mkdir(trial_dir)
+    # else:
+    #     return
 
     # Load video and forces
     grasp_data._reset_data()
@@ -62,6 +62,9 @@ def preprocess_grasp(path_to_file, grasp_data=GraspData(), destination_dir=f'{HA
             num_augmentations = i
             break
 
+    if plot_sampled_frames:
+        grasp_data.plot_grasp_data()
+
     for i in range(num_augmentations):
 
         # Make necessary directories
@@ -81,27 +84,36 @@ def preprocess_grasp(path_to_file, grasp_data=GraspData(), destination_dir=f'{HA
             
         # Plot chosen frames to make sure they look good
         if plot_sampled_frames:
-            _, axs = plt.subplots(1, 3, figsize=(12, 8))
+            fig, axs = plt.subplots(1, 3, figsize=(12, 8))
+            fig.suptitle(f'{object_name}/t={trial}/aug={i}')
             for j in range(num_frames_to_sample):
                 axs[j].imshow(grasp_data.other_wedge_video.diff_images()[sample_indices[j] + i, :, :])
                 axs[j].axis('off')  # Turn off axis ticks and labels
-                axs[j].set_title(f'Sampled Frame #{j + 1}')
+                axs[j].set_title(f'Sampled Frame #{j + 1} (index={sample_indices[j] + i})')
+            plt.tight_layout()
+            fig, axs = plt.subplots(1, 3, figsize=(12, 8))
+            fig.suptitle(f'{object_name}/t={trial}/aug={i}')
+            for j in range(num_frames_to_sample):
+                axs[j].imshow(grasp_data.other_wedge_video.depth_images()[sample_indices[j] + i, :, :])
+                axs[j].axis('off')  # Turn off axis ticks and labels
+                axs[j].set_title(f'Sampled Frame #{j + 1} (index={sample_indices[j] + i})')
             plt.tight_layout()
             plt.show()
+            print('done')
 
-        # Save to respective areas
-        with open(f'{output_path_prefix}_diff.pkl', 'wb') as file:
-            pickle.dump(diff_images, file)
-        with open(f'{output_path_prefix}_depth.pkl', 'wb') as file:
-            pickle.dump(depth_images, file)
-        with open(f'{output_path_prefix}_diff_other.pkl', 'wb') as file:
-            pickle.dump(other_diff_images, file)
-        with open(f'{output_path_prefix}_depth_other.pkl', 'wb') as file:
-            pickle.dump(other_depth_images, file)
-        with open(f'{output_path_prefix}_forces.pkl', 'wb') as file:
-            pickle.dump(forces, file)
-        with open(f'{output_path_prefix}_widths.pkl', 'wb') as file:
-            pickle.dump(widths, file)
+        # # Save to respective areas
+        # with open(f'{output_path_prefix}_diff.pkl', 'wb') as file:
+        #     pickle.dump(diff_images, file)
+        # with open(f'{output_path_prefix}_depth.pkl', 'wb') as file:
+        #     pickle.dump(depth_images, file)
+        # with open(f'{output_path_prefix}_diff_other.pkl', 'wb') as file:
+        #     pickle.dump(other_diff_images, file)
+        # with open(f'{output_path_prefix}_depth_other.pkl', 'wb') as file:
+        #     pickle.dump(other_depth_images, file)
+        # with open(f'{output_path_prefix}_forces.pkl', 'wb') as file:
+        #     pickle.dump(forces, file)
+        # with open(f'{output_path_prefix}_widths.pkl', 'wb') as file:
+        #     pickle.dump(widths, file)
 
     return
 
@@ -119,7 +131,7 @@ if __name__ == "__main__":
     DESTINATION_DIR = f'{HARDDRIVE_DIR}/data/training_data__Nframes={n_frames}'
 
     # Loop through all data files
-    DATA_DIR = f'{HARDDRIVE_DIR}/data/raw_data_1'
+    DATA_DIR = f'{HARDDRIVE_DIR}/data/raw_data'
     for object_name in tqdm(os.listdir(DATA_DIR)):
         for file_name in os.listdir(f'{DATA_DIR}/{object_name}'):
             if os.path.splitext(file_name)[1] != '.avi' or file_name.count("_other") > 0:

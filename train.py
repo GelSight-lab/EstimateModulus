@@ -999,7 +999,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'CustomCNN',
+        'run_name': 'LR=5e-4__WTransforms__CustomCNN',
 
         # Training and model parameters
         'epochs'            : 50,
@@ -1010,10 +1010,10 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 4e-4,
+        'learning_rate'     : 5e-4,
         'gamma'             : 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
-        'random_state'      : 95,
+        'random_state'      : 40, # 95,
     }
     assert config['img_style'] in ['diff', 'depth']
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
@@ -1021,17 +1021,8 @@ if __name__ == "__main__":
     # Train the model over some data
     base_run_name = config['run_name']
     for j in range(1):
-        if j == 0:
-            base_run_name = 'OnlyWTransforms__CustomCNN'
-            config['use_width_transforms'] = True
-
         for i in range(2):
             config['run_name'] = f'{base_run_name}__t={i}'
-
-            if i == 0:
-                config['random_state'] = 95
-            else:
-                config['random_state'] = 40
 
             # config['random_state'] = random.randint(1, 100)
 
