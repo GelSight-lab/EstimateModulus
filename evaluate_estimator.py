@@ -119,7 +119,7 @@ def compute_estimation_stats(prediction_dict):
         'nan_pct': nan_count / total_count,
     }
 
-# Compute log difference of predictions per object to see whcih object is worst
+# Compute log difference of predictions per object to see which object is worst
 def compute_object_performance(prediction_dicts):
     object_names = list(prediction_dicts[0].keys())
     obj_prediction_log_diff = { obj:[] for obj in object_names }
@@ -137,6 +137,33 @@ def compute_object_performance(prediction_dicts):
             objects_avg_log_diff[object_name] = sum(obj_prediction_log_diff[object_name]) / len(obj_prediction_log_diff[object_name])
 
     return obj_prediction_log_diff, objects_avg_log_diff
+
+# Compute log difference and other stats for each contact mask
+def compute_contact_mask_performance(list_of_configs, list_of_stats):
+    assert len(list_of_configs) == len(list_of_stats)
+    contact_mask_stats = {}
+    empty_stats_dict = {
+        'avg_log_diff': 0,
+        'log_accuracy': 0,
+        'nan_pct': 0,
+        'count': 0
+    }
+
+    for i in range(len(list_of_configs)):
+        contact_mask = list_of_configs[i]['contact_mask']
+        if contact_mask not in contact_mask_stats.keys():
+            contact_mask_stats[contact_mask] = copy.deepcopy(empty_stats_dict)
+        contact_mask_stats[contact_mask]['avg_log_diff'] += list_of_stats[i]['avg_log_diff']
+        contact_mask_stats[contact_mask]['log_accuracy'] += list_of_stats[i]['log_accuracy']
+        contact_mask_stats[contact_mask]['nan_pct']      += list_of_stats[i]['nan_pct']
+        contact_mask_stats[contact_mask]['count']        += 1
+
+    for contact_mask in contact_mask_stats.keys():
+        contact_mask_stats[contact_mask]['avg_log_diff'] /= contact_mask_stats[contact_mask]['count']
+        contact_mask_stats[contact_mask]['log_accuracy'] /= contact_mask_stats[contact_mask]['count']
+        contact_mask_stats[contact_mask]['nan_pct']      /= contact_mask_stats[contact_mask]['count']
+
+    return contact_mask_stats
 
 # Plot on log scale to see how performance is
 def plot_performance(plot_title, prediction_dict, label_dict):
@@ -407,14 +434,16 @@ if __name__ == '__main__':
     hertz_both_sides_stats_ordered         = [ hertz_both_sides_stats[i] for i in hertz_both_sides_i_order ]
     MDR_both_sides_stats_ordered           = [ MDR_both_sides_stats[i] for i in MDR_both_sides_i_order ]
 
-    obj_prediction_log_diff, obj_avg_log_diff = compute_object_performance([ naive_both_sides_estimates[naive_both_sides_i_order[0]],  \
-                                                                             MDR_both_sides_estimates[MDR_both_sides_i_order[0]]     ])
+    obj_prediction_log_diff, obj_avg_log_diff = compute_object_performance([ naive_both_sides_estimates[naive_i_order[0]],  \
+                                                                             MDR_both_sides_estimates[MDR_i_order[0]]     ])
 
     object_names = list(obj_prediction_log_diff.keys())
     obj_i_ordered = sorted(range(len(object_names)), key=lambda i: obj_avg_log_diff[object_names[i]])
     obj_avg_log_diff_ordered = [ (object_names[i], obj_avg_log_diff[object_names[i]]) for i in obj_i_ordered ]
     obj_predictions_log_diff_ordered = [ (object_names[i], obj_prediction_log_diff[object_names[i]]) for i in obj_i_ordered ]
 
+    contact_mask_stats = compute_contact_mask_performance(naive_configs + MDR_configs, naive_stats + MDR_stats)
+    
     # Create plots showing how well each method does
     print('Plotting naive...')
     plot_performance('Naive Elasticity Method', naive_estimates[naive_i_order[0]], object_to_modulus)
