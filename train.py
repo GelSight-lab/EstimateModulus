@@ -999,7 +999,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'LR=3e-4__WTransforms__CustomCNN',
+        'run_name': 'BaselineForNow',
 
         # Training and model parameters
         'epochs'            : 50,
@@ -1010,7 +1010,7 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 3e-4,
+        'learning_rate'     : 5e-4,
         'gamma'             : 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 40, # 95,
@@ -1020,11 +1020,10 @@ if __name__ == "__main__":
 
     # Train the model over some data
     base_run_name = config['run_name']
-    for j in range(1):
-        for i in range(2):
-            config['run_name'] = f'{base_run_name}__t={i}'
+    for i in range(20):
+        config['run_name'] = f'{base_run_name}__t={i}'
 
-            # config['random_state'] = random.randint(1, 100)
+        config['random_state'] = random.randint(1, 100)
 
-            train_modulus = ModulusModel(config, device=device)
-            train_modulus.train()
+        train_modulus = ModulusModel(config, device=device)
+        train_modulus.train()

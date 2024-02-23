@@ -18,7 +18,7 @@ Preprocess recorded data for training...
     - Down sample frames to small number
 '''
 def preprocess_grasp(path_to_file, grasp_data=GraspData(), destination_dir=f'{HARDDRIVE_DIR}/data/training_data', \
-                     auto_clip=False, num_frames_to_sample=3, max_num_augmentations=7, plot_sampled_frames=True):
+                     auto_clip=False, num_frames_to_sample=3, max_num_augmentations=5, plot_sampled_frames=True):
     
     _, file_name = os.path.split(path_to_file)
     object_name = file_name.split('__')[0]
@@ -128,7 +128,7 @@ if __name__ == "__main__":
     #   training_data/{object_name}/t={n}/aug={n}/{object_name}__t={n}_a={n}_diff/depth
 
     n_frames = 3
-    DESTINATION_DIR = f'{HARDDRIVE_DIR}/data/training_data__Nframes={n_frames}'
+    DESTINATION_DIR = f'{HARDDRIVE_DIR}/data/training_data__Nframes={n_frames}__new'
 
     # Loop through all data files
     DATA_DIR = f'{HARDDRIVE_DIR}/data/raw_data'
