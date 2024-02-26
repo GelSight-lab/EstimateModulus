@@ -1013,7 +1013,7 @@ if __name__ == "__main__":
         'learning_rate'     : 5e-4,
         'gamma'             : 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
-        'random_state'      : 40, # 95,
+        'random_state'      : 47, # 25
     }
     assert config['img_style'] in ['diff', 'depth']
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
