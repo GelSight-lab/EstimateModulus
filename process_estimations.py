@@ -4,7 +4,9 @@ import json
 import copy
 import pickle
 from tqdm import tqdm
+
 from tactile_estimate import *
+from preprocess_grasp import TRAINING_FORCE_THRESHOLD
 
 wedge_video         = GelsightWedgeVideo(config_csv="./wedge_config/config_100.csv") # Force-sensing finger
 other_wedge_video   = GelsightWedgeVideo(config_csv="./wedge_config/config_200_markers.csv") # Non-sensing finger
@@ -96,13 +98,15 @@ estimator = EstimateModulus(grasp_data=grasp_data, use_gripper_width=True, use_o
 
 CONTACT_MASKS = [
                  'ellipse_contact_mask', 'constant_threshold_contact_mask', 'total_conditional_contact_mask', \
-                 'normalized_threshold_contact_mask', 'total_normalized_threshold_contact_mask', \
-                 # 'mean_threshold_contact_mask', 'total_mean_threshold_contact_mask', 'std_above_mean_contact_mask' \
+                 'normalized_threshold_contact_mask', 'total_normalized_threshold_contact_mask', 'mean_threshold_contact_mask' \
+                 # 'conditional_contact_mask', 'total_mean_threshold_contact_mask', 'std_above_mean_contact_mask' \
                 ]
 
 max_depths = {}
+object_name_last = None
 
 objects = sorted(os.listdir(f'{DATA_DIR}/raw_data'))
+random.shuffle(objects)
 for object_name in tqdm(objects):
     data_files = sorted(os.listdir(f'{DATA_DIR}/raw_data/{object_name}'))
     for file_name in data_files:
@@ -110,10 +114,10 @@ for object_name in tqdm(objects):
             continue
 
         trial_number = eval(os.path.splitext(file_name)[0][file_name.find('t=')+2:])
-        file_path_prefix = f'{DATA_DIR}/estimations/{object_name}/t={str(trial_number)}'
+        file_path_prefix = f'{DATA_DIR}/estimations_new/{object_name}/t={str(trial_number)}'
 
-        if not os.path.exists(f'{DATA_DIR}/estimations/{object_name}'):
-            os.mkdir(f'{DATA_DIR}/estimations/{object_name}')
+        if not os.path.exists(f'{DATA_DIR}/estimations_new/{object_name}'):
+            os.mkdir(f'{DATA_DIR}/estimations_new/{object_name}')
         if not os.path.exists(file_path_prefix):
             os.mkdir(file_path_prefix)
 
@@ -122,15 +126,91 @@ for object_name in tqdm(objects):
         estimator.load_from_file(f"{DATA_DIR}/raw_data/{object_name}/{os.path.splitext(file_name)[0]}", auto_clip=False)
 
         # Clip to loading sequence
-        estimator.clip_to_press()
+        estimator.grasp_data.clip_to_press(force_threshold=TRAINING_FORCE_THRESHOLD/2, pct_peak_threshold=0.9)
         assert len(estimator.depth_images()) == len(estimator.forces()) == len(estimator.gripper_widths())
+
+        # Skip situations where the object is not fully grasped
+        if estimator.forces().max() <= 10: continue
+
+        # Clip to the point where at least one of the depths is deep compared to peak
+        i_min_depth = min(np.argmax(estimator.max_depths() >= 0.075*estimator.max_depths().max()),
+                          np.argmax(estimator.grasp_data.max_depths(other_finger=True) >= 0.075*estimator.grasp_data.max_depths(other_finger=True).max()))
+        if i_min_depth > 0:
+            estimator.grasp_data.clip(i_min_depth, len(estimator.forces()))
 
         # Save maximum depths
         max_depths[os.path.splitext(file_name)[0]] = (int(np.argmax(estimator.max_depths())), estimator.max_depths().max(), -1, estimator.max_depths()[-1])
 
         # Remove stagnant gripper values across measurement frames
         estimator.interpolate_gripper_widths()
-        
+
+
+
+        # if object_name == object_name_last: continue
+
+        # num_frames_to_sample = 5
+        # indices = np.linspace(0, len(estimator.forces())-1, num_frames_to_sample, endpoint=True, dtype=int)
+
+        # estimator.grasp_data.plot_grasp_data()
+
+        # fig, axs = plt.subplots(1, num_frames_to_sample, figsize=(12, 8))
+        # fig.suptitle(f'Obj={object_name}, DEPTH')
+        # for j in range(num_frames_to_sample):
+        #     axs[j].imshow(estimator.depth_images()[indices[j], :, :])
+        #     axs[j].axis('off')  # Turn off axis ticks and labels
+        #     axs[j].set_title(f'Sampled Frame #{j + 1} (index={indices[j]})')
+        # plt.tight_layout()
+
+        # fig, axs = plt.subplots(1, num_frames_to_sample, figsize=(12, 8))
+        # fig.suptitle(f'Obj={object_name}, CONSTANT THRESHOLD MASK (@ 3e-05)')
+        # for j in range(num_frames_to_sample):
+        #     mask = estimator.constant_threshold_contact_mask(estimator.depth_images()[indices[j], :, :])
+        #     axs[j].imshow(mask)
+        #     axs[j].set_title(f'Sampled Frame #{j + 1} (index={indices[j]})')
+        #     axs[j].set_xlabel(f'Contact Area = {"{:.2e}".format((0.001 / PX_TO_MM)**2 * np.sum(mask))}')
+        # plt.tight_layout()
+
+        # fig, axs = plt.subplots(1, num_frames_to_sample, figsize=(12, 8))
+        # fig.suptitle(f'Obj={object_name}, CONSTANT THRESHOLD MASK (@ 1e-04)')
+        # for j in range(num_frames_to_sample):
+        #     mask = estimator.constant_threshold_contact_mask(estimator.depth_images()[indices[j], :, :], depth_threshold=1e-4)
+        #     axs[j].imshow(mask)
+        #     axs[j].set_title(f'Sampled Frame #{j + 1} (index={indices[j]})')
+        #     axs[j].set_xlabel(f'Contact Area = {"{:.2e}".format((0.001 / PX_TO_MM)**2 * np.sum(mask))}')
+        # plt.tight_layout()
+
+        # fig, axs = plt.subplots(1, num_frames_to_sample, figsize=(12, 8))
+        # fig.suptitle(f'Obj={object_name}, TOTAL NORM. MASK (@ 0.5)')
+        # for j in range(num_frames_to_sample):
+        #     mask = estimator.total_normalized_threshold_contact_mask(estimator.depth_images()[indices[j], :, :], threshold_pct=0.5)
+        #     axs[j].imshow(mask)
+        #     axs[j].set_title(f'Sampled Frame #{j + 1} (index={indices[j]})')
+        #     axs[j].set_xlabel(f'Contact Area = {"{:.2e}".format((0.001 / PX_TO_MM)**2 * np.sum(mask))}')
+        # plt.tight_layout()
+
+        # fig, axs = plt.subplots(1, num_frames_to_sample, figsize=(12, 8))
+        # fig.suptitle(f'Obj={object_name}, TOTAL NORM. MASK (@ 0.1)')
+        # for j in range(num_frames_to_sample):
+        #     mask = estimator.total_normalized_threshold_contact_mask(estimator.depth_images()[indices[j], :, :], threshold_pct=0.1)
+        #     axs[j].imshow(mask)
+        #     axs[j].set_title(f'Sampled Frame #{j + 1} (index={indices[j]})')
+        #     axs[j].set_xlabel(f'Contact Area = {"{:.2e}".format((0.001 / PX_TO_MM)**2 * np.sum(mask))}')
+        # plt.tight_layout()
+
+        # fig, axs = plt.subplots(1, num_frames_to_sample, figsize=(12, 8))
+        # fig.suptitle(f'Obj={object_name}, CONDITIONAL MASK (@ 1e-04, 0.1)')
+        # for j in range(num_frames_to_sample):
+        #     mask = estimator.total_conditional_contact_mask(estimator.depth_images()[indices[j], :, :], depth_threshold=1e-4, threshold_pct=0.1)
+        #     axs[j].imshow(mask)
+        #     axs[j].set_title(f'Sampled Frame #{j + 1} (index={indices[j]})')
+        #     axs[j].set_xlabel(f'Contact Area = {"{:.2e}".format((0.001 / PX_TO_MM)**2 * np.sum(mask))}')
+        # plt.tight_layout()
+
+        # plt.show()
+        # object_name_last = object_name
+
+
+
         # Loop through all desired contact masks to get estimations
         for contact_mask in CONTACT_MASKS:
                     

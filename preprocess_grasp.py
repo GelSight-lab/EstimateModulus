@@ -13,6 +13,7 @@ from contact_force import ContactForce, FORCE_THRESHOLD
 from grasp_data import GraspData
 
 HARDDRIVE_DIR = '.'
+TRAINING_FORCE_THRESHOLD = 5 # [N]
 
 # Read CSV files with objects and labels tabulated
 object_to_modulus = {}
@@ -64,7 +65,6 @@ def preprocess_grasp(path_to_file, grasp_data=GraspData(), destination_dir=f'{HA
     # Skip files where gripper width does not change
     if grasp_data.gripper_widths().max() == grasp_data.gripper_widths().min(): return
         
-    TRAINING_FORCE_THRESHOLD = 5
     i_start = np.argmax(grasp_data.forces() >= TRAINING_FORCE_THRESHOLD) # 0.25*grasp_data.forces().max()) # FORCE_THRESHOLD)
     i_peak = np.argmax(grasp_data.forces() >= 0.975*grasp_data.forces().max()) + 1
 
@@ -176,6 +176,7 @@ def preprocess_grasp(path_to_file, grasp_data=GraspData(), destination_dir=f'{HA
                 axs[j].imshow(grasp_data.other_wedge_video.depth_images()[other_video_sample_indices[j] + i, :, :])
                 axs[j].axis('off')  # Turn off axis ticks and labels
                 axs[j].set_title(f'Sampled Frame #{j + 1} (index={other_video_sample_indices[j] + i})')
+            plt.tight_layout()
             
             fig, axs = plt.subplots(1, 3, figsize=(12, 8))
             fig.suptitle(f'{object_name}/t={trial}/aug={i}')

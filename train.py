@@ -371,7 +371,7 @@ class ModulusModel():
         self.use_width              = config['use_width']
         self.use_estimation         = config['use_estimation']
         self.use_transformations    = config['use_transformations']
-        self.use_width_transforms      = config['use_width_transforms']
+        self.use_width_transforms   = config['use_width_transforms']
         self.exclude                = config['exclude']
         
         self.use_wandb              = config['use_wandb']
