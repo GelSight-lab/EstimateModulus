@@ -1,4 +1,6 @@
 import os
+import random
+import csv
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,13 +14,27 @@ from grasp_data import GraspData
 
 HARDDRIVE_DIR = '.'
 
+# Read CSV files with objects and labels tabulated
+object_to_modulus = {}
+object_to_shape = {}
+object_to_material = {}
+csv_file_path = f'{HARDDRIVE_DIR}/data/objects_and_labels.csv'
+with open(csv_file_path, 'r') as file:
+    csv_reader = csv.reader(file)
+    next(csv_reader) # Skip title row
+    for row in csv_reader:
+        if row[14] != '':
+            object_to_modulus[row[1]] = float(row[14])
+            object_to_shape[row[1]] = row[2]
+            object_to_material[row[1]] = row[3]
+
 '''
 Preprocess recorded data for training...
     - Clip to the static loading sequence only
     - Down sample frames to small number
 '''
 def preprocess_grasp(path_to_file, grasp_data=GraspData(), destination_dir=f'{HARDDRIVE_DIR}/data/training_data', \
-                     auto_clip=False, num_frames_to_sample=3, max_num_augmentations=5, plot_sampled_frames=True):
+                     auto_clip=False, num_frames_to_sample=3, max_num_aug=4, plot_sampled_frames=False):
     
     _, file_name = os.path.split(path_to_file)
     object_name = file_name.split('__')[0]
@@ -28,12 +44,12 @@ def preprocess_grasp(path_to_file, grasp_data=GraspData(), destination_dir=f'{HA
     object_dir      = f'{destination_dir}/{object_name}'
     trial_dir       = f'{object_dir}/t={str(trial)}'
     
-    # if not os.path.exists(object_dir):
-    #     os.mkdir(object_dir)
-    # if not os.path.exists(trial_dir):
-    #     os.mkdir(trial_dir)
-    # else:
-    #     return
+    if not os.path.exists(object_dir):
+        os.mkdir(object_dir)
+    if not os.path.exists(trial_dir):
+        os.mkdir(trial_dir)
+    else:
+        return
 
     # Load video and forces
     grasp_data._reset_data()
@@ -41,32 +57,144 @@ def preprocess_grasp(path_to_file, grasp_data=GraspData(), destination_dir=f'{HA
     if auto_clip:
         # Should already be auto-clipped from recording
         grasp_data.auto_clip()
+
+    # Skip files with a low peak force
+    if grasp_data.forces().max() < 10: return
+
+    # Skip files where gripper width does not change
+    if grasp_data.gripper_widths().max() == grasp_data.gripper_widths().min(): return
         
-    i_start = np.argmax(grasp_data.forces() >= FORCE_THRESHOLD)
-    i_peak = np.argmax(grasp_data.forces()) + 1
+    TRAINING_FORCE_THRESHOLD = 5
+    i_start = np.argmax(grasp_data.forces() >= TRAINING_FORCE_THRESHOLD) # 0.25*grasp_data.forces().max()) # FORCE_THRESHOLD)
+    i_peak = np.argmax(grasp_data.forces() >= 0.975*grasp_data.forces().max()) + 1
 
     if (i_peak - i_start + 1) < num_frames_to_sample:
         print('Skipping!')
         return
     
-    max_num_augmentations = min(max_num_augmentations, round((i_peak - i_start)/ num_frames_to_sample) - 1)
-    grasp_data.clip(i_start, i_peak + max_num_augmentations)
+    grasp_data.clip(i_start, i_peak + max_num_aug)
 
-    L = i_peak - i_start - 1
-    sample_indices = np.linspace(0, L, num_frames_to_sample, endpoint=True, dtype=int)
-    sample_indices = np.maximum(sample_indices, 1)
+    force_sample_indices        = np.linspace(0, i_peak - i_start - 1, num_frames_to_sample, endpoint=True, dtype=int)
+    video_sample_indices        = np.linspace(0, i_peak - i_start - 1, num_frames_to_sample, endpoint=True, dtype=int)
+    other_video_sample_indices  = np.linspace(0, i_peak - i_start - 1, num_frames_to_sample, endpoint=True, dtype=int)
+    
+    # If depth does not peak at the force peak, adjust indices
+    adjusted_peak = False
+    if grasp_data.max_depths()[force_sample_indices[-1]] < 0.85*grasp_data.max_depths().max() \
+        and np.argmax(grasp_data.max_depths()) < force_sample_indices[-1]:
+        grasp_data.plot_grasp_data()
+        if input('\nFix peak? ').lower() == 'y':
+            adjusted_peak = True
+            video_sample_indices = np.linspace(0, np.argmax(grasp_data.max_depths()), num_frames_to_sample, endpoint=True, dtype=int)
 
-    num_augmentations = max_num_augmentations
-    for i in range(max_num_augmentations):
-        if grasp_data.forces()[sample_indices[-1] + i] <= 0.9*grasp_data.forces().max():
-            num_augmentations = i
+    if grasp_data.max_depths(other_finger=True)[force_sample_indices[-1]] < 0.85*grasp_data.max_depths(other_finger=True).max() \
+        and np.argmax(grasp_data.max_depths(other_finger=True)) < force_sample_indices[-1]:
+        grasp_data.plot_grasp_data()
+        if input('\nFix other peak? ').lower() == 'y':
+            adjusted_peak = True
+            other_video_sample_indices = np.linspace(0, np.argmax(grasp_data.max_depths(other_finger=True)), num_frames_to_sample, endpoint=True, dtype=int)
+
+    # Consider force and depth when limiting augmentations
+    num_aug = 1
+    for i in range(1, max_num_aug):
+        if grasp_data.forces()[force_sample_indices[-1] + i] >= 0.95*grasp_data.forces().max():
+            num_aug += 1
+        else:
             break
+
+    assert num_aug > 0
+
+    contact_shift = -1
+    for i in range(0, 5):
+        if grasp_data.max_depths()[i] >= 0.075*grasp_data.max_depths().max():
+            contact_shift = i
+            break
+
+    other_contact_shift = -1
+    for i in range(0, 5):
+        if grasp_data.max_depths(other_finger=True)[i] >= 0.075*grasp_data.max_depths(other_finger=True).max():
+            other_contact_shift = i
+            break
+
+    if contact_shift == -1 and other_contact_shift == -1:
+        contact_shift = 0
+        other_contact_shift = 0
+    elif contact_shift == -1:
+        contact_shift = other_contact_shift
+    elif other_contact_shift == -1:
+        other_contact_shift = contact_shift
+
+    force_sample_indices[0] += min(contact_shift, other_contact_shift)
+    video_sample_indices[0] += contact_shift
+    other_video_sample_indices[0] += other_contact_shift
+    assert video_sample_indices[0] == contact_shift
+    assert other_video_sample_indices[0] == other_contact_shift
+
+    if video_sample_indices[1] > video_sample_indices[0]:
+        np.linspace(video_sample_indices[0], video_sample_indices[-1], num_frames_to_sample, endpoint=True, dtype=int)
+    if other_video_sample_indices[1] > other_video_sample_indices[0]:
+        np.linspace(other_video_sample_indices[0], other_video_sample_indices[-1], num_frames_to_sample, endpoint=True, dtype=int)
+
+    num_aug = min(num_aug, max(video_sample_indices[1] - video_sample_indices[0], \
+                               other_video_sample_indices[1] - other_video_sample_indices[0], 2))
+    if min(video_sample_indices[-1] - video_sample_indices[0], other_video_sample_indices[-1] - other_video_sample_indices[0]) <= num_frames_to_sample-1:
+        num_aug = 1
 
     if plot_sampled_frames:
         grasp_data.plot_grasp_data()
 
-    for i in range(num_augmentations):
+    for i in range(num_aug):
 
+        # Don't continue if the depth from the first frame is similar to the final
+        if i > 0 and object_to_modulus[object_name] >= 5e5 and \
+            grasp_data.wedge_video.depth_images()[video_sample_indices[0] + i, :, :].max() >= \
+            0.8*grasp_data.wedge_video.depth_images()[video_sample_indices[-1] + i, :, :].max() and \
+            grasp_data.other_wedge_video.depth_images()[other_video_sample_indices[0] + i, :, :].max() >= \
+            0.8*grasp_data.other_wedge_video.depth_images()[other_video_sample_indices[-1] + i, :, :].max():
+            break
+
+        # Get out all the sampled data
+        diff_images = grasp_data.wedge_video.diff_images()[video_sample_indices + i, :, :]
+        depth_images = grasp_data.wedge_video.depth_images()[video_sample_indices + i, :, :]
+        other_diff_images = grasp_data.other_wedge_video.diff_images()[other_video_sample_indices + i, :, :]
+        other_depth_images = grasp_data.other_wedge_video.depth_images()[other_video_sample_indices + i, :, :]
+        forces = grasp_data.forces()[force_sample_indices + i]
+        widths = grasp_data.gripper_widths()[force_sample_indices + i]
+            
+        # Plot chosen frames to make sure they look good
+        if (plot_sampled_frames and (i == 0 or i == max_num_aug-1)): # or adjusted_peak:
+            fig, axs = plt.subplots(1, 3, figsize=(12, 8))
+            fig.suptitle(f'OTHER {object_name}/t={trial}/aug={i}')
+            for j in range(num_frames_to_sample):
+                axs[j].imshow(grasp_data.other_wedge_video.diff_images()[other_video_sample_indices[j] + i, :, :])
+                axs[j].axis('off')  # Turn off axis ticks and labels
+                axs[j].set_title(f'Sampled Frame #{j + 1} (index={other_video_sample_indices[j] + i})')
+            plt.tight_layout()
+            fig, axs = plt.subplots(1, 3, figsize=(12, 8))
+            fig.suptitle(f'OTHER {object_name}/t={trial}/aug={i}')
+            for j in range(num_frames_to_sample):
+                axs[j].imshow(grasp_data.other_wedge_video.depth_images()[other_video_sample_indices[j] + i, :, :])
+                axs[j].axis('off')  # Turn off axis ticks and labels
+                axs[j].set_title(f'Sampled Frame #{j + 1} (index={other_video_sample_indices[j] + i})')
+            
+            fig, axs = plt.subplots(1, 3, figsize=(12, 8))
+            fig.suptitle(f'{object_name}/t={trial}/aug={i}')
+            for j in range(num_frames_to_sample):
+                axs[j].imshow(grasp_data.wedge_video.depth_images()[video_sample_indices[j] + i, :, :])
+                axs[j].axis('off')  # Turn off axis ticks and labels
+                axs[j].set_title(f'Sampled Frame #{j + 1} (index={video_sample_indices[j] + i})')
+            plt.tight_layout()
+            fig, axs = plt.subplots(1, 3, figsize=(12, 8))
+            fig.suptitle(f'{object_name}/t={trial}/aug={i}')
+            for j in range(num_frames_to_sample):
+                axs[j].imshow(grasp_data.wedge_video.diff_images()[video_sample_indices[j] + i, :, :])
+                axs[j].axis('off')  # Turn off axis ticks and labels
+                axs[j].set_title(f'Sampled Frame #{j + 1} (index={video_sample_indices[j] + i})')
+            plt.tight_layout()
+
+            plt.show()
+            print('done')
+            
         # Make necessary directories
         aug_dir = f'{trial_dir}/aug={i}'
         if not os.path.exists(aug_dir):
@@ -74,46 +202,19 @@ def preprocess_grasp(path_to_file, grasp_data=GraspData(), destination_dir=f'{HA
         output_name_prefix = f'{object_name}__t={str(trial)}_aug={i}'
         output_path_prefix = f'{aug_dir}/{output_name_prefix}'
 
-        # Get out all the sampled data
-        diff_images = grasp_data.wedge_video.diff_images()[sample_indices + i, :, :]
-        depth_images = grasp_data.wedge_video.depth_images()[sample_indices + i, :, :]
-        other_diff_images = grasp_data.other_wedge_video.diff_images()[sample_indices + i, :, :]
-        other_depth_images = grasp_data.other_wedge_video.depth_images()[sample_indices + i, :, :]
-        forces = grasp_data.forces()[sample_indices + i]
-        widths = grasp_data.gripper_widths()[sample_indices + i]
-            
-        # Plot chosen frames to make sure they look good
-        if plot_sampled_frames:
-            fig, axs = plt.subplots(1, 3, figsize=(12, 8))
-            fig.suptitle(f'{object_name}/t={trial}/aug={i}')
-            for j in range(num_frames_to_sample):
-                axs[j].imshow(grasp_data.other_wedge_video.diff_images()[sample_indices[j] + i, :, :])
-                axs[j].axis('off')  # Turn off axis ticks and labels
-                axs[j].set_title(f'Sampled Frame #{j + 1} (index={sample_indices[j] + i})')
-            plt.tight_layout()
-            fig, axs = plt.subplots(1, 3, figsize=(12, 8))
-            fig.suptitle(f'{object_name}/t={trial}/aug={i}')
-            for j in range(num_frames_to_sample):
-                axs[j].imshow(grasp_data.other_wedge_video.depth_images()[sample_indices[j] + i, :, :])
-                axs[j].axis('off')  # Turn off axis ticks and labels
-                axs[j].set_title(f'Sampled Frame #{j + 1} (index={sample_indices[j] + i})')
-            plt.tight_layout()
-            plt.show()
-            print('done')
-
-        # # Save to respective areas
-        # with open(f'{output_path_prefix}_diff.pkl', 'wb') as file:
-        #     pickle.dump(diff_images, file)
-        # with open(f'{output_path_prefix}_depth.pkl', 'wb') as file:
-        #     pickle.dump(depth_images, file)
-        # with open(f'{output_path_prefix}_diff_other.pkl', 'wb') as file:
-        #     pickle.dump(other_diff_images, file)
-        # with open(f'{output_path_prefix}_depth_other.pkl', 'wb') as file:
-        #     pickle.dump(other_depth_images, file)
-        # with open(f'{output_path_prefix}_forces.pkl', 'wb') as file:
-        #     pickle.dump(forces, file)
-        # with open(f'{output_path_prefix}_widths.pkl', 'wb') as file:
-        #     pickle.dump(widths, file)
+        # Save to respective areas
+        with open(f'{output_path_prefix}_diff.pkl', 'wb') as file:
+            pickle.dump(diff_images, file)
+        with open(f'{output_path_prefix}_depth.pkl', 'wb') as file:
+            pickle.dump(depth_images, file)
+        with open(f'{output_path_prefix}_diff_other.pkl', 'wb') as file:
+            pickle.dump(other_diff_images, file)
+        with open(f'{output_path_prefix}_depth_other.pkl', 'wb') as file:
+            pickle.dump(other_depth_images, file)
+        with open(f'{output_path_prefix}_forces.pkl', 'wb') as file:
+            pickle.dump(forces, file)
+        with open(f'{output_path_prefix}_widths.pkl', 'wb') as file:
+            pickle.dump(widths, file)
 
     return
 
@@ -132,11 +233,19 @@ if __name__ == "__main__":
 
     # Loop through all data files
     DATA_DIR = f'{HARDDRIVE_DIR}/data/raw_data'
-    for object_name in tqdm(os.listdir(DATA_DIR)):
+    object_folders = os.listdir(DATA_DIR)
+    random.shuffle(object_folders)
+
+    object_name_last = None
+    for object_name in tqdm(object_folders):
+
+        if object_name in ['silly_puty']: continue
+
         for file_name in os.listdir(f'{DATA_DIR}/{object_name}'):
             if os.path.splitext(file_name)[1] != '.avi' or file_name.count("_other") > 0:
-                continue
+                continue           
 
             # Preprocess the file
             preprocess_grasp(f'{DATA_DIR}/{object_name}/{os.path.splitext(file_name)[0]}', destination_dir=DESTINATION_DIR, \
-                             num_frames_to_sample=n_frames, grasp_data=grasp_data)
+                             num_frames_to_sample=n_frames, grasp_data=grasp_data, plot_sampled_frames=False) # (object_name != object_name_last))
+            object_name_last = object_name
