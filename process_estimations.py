@@ -348,12 +348,12 @@ for object_name in tqdm(objects):
                 with open(f'{file_path_prefix}/MDR_both_sides/{config_contact_mask}/{i}.json', 'w') as json_file:
                     json.dump(MDR_config, json_file)
 
-        # Fit using the stochastic estimator
-        E_stochastic = estimator.fit_modulus_stochastic()
-        if not os.path.exists(f'{file_path_prefix}/stochastic'):
-            os.mkdir(f'{file_path_prefix}/stochastic')
-        with open(f'{file_path_prefix}/stochastic/0.pkl', 'wb') as file:
-            pickle.dump(E_stochastic, file)
+        # # Fit using the stochastic estimator
+        # E_stochastic = estimator.fit_modulus_stochastic()
+        # if not os.path.exists(f'{file_path_prefix}/stochastic'):
+        #     os.mkdir(f'{file_path_prefix}/stochastic')
+        # with open(f'{file_path_prefix}/stochastic/0.pkl', 'wb') as file:
+        #     pickle.dump(E_stochastic, file)
         
 with open(f'{DATA_DIR}/max_depths.json', 'w') as json_file:
     json.dump(max_depths, json_file)
