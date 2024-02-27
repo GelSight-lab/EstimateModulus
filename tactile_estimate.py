@@ -272,7 +272,7 @@ class EstimateModulus():
     
     # Wrap the chosen contact mask function into one place
     def contact_mask(self, depth):
-        return self.conditional_contact_mask(depth)
+        return self.total_conditional_contact_mask(depth)
     
     # Use a user-specified contact mask
     def input_contact_mask(self, contact_mask_str, depth):
@@ -284,7 +284,6 @@ class EstimateModulus():
             'total_normalized_threshold_contact_mask': self.total_normalized_threshold_contact_mask,
             'std_above_mean_contact_mask': self.std_above_mean_contact_mask,
             'ellipse_contact_mask': self.ellipse_contact_mask,
-            'conditional_contact_mask': self.conditional_contact_mask,
             'total_conditional_contact_mask': self.total_conditional_contact_mask,
         }
         assert contact_mask_str in contact_mask_functions.keys()
