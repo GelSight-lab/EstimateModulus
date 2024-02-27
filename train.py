@@ -409,7 +409,7 @@ class ModulusModel():
 
     # Create data loaders based on configuration
     def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, csv_shape_column=2, csv_material_column=3, \
-                         training_data_folder_name=f'training_data__Nframes={N_FRAMES}'):
+                         training_data_folder_name=f'training_data__Nframes={N_FRAMES}__new'):
         # Read CSV files with objects and labels tabulated
         self.object_to_modulus = {}
         self.object_to_material = {}
@@ -999,10 +999,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'BaselineForNow',
+        'run_name': 'NewPreprocessing',
 
         # Training and model parameters
-        'epochs'            : 50,
+        'epochs'            : 40,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
@@ -1023,7 +1023,10 @@ if __name__ == "__main__":
     for i in range(20):
         config['run_name'] = f'{base_run_name}__t={i}'
 
-        config['random_state'] = random.randint(1, 100)
+        if i == 1:
+            config['random_state'] = 25
+        if i > 1:
+            config['random_state'] = random.randint(1, 100)
 
         train_modulus = ModulusModel(config, device=device)
         train_modulus.train()
