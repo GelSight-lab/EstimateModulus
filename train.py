@@ -277,7 +277,7 @@ class ModulusModel():
             self.random_transformer = torchvision.transforms.Compose([
                     torchvision.transforms.RandomHorizontalFlip(0.25),
                     torchvision.transforms.RandomVerticalFlip(0.25),
-                    torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.925, 1.0)),
+                    torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.95, 1.0), antialias=True),
                     torchvision.transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
                 ])
 
@@ -990,7 +990,7 @@ if __name__ == "__main__":
         'run_name': 'Batch64_NewTransforms',
 
         # Training and model parameters
-        'epochs'            : 50,
+        'epochs'            : 150,
         'batch_size'        : 64,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
@@ -999,7 +999,7 @@ if __name__ == "__main__":
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'learning_rate'     : 5e-4,
-        'gamma'             : 100**(-5/150), # 100**(-lr_step_size / epochs)
+        'gamma'             : 100**(-5/1000), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 47, # 25
     }
