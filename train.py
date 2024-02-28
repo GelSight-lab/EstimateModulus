@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -78,22 +78,20 @@ class CustomDataset(Dataset):
 
         self.normalization_values = normalization_values
 
+        self.input_paths = paths_to_files
+        self.normalized_modulus_labels = labels
+
         if self.use_transformations:
-            self.input_paths = 4*paths_to_files
-            self.normalized_modulus_labels = 4*labels
-            self.flip_horizontal = [i > 2*len(paths_to_files) for i in range(len(self.input_paths))]
-            self.flip_vertical = [i % 2 == 1 for i in range(len(self.input_paths))]
-        else:
-            self.input_paths = paths_to_files
-            self.normalized_modulus_labels = labels
-            self.flip_horizontal = [False for i in range(len(self.input_paths))]
-            self.flip_vertical = [False for i in range(len(self.input_paths))]
+            self.random_transformer = transforms.Compose([
+                    transforms.RandomHorizontalFlip(0.5),
+                    transforms.RandomVerticalFlip(0.5),
+                    transforms.RandomResizedCrop(size=(250, 250), scale=(0.925, 1.0)),
+                    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
+                ])
 
         if self.use_width_transforms:
             self.input_paths = 2*self.input_paths
             self.normalized_modulus_labels = 2*self.normalized_modulus_labels
-            self.flip_horizontal = 2*self.flip_horizontal
-            self.flip_vertical = 2*self.flip_vertical
             self.noise_force = [ i > len(self.input_paths)/2 and i % 2 == 1 for i in range(len(self.input_paths)) ]
             self.noise_width = [ i > len(self.input_paths)/2 for i in range(len(self.input_paths)) ]
 
@@ -133,28 +131,12 @@ class CustomDataset(Dataset):
         #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
         #         self.x_frames_other /= self.normalization_values['max_depth']
 
-        # Flip the data if desired
-        if self.use_transformations and self.flip_horizontal[idx]:
-            self.x_frames = torch.flip(self.x_frames, dims=(2,))
-            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(2,))
-        if self.use_transformations and self.flip_vertical[idx]:
-            self.x_frames = torch.flip(self.x_frames, dims=(3,))
-            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(3,))
-
         # Unpack force measurements
         self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
         if self.use_force:
             with open(self.base_name + '_forces.pkl', 'rb') as file:
                 self.x_forces[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
                 self.x_forces /= self.normalization_values['max_force']
-
-            # if self.use_width_transforms:
-            #     if self.noise_force[idx]:
-            #         noise_amplitude = 0.025
-            #         if random.random() > 0.5:
-            #             self.x_forces += noise_amplitude * random.random()
-            #         else:
-            #             self.x_forces -= noise_amplitude * random.random()
 
         # Unpack gripper width measurements
         if self.use_width:
@@ -539,6 +521,12 @@ class ModulusModel():
         }
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
+
+            # Apply random transformations for training
+            if self.use_transformations:
+                x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
+                x_frames = random_transforms(x_frames)
+                x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
             if self.use_RNN:
                 # Concatenate features across frames into a single vector
@@ -999,11 +987,11 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch128_NewPreprocessing',
+        'run_name': 'Batch64_NewTransforms',
 
         # Training and model parameters
-        'epochs'            : 40,
-        'batch_size'        : 128,
+        'epochs'            : 50,
+        'batch_size'        : 64,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
         'img_feature_size'  : 64, # 32
