@@ -246,8 +246,7 @@ class EstimateModulus():
     # Return mask of which pixels are in upper half of depth range for whole video
     def total_normalized_threshold_contact_mask(self, depth, threshold_pct=0.1):
         total_min_depth = 0 
-        if self.max_depths().max() < 0.00025: return np.ones_like(depth)
-        if self.max_depths().max() < 0.0005: np.min(self.depth_images(), axis=(1,2)).min()
+        if self.max_depths().max() < 0.00075: np.min(self.depth_images(), axis=(1,2)).min()
         return (depth - total_min_depth) / (self.max_depths().max() - total_min_depth) >= threshold_pct
 
     # Return mask of which pixels are in upper half of depth range
@@ -264,11 +263,21 @@ class EstimateModulus():
         return ellipse_mask
     
     # Use regular threshold for whole video unless mean depth of peak is small
-    def total_conditional_contact_mask(self, depth, depth_threshold=None, threshold_pct=0.5):
-        if self.depth_images().max() > 0.001:
+    def total_conditional_contact_mask(self, depth, depth_threshold=1e-4, threshold_pct=0.1):
+        if self.max_depths().max() > 0.001: # = depth_threshold / threshold_pct
             mask = self.constant_threshold_contact_mask(depth, depth_threshold=depth_threshold)
         else:
             mask = self.total_normalized_threshold_contact_mask(depth, threshold_pct=threshold_pct)
+        return mask
+    
+    # Use regular threshold for whole video unless mean depth of peak is small
+    def total_conditional_contact_mask_with_foam_flattening(self, depth, depth_threshold=1e-4, threshold_pct=0.1):
+        if self.max_depths().max() > 0.001: # = depth_threshold / threshold_pct
+            mask = self.constant_threshold_contact_mask(depth, depth_threshold=depth_threshold)
+        elif self.max_depths().max() > 0.000275:
+            mask = self.total_normalized_threshold_contact_mask(depth, threshold_pct=threshold_pct)
+        else:
+            mask = np.ones_like(depth)
         return mask
     
     # Wrap the chosen contact mask function into one place

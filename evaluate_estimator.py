@@ -44,9 +44,9 @@ DATA_DIR = './data' # '/media/mike/Elements/data'
 # Objects to exclude from evaluation
 EXCLUDE = [
             'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
-            'red_foam_brick', 'blue_foam_brick', 'green_foam_brick', # 'yellow_foam_brick',
+            'blue_foam_brick', 'green_foam_brick', # 'yellow_foam_brick', 'red_foam_brick', 
             'apple', 'orange', 'strawberry', 'ripe_banana', 'unripe_banana', 
-            'lacrosse_ball', 'scotch_brite', 'fake_washer_stack', 'cork',
+            'lacrosse_ball', 'scotch_brite', 'fake_washer_stack', 'cork', 'rubber_spatula',
             'baseball', 'plastic_measuring_cup', 'whiteboard_eraser', 'lifesaver_hard', 'cutting_board',
             'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white',
         ]

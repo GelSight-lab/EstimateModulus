@@ -98,17 +98,22 @@ estimator = EstimateModulus(grasp_data=grasp_data, use_gripper_width=True, use_o
 
 CONTACT_MASKS = [
                  'ellipse_contact_mask', 'constant_threshold_contact_mask', 'total_conditional_contact_mask', \
-                 'normalized_threshold_contact_mask', 'total_normalized_threshold_contact_mask', 'mean_threshold_contact_mask' \
-                 # 'total_mean_threshold_contact_mask', 'std_above_mean_contact_mask' \
+                 'total_conditional_contact_mask_with_foam_flattening', 'normalized_threshold_contact_mask', 'total_normalized_threshold_contact_mask', \
+                 # 'mean_threshold_contact_mask', 'total_mean_threshold_contact_mask', 'std_above_mean_contact_mask' \
                 ]
 
 max_depths = {}
 object_name_last = None
 
+F = []
+d = []
+d_other = []
+
 objects = sorted(os.listdir(f'{DATA_DIR}/raw_data'))
 random.shuffle(objects)
 for object_name in tqdm(objects):
     data_files = sorted(os.listdir(f'{DATA_DIR}/raw_data/{object_name}'))
+    
     for file_name in data_files:
         if os.path.splitext(file_name)[1] != '.avi' or file_name.count("_other") > 0:
             continue
@@ -144,6 +149,11 @@ for object_name in tqdm(objects):
         # Remove stagnant gripper values across measurement frames
         estimator.interpolate_gripper_widths()
 
+
+        F.extend(estimator.forces()[1:] / estimator.forces().max())
+        d.extend(estimator.max_depths()[1:] / estimator.max_depths().max())
+        d_other.extend(estimator.grasp_data.max_depths(other_finger=True)[1:] / estimator.grasp_data.max_depths(other_finger=True).max())
+        print('here')
 
 
         # if object_name == object_name_last: continue
@@ -210,7 +220,7 @@ for object_name in tqdm(objects):
         # object_name_last = object_name
 
 
-
+        '''
         # Loop through all desired contact masks to get estimations
         for contact_mask in CONTACT_MASKS:
                     
@@ -228,14 +238,14 @@ for object_name in tqdm(objects):
                         )
                 config_contact_mask = naive_config['contact_mask'] if naive_config['contact_mask'] is not None else 'ellipse_contact_mask'
 
-                if not os.path.exists(f'{file_path_prefix}/naive'):
-                    os.mkdir(f'{file_path_prefix}/naive')
-                if not os.path.exists(f'{file_path_prefix}/naive/{config_contact_mask}'):
-                    os.mkdir(f'{file_path_prefix}/naive/{config_contact_mask}')
-                with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i}.pkl', 'wb') as file:
-                    pickle.dump(E_naive, file)
-                with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i}.json', 'w') as json_file:
-                    json.dump(naive_config, json_file)
+                # if not os.path.exists(f'{file_path_prefix}/naive'):
+                #     os.mkdir(f'{file_path_prefix}/naive')
+                # if not os.path.exists(f'{file_path_prefix}/naive/{config_contact_mask}'):
+                #     os.mkdir(f'{file_path_prefix}/naive/{config_contact_mask}')
+                # with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i}.pkl', 'wb') as file:
+                #     pickle.dump(E_naive, file)
+                # with open(f'{file_path_prefix}/naive/{config_contact_mask}/{i}.json', 'w') as json_file:
+                #     json.dump(naive_config, json_file)
 
             # Fit using naive estimator with both sides
             for i in range(len(naive_both_sides_configs)):
@@ -347,6 +357,7 @@ for object_name in tqdm(objects):
                     pickle.dump(E_MDR, file)
                 with open(f'{file_path_prefix}/MDR_both_sides/{config_contact_mask}/{i}.json', 'w') as json_file:
                     json.dump(MDR_config, json_file)
+            '''
 
         # # Fit using the stochastic estimator
         # E_stochastic = estimator.fit_modulus_stochastic()

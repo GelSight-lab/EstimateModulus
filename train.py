@@ -990,20 +990,20 @@ if __name__ == "__main__":
         'use_width_transforms': True,
         'exclude': [
                     'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
-                    'red_foam_brick', 'blue_foam_brick', 'green_foam_brick', # 'green_foam_brick', 
+                    'blue_foam_brick', 'green_foam_brick', # 'yellow_foam_brick', 'red_foam_brick', 
                     'apple', 'orange', 'strawberry', 'ripe_banana', 'unripe_banana', 
-                    'lacrosse_ball', 'scotch_brite', 'cork', 'baseball', 'fake_washer_stack',
-                    'plastic_measuring_cup', 'whiteboard_eraser', 'lifesaver_hard', 'cutting_board'
+                    'lacrosse_ball', 'scotch_brite', 'fake_washer_stack', 'cork', 'rubber_spatula',
+                    'baseball', 'plastic_measuring_cup', 'whiteboard_eraser', 'lifesaver_hard', 'cutting_board',
                     'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white',
                 ],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch64_NewPreprocessing',
+        'run_name': 'Batch128_NewPreprocessing',
 
         # Training and model parameters
         'epochs'            : 40,
-        'batch_size'        : 64,
+        'batch_size'        : 128,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
         'img_feature_size'  : 64, # 32
