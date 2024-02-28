@@ -246,6 +246,7 @@ class EstimateModulus():
     # Return mask of which pixels are in upper half of depth range for whole video
     def total_normalized_threshold_contact_mask(self, depth, threshold_pct=0.1):
         total_min_depth = 0 
+        if self.max_depths().max() < 0.00025: return np.ones_like(depth)
         if self.max_depths().max() < 0.0005: np.min(self.depth_images(), axis=(1,2)).min()
         return (depth - total_min_depth) / (self.max_depths().max() - total_min_depth) >= threshold_pct
 
@@ -292,6 +293,10 @@ class EstimateModulus():
     # Fit linear equation with least squares
     def linear_coeff_fit(self, x, y):
         # Solve for best A given data and equation of form y = A*x
+
+        if not (np.dot(x,x) > 1e-15):
+            print('here')
+
         return np.dot(x, y) / np.dot(x, x)
     
     # Clip a press sequence to only the loading sequence (positive force)
@@ -425,7 +430,7 @@ class EstimateModulus():
         dL_log = []
         cA_log = []
 
-        contact_areas, a = [], []
+        contact_areas, a, F = [], [], []
         x_data, y_data, d = [], [], []
         for i in range(len(depth_images)):
             depth_i = depth_images[i]
@@ -472,6 +477,7 @@ class EstimateModulus():
                 contact_areas.append(contact_area_i)
                 a.append(a_i)
                 d.append(d_i)
+                F.append(self.forces()[i])
 
         # Save stuff for plotting
         self._x_data = np.array(x_data)
@@ -479,12 +485,10 @@ class EstimateModulus():
         self._contact_areas =  np.array(contact_areas)
         self._a = np.array(a)
         self._d = np.array(d)
+        self._F = np.array(F)
 
         # Fit to modulus
         E = self.linear_coeff_fit(x_data, y_data)
-
-        # if math.isnan(E) or E <= 0:
-        #     print('Bad prediction!')
 
         return E
     
@@ -519,7 +523,7 @@ class EstimateModulus():
         dL_log = []
         cA_log = []
 
-        contact_areas, a = [], []
+        contact_areas, a, F = [], [], []
         x_data, y_data, d = [], [], []
         for i in range(len(depth_images)):
             depth_i = depth_images[i]
@@ -576,6 +580,7 @@ class EstimateModulus():
                 contact_areas.append(contact_area_i)
                 a.append(a_i)
                 d.append((d_i + other_d_i) / 2)
+                F.append(self.forces()[i])
 
         # Save stuff for plotting
         self._x_data = np.array(x_data)
@@ -583,6 +588,7 @@ class EstimateModulus():
         self._contact_areas =  np.array(contact_areas)
         self._a = np.array(a)
         self._d = np.array(d)
+        self._F = np.array(F)
 
         # Fit to modulus
         E = self.linear_coeff_fit(x_data, y_data)
@@ -608,7 +614,7 @@ class EstimateModulus():
             depth_images = self.depth_images()
 
         x_data, y_data = [], []
-        d, contact_areas, a = [], [], []
+        d, contact_areas, a, F = [], [], [], []
         for i in range(len(depth_images)):
             depth_i = depth_images[i]
             d_i = (L0 - self.gripper_widths()[i])
@@ -645,12 +651,14 @@ class EstimateModulus():
                 contact_areas.append(contact_area_i)
                 d.append(d_i)
                 a.append(a_i)
+                F.append(self.forces()[i])
 
         self._x_data = np.array(x_data)
         self._y_data = np.array(y_data)
         self._contact_areas =  np.array(contact_areas)
         self._a = np.array(a)
         self._d = np.array(d)
+        self._F = np.array(F)
 
         E_agg = self.linear_coeff_fit(x_data, y_data)
         E = (1/E_agg - 1/(10*self.E_gel))**(-1)
@@ -686,7 +694,7 @@ class EstimateModulus():
             L0 = self.gripper_widths()[i_contact] + peak_depths[i_contact] + other_peak_depths[i_contact]
 
         x_data, y_data = [], []
-        d, contact_areas, a = [], [], []
+        d, contact_areas, a, F = [], [], [], []
         for i in range(len(depth_images)):
             depth_i = depth_images[i]
             other_depth_i = depth_images[i]
@@ -731,12 +739,14 @@ class EstimateModulus():
                 contact_areas.append(contact_area_i)
                 d.append(apparent_d_i)
                 a.append(a_i)
+                F.append(self.forces()[i])
 
         self._x_data = np.array(x_data)
         self._y_data = np.array(y_data)
         self._contact_areas =  np.array(contact_areas)
         self._a = np.array(a)
         self._d = np.array(d)
+        self._F = np.array(F)
 
         E_agg = self.linear_coeff_fit(x_data, y_data)
         E = (1/E_agg - 1/(10*self.E_gel))**(-1)
@@ -829,6 +839,7 @@ class EstimateModulus():
                 d.append(d_i)
                 a.append(a_i)
                 R.append(R_i)
+                F.append(F_i)
                 x_data.append(w_1D_0)
                 y_data.append(d_i)
 
@@ -954,6 +965,7 @@ class EstimateModulus():
                 d.append(mean_d_i)
                 a.append(a_i)
                 R.append(R_i)
+                F.append(F_i)
                 x_data.append(w_1D_0)
                 y_data.append(d_i)
 
