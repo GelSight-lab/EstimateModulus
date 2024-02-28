@@ -628,7 +628,7 @@ class ModulusModel():
         val_stats = {
             'loss': 0,
             'log_acc': 0,
-            'log_acc_10': 0,
+            'log_acc_1': 0,
             'soft_log_acc': 0,
             'hard_log_acc': 0,
             'avg_log_diff': 0,
