@@ -628,6 +628,7 @@ class ModulusModel():
         val_stats = {
             'loss': 0,
             'log_acc': 0,
+            'log_acc_10': 0,
             'soft_log_acc': 0,
             'hard_log_acc': 0,
             'avg_log_diff': 0,
@@ -714,6 +715,8 @@ class ModulusModel():
                         val_stats['soft_log_acc'] += 1
                     else:
                         val_stats['hard_log_acc'] += 1
+                if abs_log_diff[i] <= 1:
+                    val_stats['log_acc_1'] += 1
 
                 if abs_log_diff[i] >= 2:
                     self.val_object_performance[object_names[i]]['total_poorly_predicted'] += 1
@@ -729,6 +732,7 @@ class ModulusModel():
         # Return loss and accuracy
         val_stats['loss']                   /= val_stats['batch_count']
         val_stats['log_acc']                /= (self.batch_size * val_stats['batch_count'])
+        val_stats['log_acc_1']              /= (self.batch_size * val_stats['batch_count'])
         val_stats['avg_log_diff']           /= (self.batch_size * val_stats['batch_count'])
         val_stats['pct_w_100_factor_err']   /= (self.batch_size * val_stats['batch_count'])
         val_stats['soft_log_acc']           /= val_stats['soft_count']
@@ -809,6 +813,7 @@ class ModulusModel():
                     "val_loss": val_stats['loss'],
                     "val_avg_log_diff": val_stats['avg_log_diff'],
                     "val_log_accuracy": val_stats['log_acc'],
+                    "val_log_accuracy_1": val_stats['log_acc_1'],
                     "val_pct_with_100_factor_err": val_stats['pct_w_100_factor_err'],
                     "val_soft_avg_log_diff": val_stats['soft_avg_log_diff'],
                     "val_soft_log_acc": val_stats['soft_log_acc'],
