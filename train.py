@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -188,7 +188,6 @@ class ModulusModel():
 
         # Initialize CNN based on config
         if self.pretrained_CNN:
-            self.normalize_frame = torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             self.video_encoder = ModifiedResNet18(CNN_embed_dim=self.img_feature_size)
             # self.other_video_encoder = ModifiedResNet18(CNN_embed_dim=self.img_feature_size)
         else:
@@ -273,12 +272,14 @@ class ModulusModel():
         if self.gamma is not None:
             self.scheduler  = lr_scheduler.StepLR(self.optimizer, step_size=self.lr_step_size, gamma=self.gamma)
 
+        self.normalize_frame = torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
         if self.use_transformations:
             self.random_transformer = torchvision.transforms.Compose([
                     torchvision.transforms.RandomHorizontalFlip(0.5),
                     torchvision.transforms.RandomVerticalFlip(0.5),
-                    # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.95, 1.0), antialias=True),
-                    # torchvision.transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
+                    torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.95, 1.0), antialias=True),
+                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
                 ])
 
         # Load data
@@ -535,10 +536,7 @@ class ModulusModel():
                     frame_features = []
 
                     # Execute CNN on video frames
-                    if self.pretrained_CNN:
-                        x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
-                    else:
-                        x_frame = x_frames[:, i, :, :, :]
+                    x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
                     frame_features.append(self.video_encoder(x_frame))
 
                     # Execute FC layers on other data and append
@@ -557,10 +555,7 @@ class ModulusModel():
                 for i in range(N_FRAMES):
                     
                     # Execute CNN on video frames
-                    if self.pretrained_CNN:
-                        x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
-                    else:
-                        x_frame = x_frames[:, i, :, :, :]
+                    x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
                     features.append(self.video_encoder(x_frame))
                     
                     # # Execute FC layers on other data and append
@@ -652,10 +647,7 @@ class ModulusModel():
                     frame_features = []
 
                     # Execute CNN on video frames
-                    if self.pretrained_CNN:
-                        x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
-                    else:
-                        x_frame = x_frames[:, i, :, :, :]
+                    x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
                     frame_features.append(self.video_encoder(x_frame))
 
                     # Execute FC layers on other data and append
@@ -674,10 +666,7 @@ class ModulusModel():
                 for i in range(N_FRAMES):
                     
                     # Execute CNN on video frames
-                    if self.pretrained_CNN:
-                        x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
-                    else:
-                        x_frame = x_frames[:, i, :, :, :]
+                    x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
                     features.append(self.video_encoder(x_frame))
 
                     # # Execute FC layers on other data and append
