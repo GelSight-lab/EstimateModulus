@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -80,14 +80,6 @@ class CustomDataset(Dataset):
 
         self.input_paths = paths_to_files
         self.normalized_modulus_labels = labels
-
-        if self.use_transformations:
-            self.random_transformer = transforms.Compose([
-                    transforms.RandomHorizontalFlip(0.5),
-                    transforms.RandomVerticalFlip(0.5),
-                    transforms.RandomResizedCrop(size=(250, 250), scale=(0.925, 1.0)),
-                    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
-                ])
 
         if self.use_width_transforms:
             self.input_paths = 2*self.input_paths
@@ -280,6 +272,14 @@ class ModulusModel():
         self.optimizer      = torch.optim.Adam(self.params, lr=self.learning_rate)
         if self.gamma is not None:
             self.scheduler  = lr_scheduler.StepLR(self.optimizer, step_size=self.lr_step_size, gamma=self.gamma)
+
+        if self.use_transformations:
+            self.random_transformer = torchvision.transforms.Compose([
+                    torchvision.transforms.RandomHorizontalFlip(0.25),
+                    torchvision.transforms.RandomVerticalFlip(0.25),
+                    torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.925, 1.0)),
+                    torchvision.transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
+                ])
 
         # Load data
         self.object_names = []
@@ -525,7 +525,7 @@ class ModulusModel():
             # Apply random transformations for training
             if self.use_transformations:
                 x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
-                x_frames = random_transforms(x_frames)
+                x_frames = self.random_transformer(x_frames)
                 x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
             if self.use_RNN:
