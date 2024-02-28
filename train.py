@@ -275,10 +275,10 @@ class ModulusModel():
 
         if self.use_transformations:
             self.random_transformer = torchvision.transforms.Compose([
-                    torchvision.transforms.RandomHorizontalFlip(0.25),
-                    torchvision.transforms.RandomVerticalFlip(0.25),
-                    torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.95, 1.0), antialias=True),
-                    torchvision.transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
+                    torchvision.transforms.RandomHorizontalFlip(0.5),
+                    torchvision.transforms.RandomVerticalFlip(0.5),
+                    # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.95, 1.0), antialias=True),
+                    # torchvision.transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
                 ])
 
         # Load data
