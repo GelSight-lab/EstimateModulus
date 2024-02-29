@@ -278,8 +278,7 @@ class ModulusModel():
             self.random_transformer = torchvision.transforms.Compose([
                     torchvision.transforms.RandomHorizontalFlip(0.25),
                     torchvision.transforms.RandomVerticalFlip(0.25),
-                    # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.95, 1.0), antialias=True),
-                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.0),
+                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.1),
                 ])
 
         # Load data
@@ -981,7 +980,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch96_NewTransforms_NoCrop_JustBrightness',
+        'run_name': 'Batch96_NewTransforms_HueAndBrightness',
 
         # Training and model parameters
         'epochs'            : 150,
