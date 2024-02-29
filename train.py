@@ -987,7 +987,7 @@ if __name__ == "__main__":
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'learning_rate'     : 1e-5, # 5e-4,
-        'gamma'             : 100**(-5/300), # 100**(-lr_step_size / epochs)
+        'gamma'             : 1, # 100**(-5/1000), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 47, # 25
     }
