@@ -276,10 +276,10 @@ class ModulusModel():
 
         if self.use_transformations:
             self.random_transformer = torchvision.transforms.Compose([
-                    torchvision.transforms.RandomHorizontalFlip(0.5),
-                    torchvision.transforms.RandomVerticalFlip(0.5),
+                    torchvision.transforms.RandomHorizontalFlip(0.25),
+                    torchvision.transforms.RandomVerticalFlip(0.25),
                     torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.95, 1.0), antialias=True),
-                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
+                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.0),
                 ])
 
         # Load data
@@ -981,19 +981,19 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch64_NewTransforms',
+        'run_name': 'Batch96_NewTransforms_JustBrightness',
 
         # Training and model parameters
         'epochs'            : 150,
-        'batch_size'        : 64,
+        'batch_size'        : 96,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
         'img_feature_size'  : 64, # 32
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 5e-4,
-        'gamma'             : 100**(-5/1000), # 100**(-lr_step_size / epochs)
+        'learning_rate'     : 1e-4, # 5e-4,
+        'gamma'             : 100**(-5/500), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 47, # 25
     }
