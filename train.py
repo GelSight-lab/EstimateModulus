@@ -976,11 +976,11 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch96_BrightnessContrast_NoNormalization',
+        'run_name': 'Batch32_BrightnessContrast_NoNormalization',
 
         # Training and model parameters
         'epochs'            : 120,
-        'batch_size'        : 96,
+        'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
         'img_feature_size'  : 64, # 32
