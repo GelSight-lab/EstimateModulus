@@ -272,14 +272,12 @@ class ModulusModel():
         if self.gamma is not None:
             self.scheduler  = lr_scheduler.StepLR(self.optimizer, step_size=self.lr_step_size, gamma=self.gamma)
 
-        self.normalize_frame = torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-
         if self.use_transformations:
             self.random_transformer = torchvision.transforms.Compose([
-                    torchvision.transforms.RandomHorizontalFlip(0.5),
-                    torchvision.transforms.RandomVerticalFlip(0.5),
-                    torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.95, 1.0), antialias=True),
-                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
+                    torchvision.transforms.RandomHorizontalFlip(0.25),
+                    torchvision.transforms.RandomVerticalFlip(0.25),
+                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.0, hue=0.0),
+                    # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
                 ])
 
         # Load data
@@ -522,7 +520,7 @@ class ModulusModel():
         }
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
-
+                
             # Apply random transformations for training
             if self.use_transformations:
                 x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
@@ -536,8 +534,7 @@ class ModulusModel():
                     frame_features = []
 
                     # Execute CNN on video frames
-                    x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
-                    frame_features.append(self.video_encoder(x_frame))
+                    frame_features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
                     # Execute FC layers on other data and append
                     if self.use_force: # Force measurements
@@ -555,8 +552,7 @@ class ModulusModel():
                 for i in range(N_FRAMES):
                     
                     # Execute CNN on video frames
-                    x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
-                    features.append(self.video_encoder(x_frame))
+                    features.append(self.video_encoder(x_frames[:, i, :, :, :]))
                     
                     # # Execute FC layers on other data and append
                     # if self.use_force: # Force measurements
@@ -640,7 +636,7 @@ class ModulusModel():
             'batch_count': 0,
         }
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
-            
+                        
             if self.use_RNN:
                 # Concatenate features across frames into a single vector
                 features = []
@@ -648,8 +644,7 @@ class ModulusModel():
                     frame_features = []
 
                     # Execute CNN on video frames
-                    x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
-                    frame_features.append(self.video_encoder(x_frame))
+                    frame_features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
                     # Execute FC layers on other data and append
                     if self.use_force: # Force measurements
@@ -667,8 +662,7 @@ class ModulusModel():
                 for i in range(N_FRAMES):
                     
                     # Execute CNN on video frames
-                    x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
-                    features.append(self.video_encoder(x_frame))
+                    features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
                     # # Execute FC layers on other data and append
                     # if self.use_force: # Force measurements
@@ -981,19 +975,19 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch64_NewTransforms',
+        'run_name': 'Batch96_ContrastAndBrightness_NoNormalization',
 
         # Training and model parameters
-        'epochs'            : 150,
-        'batch_size'        : 64,
+        'epochs'            : 80,
+        'batch_size'        : 96,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
         'img_feature_size'  : 64, # 32
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 5e-4,
-        'gamma'             : 100**(-5/1000), # 100**(-lr_step_size / epochs)
+        'learning_rate'     : 1e-5, # 5e-4,
+        'gamma'             : 100**(-5/300), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 47, # 25
     }

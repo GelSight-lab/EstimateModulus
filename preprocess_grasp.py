@@ -65,6 +65,58 @@ def preprocess_grasp(path_to_file, grasp_data=GraspData(), destination_dir=f'{HA
     # Skip files where gripper width does not change
     if grasp_data.gripper_widths().max() == grasp_data.gripper_widths().min(): return
         
+
+
+
+
+
+
+    i_start = np.argmax(grasp_data.forces() >= TRAINING_FORCE_THRESHOLD)
+    i_end_peak = 0
+    for i in range(len(grasp_data.forces())):
+        if i > np.argmax(grasp_data.forces()) and grasp_data.forces()[i] <= 0.9*grasp_data.forces().max():
+            i_end_peak = i
+            break
+    grasp_data.clip(i_start, i_end_peak)
+
+    aug_i = 0
+    for i in range(len(grasp_data.gripper_widths())):
+        if grasp_data.forces()[i] >= 0.5*grasp_data.forces().max() and \
+           grasp_data.max_depths()[i] >= 0.5*grasp_data.max_depths().max() and \
+           grasp_data.max_depths(other_finger=True)[i] >= 0.5*grasp_data.max_depths(other_finger=True).max():
+            
+            # Make necessary directories
+            aug_dir = f'{trial_dir}/aug={aug_i}'
+            if not os.path.exists(aug_dir):
+                os.mkdir(aug_dir)
+            output_name_prefix = f'{object_name}__t={str(trial)}_aug={aug_i}'
+            output_path_prefix = f'{aug_dir}/{output_name_prefix}'
+            
+            diff_image         = np.expand_dims(grasp_data.wedge_video.diff_images()[i, :, :], axis=0)
+            depth_image        = np.expand_dims(grasp_data.wedge_video.depth_images()[i, :, :], axis=0)
+            other_diff_image   = np.expand_dims(grasp_data.other_wedge_video.diff_images()[i, :, :], axis=0)
+            other_depth_image  = np.expand_dims(grasp_data.other_wedge_video.depth_images()[i, :, :], axis=0)
+            force              = np.expand_dims(grasp_data.forces()[i], axis=0)
+
+            # Save to respective areas
+            with open(f'{output_path_prefix}_diff.pkl', 'wb') as file:
+                pickle.dump(diff_image, file)
+            with open(f'{output_path_prefix}_depth.pkl', 'wb') as file:
+                pickle.dump(depth_image, file)
+            with open(f'{output_path_prefix}_diff_other.pkl', 'wb') as file:
+                pickle.dump(other_diff_image, file)
+            with open(f'{output_path_prefix}_depth_other.pkl', 'wb') as file:
+                pickle.dump(other_depth_image, file)
+            with open(f'{output_path_prefix}_force.pkl', 'wb') as file:
+                pickle.dump(force, file)
+            
+            aug_i += 1
+
+    if aug_i == 0: print(object_name)
+
+
+
+    '''
     i_start = np.argmax(grasp_data.forces() >= TRAINING_FORCE_THRESHOLD) # 0.25*grasp_data.forces().max()) # FORCE_THRESHOLD)
     i_peak = np.argmax(grasp_data.forces() >= 0.975*grasp_data.forces().max()) + 1
 
@@ -216,6 +268,7 @@ def preprocess_grasp(path_to_file, grasp_data=GraspData(), destination_dir=f'{HA
             pickle.dump(forces, file)
         with open(f'{output_path_prefix}_widths.pkl', 'wb') as file:
             pickle.dump(widths, file)
+    '''
 
     return
 
@@ -229,8 +282,8 @@ if __name__ == "__main__":
     #   raw_data/{object_name}/{object_name}__t={n}
     #   training_data/{object_name}/t={n}/aug={n}/{object_name}__t={n}_a={n}_diff/depth
 
-    n_frames = 3
-    DESTINATION_DIR = f'{HARDDRIVE_DIR}/data/training_data__Nframes={n_frames}__new'
+    n_frames = 1
+    DESTINATION_DIR = f'{HARDDRIVE_DIR}/data/training_data__Nframes={n_frames}'
 
     # Loop through all data files
     DATA_DIR = f'{HARDDRIVE_DIR}/data/raw_data'
