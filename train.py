@@ -279,6 +279,7 @@ class ModulusModel():
                     torchvision.transforms.RandomHorizontalFlip(0.25),
                     torchvision.transforms.RandomVerticalFlip(0.25),
                     torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.1),
+                    torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
                 ])
 
         # Load data
@@ -522,11 +523,16 @@ class ModulusModel():
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
 
+            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
+
+            # Normalize
+            x_frames = self.normalize_frame(x_frames)
+                
             # Apply random transformations for training
             if self.use_transformations:
-                x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
                 x_frames = self.random_transformer(x_frames)
-                x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
+            
+            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
             if self.use_RNN:
                 # Concatenate features across frames into a single vector
@@ -535,8 +541,7 @@ class ModulusModel():
                     frame_features = []
 
                     # Execute CNN on video frames
-                    x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
-                    frame_features.append(self.video_encoder(x_frame))
+                    frame_features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
                     # Execute FC layers on other data and append
                     if self.use_force: # Force measurements
@@ -554,8 +559,7 @@ class ModulusModel():
                 for i in range(N_FRAMES):
                     
                     # Execute CNN on video frames
-                    x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
-                    features.append(self.video_encoder(x_frame))
+                    features.append(self.video_encoder(x_frames[:, i, :, :, :]))
                     
                     # # Execute FC layers on other data and append
                     # if self.use_force: # Force measurements
@@ -639,7 +643,12 @@ class ModulusModel():
             'batch_count': 0,
         }
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
-            
+
+            # Normalize
+            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
+            x_frames = self.normalize_frame(x_frames)
+            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
+                        
             if self.use_RNN:
                 # Concatenate features across frames into a single vector
                 features = []
@@ -647,8 +656,7 @@ class ModulusModel():
                     frame_features = []
 
                     # Execute CNN on video frames
-                    x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
-                    frame_features.append(self.video_encoder(x_frame))
+                    frame_features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
                     # Execute FC layers on other data and append
                     if self.use_force: # Force measurements
@@ -666,8 +674,7 @@ class ModulusModel():
                 for i in range(N_FRAMES):
                     
                     # Execute CNN on video frames
-                    x_frame = self.normalize_frame(x_frames[:, i, :, :, :])
-                    features.append(self.video_encoder(x_frame))
+                    features.append(self.video_encoder(x_frames[:, i, :, :, :]))
 
                     # # Execute FC layers on other data and append
                     # if self.use_force: # Force measurements
@@ -980,7 +987,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch96_NewTransforms_HueAndBrightness',
+        'run_name': 'Batch96_NewTransforms_BlurAndHueAndBrightness',
 
         # Training and model parameters
         'epochs'            : 150,
