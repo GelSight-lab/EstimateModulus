@@ -277,6 +277,7 @@ class ModulusModel():
                     torchvision.transforms.RandomHorizontalFlip(0.25),
                     torchvision.transforms.RandomVerticalFlip(0.25),
                     torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.0, hue=0.0),
+                    # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.95, 1.0), antialias=True),
                     # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
                 ])
 
@@ -975,10 +976,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch96_ContrastAndBrightness_NoNormalization',
+        'run_name': 'Batch96_BrightnessContrast_NoNormalization',
 
         # Training and model parameters
-        'epochs'            : 80,
+        'epochs'            : 120,
         'batch_size'        : 96,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
