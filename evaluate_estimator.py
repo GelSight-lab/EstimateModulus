@@ -303,12 +303,12 @@ if __name__ == '__main__':
                     if file_name.count('.pkl') == 0: continue
 
                     # Extract info
-                    with open(f'{grasp_dir}/MDR/{contact_mask}/{file_name}', 'rb') as file:
+                    with open(f'{grasp_dir}/{method}/{contact_mask}/{file_name}', 'rb') as file:
                         E_i = pickle.load(file)
 
                     if i > len(MDR_estimates) - 1:
                         MDR_estimates.append(copy.deepcopy(empty_estimate_dict))
-                        with open(f'{grasp_dir}/MDR/{contact_mask}/{file_name.split(".")[0]}.json', 'r') as file:
+                        with open(f'{grasp_dir}/{method}/{contact_mask}/{file_name.split(".")[0]}.json', 'r') as file:
                             config_i = json.load(file)
                         MDR_configs.append(config_i)
 
@@ -432,11 +432,29 @@ if __name__ == '__main__':
                     MDR_both_sides_estimates[i][object_name].append(E_i)
                     i += 1
 
+    naive_avg_estimates = []
+    for i in range(len(naive_estimates)):
+        naive_avg_estimates.append(copy.deepcopy(empty_estimate_dict))
+        for object_name in MDR_estimates[i].keys():
+            naive_avg_estimates[-1][object_name] = [ 
+                (naive_estimates[i][object_name][j] + naive_other_estimates[i][object_name][j])/2 for j in range(len(naive_estimates[i][object_name]))
+            ]
+    
+    hertz_avg_estimates = []
+    for i in range(len(hertz_estimates)):
+        hertz_avg_estimates.append(copy.deepcopy(empty_estimate_dict))
+        for object_name in MDR_estimates[i].keys():
+            hertz_avg_estimates[-1][object_name] = [ 
+                (hertz_estimates[i][object_name][j] + hertz_other_estimates[i][object_name][j])/2 for j in range(len(hertz_estimates[i][object_name]))
+            ]
+    
     MDR_avg_estimates = []
     for i in range(len(MDR_estimates)):
         MDR_avg_estimates.append(copy.deepcopy(empty_estimate_dict))
         for object_name in MDR_estimates[i].keys():
-            MDR_avg_estimates[-1][object_name] = [ (MDR_estimates[i][object_name][j] + MDR_other_estimates[i][object_name][j])/2 for j in range(len(MDR_estimates[i][object_name]))]
+            MDR_avg_estimates[-1][object_name] = [ 
+                (MDR_estimates[i][object_name][j] + MDR_other_estimates[i][object_name][j])/2 for j in range(len(MDR_estimates[i][object_name]))
+            ]
 
     # Find a linear scaling for each set of predictions to minimize error
     print('Scaling naive...\n')
@@ -457,9 +475,12 @@ if __name__ == '__main__':
     hertz_both_sides_estimates      = [ scale_predictions(x) for x in hertz_both_sides_estimates ]
     print('Scaling MDR (both sides)...\n')
     MDR_both_sides_estimates        = [ scale_predictions(x) for x in MDR_both_sides_estimates ]
-    
-    print('Scaling MDR (both sides)...\n')
-    MDR_avg_estimates        = [ scale_predictions(x) for x in MDR_avg_estimates ]
+    print('Scaling naive (avg)...\n')
+    naive_avg_estimates         = [ scale_predictions(x) for x in naive_avg_estimates ]
+    print('Scaling Hertzian (avg)...\n')
+    hertz_avg_estimates         = [ scale_predictions(x) for x in hertz_avg_estimates ]
+    print('Scaling MDR (avg)...\n')
+    MDR_avg_estimates           = [ scale_predictions(x) for x in MDR_avg_estimates ]
 
     # Evaluate each set of estimates and pick the best
     naive_stats = [
@@ -489,50 +510,58 @@ if __name__ == '__main__':
     MDR_both_sides_stats = [
         compute_estimation_stats(MDR_both_sides_estimates[i]) for i in range(len(MDR_both_sides_estimates))
     ]
-
-
+    naive_avg_stats = [
+        compute_estimation_stats(naive_avg_estimates[i]) for i in range(len(naive_avg_estimates))
+    ]
+    hertz_avg_stats = [
+        compute_estimation_stats(hertz_avg_estimates[i]) for i in range(len(hertz_avg_estimates))
+    ]
     MDR_avg_stats = [
         compute_estimation_stats(MDR_avg_estimates[i]) for i in range(len(MDR_avg_estimates))
     ]
 
-
     # Sort based on log difference
-    naive_i_order       = sorted(range(len(naive_stats)), key=lambda i: naive_stats[i]['avg_log_diff'])
-    hertz_i_order       = sorted(range(len(hertz_stats)), key=lambda i: hertz_stats[i]['avg_log_diff'])
-    MDR_i_order         = sorted(range(len(MDR_stats)), key=lambda i: MDR_stats[i]['avg_log_diff'])
-    naive_other_i_order       = sorted(range(len(naive_stats)), key=lambda i: naive_stats[i]['avg_log_diff'])
-    hertz_other_i_order       = sorted(range(len(hertz_stats)), key=lambda i: hertz_stats[i]['avg_log_diff'])
-    MDR_other_i_order         = sorted(range(len(MDR_stats)), key=lambda i: MDR_stats[i]['avg_log_diff'])
-    naive_both_sides_i_order       = sorted(range(len(naive_both_sides_stats)), key=lambda i: naive_both_sides_stats[i]['avg_log_diff'])
-    hertz_both_sides_i_order       = sorted(range(len(hertz_both_sides_stats)), key=lambda i: hertz_both_sides_stats[i]['avg_log_diff'])
-    MDR_both_sides_i_order         = sorted(range(len(MDR_both_sides_stats)), key=lambda i: MDR_both_sides_stats[i]['avg_log_diff'])
+    naive_i_order               = sorted(range(len(naive_stats)), key=lambda i: naive_stats[i]['avg_log_diff'])
+    hertz_i_order               = sorted(range(len(hertz_stats)), key=lambda i: hertz_stats[i]['avg_log_diff'])
+    MDR_i_order                 = sorted(range(len(MDR_stats)), key=lambda i: MDR_stats[i]['avg_log_diff'])
+    naive_other_i_order         = sorted(range(len(naive_stats)), key=lambda i: naive_stats[i]['avg_log_diff'])
+    hertz_other_i_order         = sorted(range(len(hertz_stats)), key=lambda i: hertz_stats[i]['avg_log_diff'])
+    MDR_other_i_order           = sorted(range(len(MDR_stats)), key=lambda i: MDR_stats[i]['avg_log_diff'])
+    naive_both_sides_i_order    = sorted(range(len(naive_both_sides_stats)), key=lambda i: naive_both_sides_stats[i]['avg_log_diff'])
+    hertz_both_sides_i_order    = sorted(range(len(hertz_both_sides_stats)), key=lambda i: hertz_both_sides_stats[i]['avg_log_diff'])
+    MDR_both_sides_i_order      = sorted(range(len(MDR_both_sides_stats)), key=lambda i: MDR_both_sides_stats[i]['avg_log_diff'])
+    naive_avg_i_order           = sorted(range(len(naive_avg_stats)), key=lambda i: naive_avg_stats[i]['avg_log_diff'])
+    hertz_avg_i_order           = sorted(range(len(hertz_avg_stats)), key=lambda i: hertz_avg_stats[i]['avg_log_diff'])
+    MDR_avg_i_order             = sorted(range(len(MDR_avg_stats)), key=lambda i: MDR_avg_stats[i]['avg_log_diff'])
 
-    naive_configs_ordered       = [ naive_configs[i] for i in naive_i_order ]
-    hertz_configs_ordered       = [ hertz_configs[i] for i in hertz_i_order ]
-    MDR_configs_ordered         = [ MDR_configs[i] for i in MDR_i_order ]
-    naive_other_configs_ordered       = [ naive_other_configs[i] for i in naive_other_i_order ]
-    hertz_other_configs_ordered       = [ hertz_other_configs[i] for i in hertz_other_i_order ]
-    MDR_other_configs_ordered         = [ MDR_other_configs[i] for i in MDR_other_i_order ]
-    naive_both_sides_configs_ordered       = [ naive_both_sides_configs[i] for i in naive_both_sides_i_order ]
-    hertz_both_sides_configs_ordered       = [ hertz_both_sides_configs[i] for i in hertz_both_sides_i_order ]
-    MDR_both_sides_configs_ordered         = [ MDR_both_sides_configs[i] for i in MDR_both_sides_i_order ]
+    naive_configs_ordered               = [ naive_configs[i] for i in naive_i_order ]
+    hertz_configs_ordered               = [ hertz_configs[i] for i in hertz_i_order ]
+    MDR_configs_ordered                 = [ MDR_configs[i] for i in MDR_i_order ]
+    naive_other_configs_ordered         = [ naive_other_configs[i] for i in naive_other_i_order ]
+    hertz_other_configs_ordered         = [ hertz_other_configs[i] for i in hertz_other_i_order ]
+    MDR_other_configs_ordered           = [ MDR_other_configs[i] for i in MDR_other_i_order ]
+    naive_both_sides_configs_ordered    = [ naive_both_sides_configs[i] for i in naive_both_sides_i_order ]
+    hertz_both_sides_configs_ordered    = [ hertz_both_sides_configs[i] for i in hertz_both_sides_i_order ]
+    MDR_both_sides_configs_ordered      = [ MDR_both_sides_configs[i] for i in MDR_both_sides_i_order ]
+    naive_avg_configs_ordered           = [ naive_configs[i] for i in naive_avg_i_order ]
+    hertz_avg_configs_ordered           = [ hertz_configs[i] for i in hertz_avg_i_order ]
+    MDR_avg_configs_ordered             = [ MDR_configs[i] for i in MDR_avg_i_order ]
 
-    naive_stats_ordered         = [ naive_stats[i] for i in naive_i_order ]
-    hertz_stats_ordered         = [ hertz_stats[i] for i in hertz_i_order ]
-    MDR_stats_ordered           = [ MDR_stats[i] for i in MDR_i_order ]
-    naive_other_stats_ordered         = [ naive_other_stats[i] for i in naive_other_i_order ]
-    hertz_other_stats_ordered         = [ hertz_other_stats[i] for i in hertz_other_i_order ]
-    MDR_other_stats_ordered           = [ MDR_other_stats[i] for i in MDR_other_i_order ]
-    naive_both_sides_stats_ordered         = [ naive_both_sides_stats[i] for i in naive_both_sides_i_order ]
-    hertz_both_sides_stats_ordered         = [ hertz_both_sides_stats[i] for i in hertz_both_sides_i_order ]
-    MDR_both_sides_stats_ordered           = [ MDR_both_sides_stats[i] for i in MDR_both_sides_i_order ]
+    naive_stats_ordered                 = [ naive_stats[i] for i in naive_i_order ]
+    hertz_stats_ordered                 = [ hertz_stats[i] for i in hertz_i_order ]
+    MDR_stats_ordered                   = [ MDR_stats[i] for i in MDR_i_order ]
+    naive_other_stats_ordered           = [ naive_other_stats[i] for i in naive_other_i_order ]
+    hertz_other_stats_ordered           = [ hertz_other_stats[i] for i in hertz_other_i_order ]
+    MDR_other_stats_ordered             = [ MDR_other_stats[i] for i in MDR_other_i_order ]
+    naive_both_sides_stats_ordered      = [ naive_both_sides_stats[i] for i in naive_both_sides_i_order ]
+    hertz_both_sides_stats_ordered      = [ hertz_both_sides_stats[i] for i in hertz_both_sides_i_order ]
+    MDR_both_sides_stats_ordered        = [ MDR_both_sides_stats[i] for i in MDR_both_sides_i_order ]
+    naive_avg_stats_ordered             = [ naive_avg_stats[i] for i in naive_avg_i_order ]
+    hertz_avg_stats_ordered             = [ hertz_avg_stats[i] for i in hertz_avg_i_order ]
+    MDR_avg_stats_ordered               = [ MDR_avg_stats[i] for i in MDR_avg_i_order ]
 
-    MDR_avg_i_order                 = sorted(range(len(MDR_avg_stats)), key=lambda i: MDR_avg_stats[i]['avg_log_diff'])
-    MDR_avg_configs_ordered         = [ MDR_configs[i] for i in MDR_avg_i_order ]
-    MDR_avg_stats_ordered           = [ MDR_avg_stats[i] for i in MDR_avg_i_order ]
-
-    obj_prediction_log_diff, obj_avg_log_diff = compute_object_performance([ naive_both_sides_estimates[naive_i_order[0]],  \
-                                                                             MDR_both_sides_estimates[MDR_i_order[0]]     ])
+    obj_prediction_log_diff, obj_avg_log_diff = compute_object_performance([ naive_avg_estimates[naive_avg_i_order[0]],  \
+                                                                             MDR_avg_estimates[MDR_avg_i_order[0]]     ])
 
     object_names = list(obj_prediction_log_diff.keys())
     obj_i_ordered = sorted(range(len(object_names)), key=lambda i: obj_avg_log_diff[object_names[i]])
@@ -560,12 +589,12 @@ if __name__ == '__main__':
     plot_performance('Hertzian (Both Sides)', hertz_both_sides_estimates[hertz_both_sides_i_order[0]], object_to_modulus)
     print('Plotting MDR (both sides)...')
     plot_performance('MDR (Both Sides)', MDR_both_sides_estimates[MDR_both_sides_i_order[0]], object_to_modulus)
-
-
-
+    print('Plotting naive (avg)...')
+    plot_performance('Naive Elasticity (avg of sides)', naive_avg_estimates[naive_avg_i_order[0]], object_to_modulus)
+    print('Plotting Hertzian (avg)...')
+    plot_performance('Hertzian (avg of sides)', hertz_avg_estimates[hertz_avg_i_order[0]], object_to_modulus)
     print('Plotting MDR (avg)...')
     plot_performance('MDR (avg of sides)', MDR_avg_estimates[MDR_avg_i_order[0]], object_to_modulus)
-
     print('Done.')
 
     # # Write training estimations
