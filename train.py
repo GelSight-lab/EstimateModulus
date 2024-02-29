@@ -987,11 +987,11 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch128_NewTransforms_HueAndBrightness',
+        'run_name': 'Batch96_NewTransforms_HueAndBrightness',
 
         # Training and model parameters
         'epochs'            : 80,
-        'batch_size'        : 128,
+        'batch_size'        : 96,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
         'img_feature_size'  : 64, # 32
