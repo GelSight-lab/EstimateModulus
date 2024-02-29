@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -271,8 +271,6 @@ class ModulusModel():
         self.optimizer      = torch.optim.Adam(self.params, lr=self.learning_rate)
         if self.gamma is not None:
             self.scheduler  = lr_scheduler.StepLR(self.optimizer, step_size=self.lr_step_size, gamma=self.gamma)
-
-        self.normalize_frame = torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
         if self.use_transformations:
             self.random_transformer = torchvision.transforms.Compose([
@@ -522,17 +520,12 @@ class ModulusModel():
         }
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
-
-            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
-
-            # Normalize
-            x_frames = self.normalize_frame(x_frames)
                 
             # Apply random transformations for training
             if self.use_transformations:
+                x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
                 x_frames = self.random_transformer(x_frames)
-            
-            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
+                x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
             if self.use_RNN:
                 # Concatenate features across frames into a single vector
@@ -643,11 +636,6 @@ class ModulusModel():
             'batch_count': 0,
         }
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
-
-            # Normalize
-            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
-            x_frames = self.normalize_frame(x_frames)
-            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
                         
             if self.use_RNN:
                 # Concatenate features across frames into a single vector
@@ -987,7 +975,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch96_NewTransforms_HueAndBrightness',
+        'run_name': 'Batch96_HueAndBrightness_NoNormalization',
 
         # Training and model parameters
         'epochs'            : 80,
