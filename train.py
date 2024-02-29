@@ -276,7 +276,7 @@ class ModulusModel():
             self.random_transformer = torchvision.transforms.Compose([
                     torchvision.transforms.RandomHorizontalFlip(0.25),
                     torchvision.transforms.RandomVerticalFlip(0.25),
-                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.0, hue=0.05),
+                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.0, hue=0.0),
                     torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.95, 1.0), antialias=True),
                     # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
                 ])
@@ -976,7 +976,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch96_CropBrightnessHueContrast_NoNormalization',
+        'run_name': 'Batch96_CropBrightnessContrast_NoNormalization',
 
         # Training and model parameters
         'epochs'            : 120,
@@ -987,7 +987,7 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 1e-6, # 5e-4,
+        'learning_rate'     : 1e-5, # 5e-4,
         'gamma'             : 1, # 100**(-5/1000), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 47, # 25
