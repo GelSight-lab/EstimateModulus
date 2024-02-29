@@ -78,8 +78,12 @@ class CustomDataset(Dataset):
 
         self.normalization_values = normalization_values
 
-        self.input_paths = paths_to_files
-        self.normalized_modulus_labels = labels
+        if self.use_transformations:
+            self.input_paths = 4*paths_to_files
+            self.normalized_modulus_labels = 4*labels
+        else:
+            self.input_paths = paths_to_files
+            self.normalized_modulus_labels = labels
 
         if self.use_width_transforms:
             self.input_paths = 2*self.input_paths
@@ -276,8 +280,8 @@ class ModulusModel():
             self.random_transformer = torchvision.transforms.Compose([
                     torchvision.transforms.RandomHorizontalFlip(0.5),
                     torchvision.transforms.RandomVerticalFlip(0.5),
-                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.0),
-                    # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.95, 1.0), antialias=True),
+                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.0, hue=0.025),
+                    torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.975, 1.0), antialias=True),
                     # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
                 ])
 
@@ -976,7 +980,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch96_Brightness_NoNormalization',
+        'run_name': 'Batch96_LoopEpoch4_FullCJ',
 
         # Training and model parameters
         'epochs'            : 120,
