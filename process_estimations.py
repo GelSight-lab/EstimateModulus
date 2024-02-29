@@ -416,7 +416,6 @@ for object_name in tqdm(objects):
                                         use_ellipse_mask=MDR_config['use_ellipse_mask'],
                                         use_apparent_deformation=MDR_config['use_apparent_deformation'],
                                         use_lower_resolution_depth=MDR_config['use_lower_resolution_depth'],
-                                        use_other_finger=True
                                     )
                 estimator.use_other_video = False
                 config_contact_mask = MDR_config['contact_mask'] if MDR_config['contact_mask'] is not None else 'ellipse_contact_mask'
