@@ -979,7 +979,7 @@ if __name__ == "__main__":
         'run_name': 'Batch96_CropBrightnessHueContrast_NoNormalization',
 
         # Training and model parameters
-        'epochs'            : 80,
+        'epochs'            : 120,
         'batch_size'        : 96,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
@@ -987,7 +987,7 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 1e-5, # 5e-4,
+        'learning_rate'     : 1e-6, # 5e-4,
         'gamma'             : 1, # 100**(-5/1000), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 47, # 25
