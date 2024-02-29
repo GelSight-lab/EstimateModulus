@@ -82,7 +82,7 @@ def scale_predictions(prediction_dict, scale_cutoff=1e11):
     
     if len(x_filtered) < 10: return prediction_dict
 
-    poly = np.polyfit(np.log10(x_filtered), np.log10(y_filtered), 1)
+    poly = np.polyfit(np.log2(x_filtered), np.log10(y_filtered), 2)
 
     # Scale all predictions accordingly
     scaled_prediction_dict = {}
@@ -91,7 +91,7 @@ def scale_predictions(prediction_dict, scale_cutoff=1e11):
         if object_name in EXCLUDE: continue
         for E in prediction_dict[object_name]:
             if E > 0 and not math.isnan(E):
-                E_scaled = 10**(np.log10(E)*poly[0] + poly[1])
+                E_scaled = 10**(np.log2(E)*poly[0] + poly[1])
                 scaled_prediction_dict[object_name].append(E_scaled)
             else:
                 scaled_prediction_dict[object_name].append(E)
