@@ -279,7 +279,7 @@ class ModulusModel():
                     torchvision.transforms.RandomHorizontalFlip(0.25),
                     torchvision.transforms.RandomVerticalFlip(0.25),
                     torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.1),
-                    torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
+                    # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
                 ])
 
         # Load data
@@ -990,8 +990,8 @@ if __name__ == "__main__":
         'run_name': 'Batch96_NewTransforms_BlurAndHueAndBrightness',
 
         # Training and model parameters
-        'epochs'            : 150,
-        'batch_size'        : 96,
+        'epochs'            : 80,
+        'batch_size'        : 128,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
         'img_feature_size'  : 64, # 32
