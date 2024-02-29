@@ -987,7 +987,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch96_NewTransforms_BlurAndHueAndBrightness',
+        'run_name': 'Batch128_NewTransforms_HueAndBrightness',
 
         # Training and model parameters
         'epochs'            : 80,
