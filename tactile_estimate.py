@@ -295,6 +295,7 @@ class EstimateModulus():
             'std_above_mean_contact_mask': self.std_above_mean_contact_mask,
             'ellipse_contact_mask': self.ellipse_contact_mask,
             'total_conditional_contact_mask': self.total_conditional_contact_mask,
+            'total_conditional_contact_mask_with_foam_flattening': self.total_conditional_contact_mask_with_foam_flattening,
         }
         assert contact_mask_str in contact_mask_functions.keys()
         return contact_mask_functions[contact_mask_str](depth)
@@ -302,10 +303,6 @@ class EstimateModulus():
     # Fit linear equation with least squares
     def linear_coeff_fit(self, x, y):
         # Solve for best A given data and equation of form y = A*x
-
-        if not (np.dot(x,x) > 1e-15):
-            print('here')
-
         return np.dot(x, y) / np.dot(x, x)
     
     # Clip a press sequence to only the loading sequence (positive force)
@@ -841,7 +838,7 @@ class EstimateModulus():
                 # Compute estimated radius based on depth (d) and contact radius (a)
                 R_i = d_i + (a_i**2 - d_i**2)/(2*d_i)
 
-            if F_i > 0 and contact_area_i >= self.contact_area_threshold and d_i > self.depth_threshold:
+            if F_i > 0 and contact_area_i >= self.contact_area_threshold and d_i > 0:
                 p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3        # From Wiki
                 q_1D_0 = p_0 * np.pi * a_i / 2
                 w_1D_0 = (1 - self.nu_gel**2) * q_1D_0 / self.E_gel
@@ -967,7 +964,7 @@ class EstimateModulus():
                 # Compute estimated radius based on depth (d) and contact radius (a)
                 R_i = mean_d_i + (a_i**2 - mean_d_i**2)/(2*mean_d_i)
 
-            if F_i > 0 and contact_area_i >= self.contact_area_threshold and d_i > self.depth_threshold:
+            if F_i > 0 and contact_area_i >= self.contact_area_threshold and d_i > 0:
                 p_0 = (1/np.pi) * (6*F_i/(R_i**2))**(1/3) # times E_star^2/3        # From Wiki
                 q_1D_0 = p_0 * np.pi * a_i / 2
                 w_1D_0 = (1 - self.nu_gel**2) * q_1D_0 / self.E_gel
