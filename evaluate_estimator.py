@@ -233,8 +233,13 @@ if __name__ == '__main__':
     hertz_configs           = []
     MDR_estimates           = []
     MDR_configs             = []
-    stochastic_estimates    = []
-    stochastic_configs      = []
+
+    naive_other_estimates         = []
+    naive_other_configs           = []
+    hertz_other_estimates         = []
+    hertz_other_configs           = []
+    MDR_other_estimates           = []
+    MDR_other_configs             = []
 
     naive_both_sides_estimates     = []
     naive_both_sides_configs       = []
@@ -243,12 +248,12 @@ if __name__ == '__main__':
     MDR_both_sides_estimates       = []
     MDR_both_sides_configs         = []
 
-    for object_name in tqdm(sorted(os.listdir(f'{DATA_DIR}/estimations'))):
+    for object_name in tqdm(sorted(os.listdir(f'{DATA_DIR}/estimations_new'))):
         if object_name.count('.') > 0: continue
         if object_name in EXCLUDE: continue
 
-        for trial_folder in os.listdir(f'{DATA_DIR}/estimations/{object_name}'):
-            grasp_dir = f'{DATA_DIR}/estimations/{object_name}/{trial_folder}'
+        for trial_folder in os.listdir(f'{DATA_DIR}/estimations_new/{object_name}'):
+            grasp_dir = f'{DATA_DIR}/estimations_new/{object_name}/{trial_folder}'
 
             # Unpack naive estimations for each config type
             i = 0
@@ -310,6 +315,66 @@ if __name__ == '__main__':
                     MDR_estimates[i][object_name].append(E_i)
                     i += 1
 
+            # Unpack naive estimations for each config type
+            i = 0
+            method = 'naive_other'
+            for contact_mask in sorted(os.listdir(f'{grasp_dir}/{method}')):
+                for file_name in sorted(os.listdir(f'{grasp_dir}/{method}/{contact_mask}')):
+                    if file_name.count('.pkl') == 0: continue
+
+                    # Extract info
+                    with open(f'{grasp_dir}/{method}/{contact_mask}/{file_name}', 'rb') as file:
+                        E_i = pickle.load(file)
+
+                    if i > len(naive_other_estimates) - 1:
+                        naive_other_estimates.append(copy.deepcopy(empty_estimate_dict))
+                        with open(f'{grasp_dir}/{method}/{contact_mask}/{file_name.split(".")[0]}.json', 'r') as file:
+                            config_i = json.load(file)
+                        naive_other_configs.append(config_i)
+                    
+                    naive_other_estimates[i][object_name].append(E_i)
+                    i += 1
+
+            # Unpack Hertzian estimations for each config type
+            i = 0
+            method = 'hertz_other'
+            for contact_mask in sorted(os.listdir(f'{grasp_dir}/{method}')):
+                for file_name in sorted(os.listdir(f'{grasp_dir}/{method}/{contact_mask}')):
+                    if file_name.count('.pkl') == 0: continue
+
+                    # Extract info
+                    with open(f'{grasp_dir}/{method}/{contact_mask}/{file_name}', 'rb') as file:
+                        E_i = pickle.load(file)
+
+                    if i > len(hertz_other_estimates) - 1:
+                        hertz_other_estimates.append(copy.deepcopy(empty_estimate_dict))
+                        with open(f'{grasp_dir}/{method}/{contact_mask}/{file_name.split(".")[0]}.json', 'r') as file:
+                            config_i = json.load(file)
+                        hertz_other_configs.append(config_i)
+
+                    hertz_other_estimates[i][object_name].append(E_i)
+                    i += 1
+
+            # Unpack MDR estimations for each config type
+            i = 0
+            method = 'MDR_other'
+            for contact_mask in sorted(os.listdir(f'{grasp_dir}/{method}')):
+                for file_name in sorted(os.listdir(f'{grasp_dir}/{method}/{contact_mask}')):
+                    if file_name.count('.pkl') == 0: continue
+
+                    # Extract info
+                    with open(f'{grasp_dir}/{method}/{contact_mask}/{file_name}', 'rb') as file:
+                        E_i = pickle.load(file)
+
+                    if i > len(MDR_other_estimates) - 1:
+                        MDR_other_estimates.append(copy.deepcopy(empty_estimate_dict))
+                        with open(f'{grasp_dir}/{method}/{contact_mask}/{file_name.split(".")[0]}.json', 'r') as file:
+                            config_i = json.load(file)
+                        MDR_other_configs.append(config_i)
+
+                    MDR_other_estimates[i][object_name].append(E_i)
+                    i += 1
+
             # Unpack naive estimations using both sensors for each config type
             i = 0
             for contact_mask in sorted(os.listdir(f'{grasp_dir}/naive_both_sides')):
@@ -367,11 +432,11 @@ if __name__ == '__main__':
                     MDR_both_sides_estimates[i][object_name].append(E_i)
                     i += 1
 
-            # # Unpack stochastic estimation
-            # with open(f'{grasp_dir}/stochastic/E.pkl', 'rb') as file:
-            #     E_i = pickle.load(file)
-            # stochastic_estimates[0][object_name].append(E_i)
-
+    MDR_avg_estimates = []
+    for i in range(len(MDR_estimates)):
+        MDR_avg_estimates.append(copy.deepcopy(empty_estimate_dict))
+        for object_name in MDR_estimates[i].keys():
+            MDR_avg_estimates[-1][object_name] = [ (MDR_estimates[i][object_name][j] + MDR_other_estimates[i][object_name][j])/2 for j in range(len(MDR_estimates[i][object_name]))]
 
     # Find a linear scaling for each set of predictions to minimize error
     print('Scaling naive...\n')
@@ -380,14 +445,21 @@ if __name__ == '__main__':
     hertz_estimates      = [ scale_predictions(x) for x in hertz_estimates ]
     print('Scaling MDR...\n')
     MDR_estimates        = [ scale_predictions(x) for x in MDR_estimates ]
+    print('Scaling naive (other)...\n')
+    naive_other_estimates      = [ scale_predictions(x) for x in naive_other_estimates ]
+    print('Scaling Hertzian (other)...\n')
+    hertz_other_estimates      = [ scale_predictions(x) for x in hertz_other_estimates ]
+    print('Scaling MDR (other)...\n')
+    MDR_other_estimates        = [ scale_predictions(x) for x in MDR_other_estimates ]
     print('Scaling naive (both sides)...\n')
     naive_both_sides_estimates      = [ scale_predictions(x) for x in naive_both_sides_estimates ]
     print('Scaling Hertzian (both sides)...\n')
     hertz_both_sides_estimates      = [ scale_predictions(x) for x in hertz_both_sides_estimates ]
     print('Scaling MDR (both sides)...\n')
     MDR_both_sides_estimates        = [ scale_predictions(x) for x in MDR_both_sides_estimates ]
-    # print('Scaling stochastic...\n')
-    # stochastic_estimates = [ scale_predictions(x, object_to_modulus) for x in stochastic_estimates ]
+    
+    print('Scaling MDR (both sides)...\n')
+    MDR_avg_estimates        = [ scale_predictions(x) for x in MDR_avg_estimates ]
 
     # Evaluate each set of estimates and pick the best
     naive_stats = [
@@ -399,6 +471,15 @@ if __name__ == '__main__':
     MDR_stats = [
         compute_estimation_stats(MDR_estimates[i]) for i in range(len(MDR_estimates))
     ]
+    naive_other_stats = [
+        compute_estimation_stats(naive_other_estimates[i]) for i in range(len(naive_other_estimates))
+    ]
+    hertz_other_stats = [
+        compute_estimation_stats(hertz_other_estimates[i]) for i in range(len(hertz_other_estimates))
+    ]
+    MDR_other_stats = [
+        compute_estimation_stats(MDR_other_estimates[i]) for i in range(len(MDR_other_estimates))
+    ]
     naive_both_sides_stats = [
         compute_estimation_stats(naive_both_sides_estimates[i]) for i in range(len(naive_both_sides_estimates))
     ]
@@ -408,22 +489,30 @@ if __name__ == '__main__':
     MDR_both_sides_stats = [
         compute_estimation_stats(MDR_both_sides_estimates[i]) for i in range(len(MDR_both_sides_estimates))
     ]
-    # stochastic_stats = [
-    #     compute_estimation_stats(stochastic_estimates[i], object_to_modulus) for i in range(len(stochastic_estimates))
-    # ]
+
+
+    MDR_avg_stats = [
+        compute_estimation_stats(MDR_avg_estimates[i]) for i in range(len(MDR_avg_estimates))
+    ]
+
 
     # Sort based on log difference
     naive_i_order       = sorted(range(len(naive_stats)), key=lambda i: naive_stats[i]['avg_log_diff'])
     hertz_i_order       = sorted(range(len(hertz_stats)), key=lambda i: hertz_stats[i]['avg_log_diff'])
     MDR_i_order         = sorted(range(len(MDR_stats)), key=lambda i: MDR_stats[i]['avg_log_diff'])
+    naive_other_i_order       = sorted(range(len(naive_stats)), key=lambda i: naive_stats[i]['avg_log_diff'])
+    hertz_other_i_order       = sorted(range(len(hertz_stats)), key=lambda i: hertz_stats[i]['avg_log_diff'])
+    MDR_other_i_order         = sorted(range(len(MDR_stats)), key=lambda i: MDR_stats[i]['avg_log_diff'])
     naive_both_sides_i_order       = sorted(range(len(naive_both_sides_stats)), key=lambda i: naive_both_sides_stats[i]['avg_log_diff'])
     hertz_both_sides_i_order       = sorted(range(len(hertz_both_sides_stats)), key=lambda i: hertz_both_sides_stats[i]['avg_log_diff'])
     MDR_both_sides_i_order         = sorted(range(len(MDR_both_sides_stats)), key=lambda i: MDR_both_sides_stats[i]['avg_log_diff'])
-    # stochastic_i_order  = sorted(range(len(stochastic_stats)), key=lambda i: stochastic_stats[i]['avg_log_diff'])
 
     naive_configs_ordered       = [ naive_configs[i] for i in naive_i_order ]
     hertz_configs_ordered       = [ hertz_configs[i] for i in hertz_i_order ]
     MDR_configs_ordered         = [ MDR_configs[i] for i in MDR_i_order ]
+    naive_other_configs_ordered       = [ naive_other_configs[i] for i in naive_other_i_order ]
+    hertz_other_configs_ordered       = [ hertz_other_configs[i] for i in hertz_other_i_order ]
+    MDR_other_configs_ordered         = [ MDR_other_configs[i] for i in MDR_other_i_order ]
     naive_both_sides_configs_ordered       = [ naive_both_sides_configs[i] for i in naive_both_sides_i_order ]
     hertz_both_sides_configs_ordered       = [ hertz_both_sides_configs[i] for i in hertz_both_sides_i_order ]
     MDR_both_sides_configs_ordered         = [ MDR_both_sides_configs[i] for i in MDR_both_sides_i_order ]
@@ -431,9 +520,16 @@ if __name__ == '__main__':
     naive_stats_ordered         = [ naive_stats[i] for i in naive_i_order ]
     hertz_stats_ordered         = [ hertz_stats[i] for i in hertz_i_order ]
     MDR_stats_ordered           = [ MDR_stats[i] for i in MDR_i_order ]
+    naive_other_stats_ordered         = [ naive_other_stats[i] for i in naive_other_i_order ]
+    hertz_other_stats_ordered         = [ hertz_other_stats[i] for i in hertz_other_i_order ]
+    MDR_other_stats_ordered           = [ MDR_other_stats[i] for i in MDR_other_i_order ]
     naive_both_sides_stats_ordered         = [ naive_both_sides_stats[i] for i in naive_both_sides_i_order ]
     hertz_both_sides_stats_ordered         = [ hertz_both_sides_stats[i] for i in hertz_both_sides_i_order ]
     MDR_both_sides_stats_ordered           = [ MDR_both_sides_stats[i] for i in MDR_both_sides_i_order ]
+
+    MDR_avg_i_order                 = sorted(range(len(MDR_avg_stats)), key=lambda i: MDR_avg_stats[i]['avg_log_diff'])
+    MDR_avg_configs_ordered         = [ MDR_configs[i] for i in MDR_avg_i_order ]
+    MDR_avg_stats_ordered           = [ MDR_avg_stats[i] for i in MDR_avg_i_order ]
 
     obj_prediction_log_diff, obj_avg_log_diff = compute_object_performance([ naive_both_sides_estimates[naive_i_order[0]],  \
                                                                              MDR_both_sides_estimates[MDR_i_order[0]]     ])
@@ -452,14 +548,24 @@ if __name__ == '__main__':
     plot_performance('Hertzian Method', hertz_estimates[hertz_i_order[0]], object_to_modulus)
     print('Plotting MDR...')
     plot_performance('MDR', MDR_estimates[MDR_i_order[0]], object_to_modulus)
+    print('Plotting naive (other)...')
+    plot_performance('Naive Elasticity (other side)', naive_other_estimates[naive_other_i_order[0]], object_to_modulus)
+    print('Plotting Hertzian (other)...')
+    plot_performance('Hertzian Method (other side)', hertz_other_estimates[hertz_other_i_order[0]], object_to_modulus)
+    print('Plotting MDR (other)...')
+    plot_performance('MDR (other side)', MDR_other_estimates[MDR_other_i_order[0]], object_to_modulus)
     print('Plotting naive (both sides)...')
     plot_performance('Naive Elasticity (Both Sides)', naive_both_sides_estimates[naive_both_sides_i_order[0]], object_to_modulus)
     print('Plotting Hertzian (both sides)...')
     plot_performance('Hertzian (Both Sides)', hertz_both_sides_estimates[hertz_both_sides_i_order[0]], object_to_modulus)
     print('Plotting MDR (both sides)...')
     plot_performance('MDR (Both Sides)', MDR_both_sides_estimates[MDR_both_sides_i_order[0]], object_to_modulus)
-    # print('Plotting stochastic...')
-    # plot_performance(r'Stochastic Method', stochastic_estimates[0], object_to_modulus)
+
+
+
+    print('Plotting MDR (avg)...')
+    plot_performance('MDR (avg of sides)', MDR_avg_estimates[MDR_avg_i_order[0]], object_to_modulus)
+
     print('Done.')
 
     # # Write training estimations
