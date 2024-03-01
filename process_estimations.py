@@ -236,6 +236,7 @@ for object_name in tqdm(objects):
         # plt.show()
         # object_name_last = object_name
 
+        '''
 
         # Loop through all desired contact masks to get estimations
         for contact_mask in CONTACT_MASKS:
@@ -473,3 +474,4 @@ for object_name in tqdm(objects):
         
 with open(f'{DATA_DIR}/max_depths.json', 'w') as json_file:
     json.dump(max_depths, json_file)
+'''
