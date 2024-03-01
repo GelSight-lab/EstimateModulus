@@ -77,17 +77,26 @@ class CustomDataset(Dataset):
         self.random_state       = config['random_state']
 
         self.normalization_values = normalization_values
+        
+        self.input_paths = paths_to_files
+        self.normalized_modulus_labels = labels
 
         if self.use_transformations:
             self.input_paths = 4*paths_to_files
             self.normalized_modulus_labels = 4*labels
+            self.flip_horizontal = [i > 2*len(paths_to_files) for i in range(len(self.input_paths))]
+            self.flip_vertical = [i % 2 == 1 for i in range(len(self.input_paths))]
         else:
             self.input_paths = paths_to_files
             self.normalized_modulus_labels = labels
+            self.flip_horizontal = [False for i in range(len(self.input_paths))]
+            self.flip_vertical = [False for i in range(len(self.input_paths))]
 
         if self.use_width_transforms:
             self.input_paths = 2*self.input_paths
             self.normalized_modulus_labels = 2*self.normalized_modulus_labels
+            self.flip_horizontal = 2*self.flip_horizontal
+            self.flip_vertical = 2*self.flip_vertical
             self.noise_force = [ i > len(self.input_paths)/2 and i % 2 == 1 for i in range(len(self.input_paths)) ]
             self.noise_width = [ i > len(self.input_paths)/2 for i in range(len(self.input_paths)) ]
 
@@ -126,6 +135,14 @@ class CustomDataset(Dataset):
         #     elif self.img_style == 'depth':
         #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
         #         self.x_frames_other /= self.normalization_values['max_depth']
+                
+        # Flip the data if desired
+        if self.use_transformations and self.flip_horizontal[idx]:
+            self.x_frames = torch.flip(self.x_frames, dims=(2,))
+            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(2,))
+        if self.use_transformations and self.flip_vertical[idx]:
+            self.x_frames = torch.flip(self.x_frames, dims=(3,))
+            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(3,))
 
         # Unpack force measurements
         self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
@@ -278,9 +295,7 @@ class ModulusModel():
 
         if self.use_transformations:
             self.random_transformer = torchvision.transforms.Compose([
-                    torchvision.transforms.RandomHorizontalFlip(0.5),
-                    torchvision.transforms.RandomVerticalFlip(0.5),
-                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.0, hue=0.025),
+                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.0),
                     torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.975, 1.0), antialias=True),
                     # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
                 ])
@@ -980,7 +995,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch96_LoopEpoch4_FullCJ',
+        'run_name': 'Batch96_OldTransformsAgain',
 
         # Training and model parameters
         'epochs'            : 120,
@@ -991,7 +1006,7 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 1e-4, # 5e-4,
+        'learning_rate'     : 2.5e-4,
         'gamma'             : 1, # 100**(-5/1000), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 47, # 25
