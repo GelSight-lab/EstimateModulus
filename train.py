@@ -995,11 +995,11 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch64_NoRandomTransformer',
+        'run_name': 'Batch32_NoRandomTransformer',
 
         # Training and model parameters
         'epochs'            : 120,
-        'batch_size'        : 64,
+        'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
         'img_feature_size'  : 64, # 32
