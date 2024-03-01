@@ -998,7 +998,7 @@ if __name__ == "__main__":
         'run_name': 'Batch32_UnFrozenPretrained_MoreJitter',
 
         # Training and model parameters
-        'epochs'            : 120,
+        'epochs'            : 60,
         'batch_size'        : 32,
         'pretrained_CNN'    : True,
         'use_RNN'           : False, # True,
