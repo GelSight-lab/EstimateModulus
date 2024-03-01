@@ -2,11 +2,7 @@ import csv
 import json
 
 run_names = [
-    'MoreData_AutoEncoder_Nframes=3__LR=1e-3__t=0', 
-    'MoreData_AutoEncoder_Nframes=3__LR=1e-3__drop=0.5__t=1',
-    'MoreData_AutoEncoder_Nframes=3__LR=1e-3__drop=0.5__t=0',
-    'MoreData_AutoEncoder_Nframes=3__LR=1e-4__t=1',
-    'DefinitelyFrozenPretrainedCNN__CombinedFWE__DecoderBigger__LR=1e-3__t=0',
+    f'BaselineForNow__t={i}' for i in range(20)
 ]
 
 DATA_DIR = '/media/mike/Elements/data'
@@ -83,7 +79,7 @@ for key in poorly_predicted_pct.keys():
         poorly_predicted_pct[key] = 0
 
     # Save the worst ones for display
-    if poorly_predicted_pct[key] > 0.3:
+    if poorly_predicted_pct[key] > 0.15:
         most_poorly_predicted[key] = poorly_predicted_pct[key]
 
 print('shape_log_acc', shape_log_acc)

@@ -77,13 +77,26 @@ class CustomDataset(Dataset):
         self.random_state       = config['random_state']
 
         self.normalization_values = normalization_values
-
+        
         self.input_paths = paths_to_files
         self.normalized_modulus_labels = labels
+
+        if self.use_transformations:
+            self.input_paths = 4*paths_to_files
+            self.normalized_modulus_labels = 4*labels
+            self.flip_horizontal = [i > 2*len(paths_to_files) for i in range(len(self.input_paths))]
+            self.flip_vertical = [i % 2 == 1 for i in range(len(self.input_paths))]
+        else:
+            self.input_paths = paths_to_files
+            self.normalized_modulus_labels = labels
+            self.flip_horizontal = [False for i in range(len(self.input_paths))]
+            self.flip_vertical = [False for i in range(len(self.input_paths))]
 
         if self.use_width_transforms:
             self.input_paths = 2*self.input_paths
             self.normalized_modulus_labels = 2*self.normalized_modulus_labels
+            self.flip_horizontal = 2*self.flip_horizontal
+            self.flip_vertical = 2*self.flip_vertical
             self.noise_force = [ i > len(self.input_paths)/2 and i % 2 == 1 for i in range(len(self.input_paths)) ]
             self.noise_width = [ i > len(self.input_paths)/2 for i in range(len(self.input_paths)) ]
 
@@ -122,6 +135,14 @@ class CustomDataset(Dataset):
         #     elif self.img_style == 'depth':
         #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
         #         self.x_frames_other /= self.normalization_values['max_depth']
+                
+        # Flip the data if desired
+        if self.use_transformations and self.flip_horizontal[idx]:
+            self.x_frames = torch.flip(self.x_frames, dims=(2,))
+            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(2,))
+        if self.use_transformations and self.flip_vertical[idx]:
+            self.x_frames = torch.flip(self.x_frames, dims=(3,))
+            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(3,))
 
         # Unpack force measurements
         self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
@@ -274,10 +295,8 @@ class ModulusModel():
 
         if self.use_transformations:
             self.random_transformer = torchvision.transforms.Compose([
-                    torchvision.transforms.RandomHorizontalFlip(0.25),
-                    torchvision.transforms.RandomVerticalFlip(0.25),
-                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.0, hue=0.0),
-                    # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.95, 1.0), antialias=True),
+                    torchvision.transforms.ColorJitter(brightness=0.15, contrast=0.0, saturation=0.0, hue=0.0),
+                    # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.975, 1.0), antialias=True),
                     # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
                 ])
 
@@ -971,15 +990,15 @@ if __name__ == "__main__":
                     'apple', 'orange', 'strawberry', 'ripe_banana', 'unripe_banana', 
                     'lacrosse_ball', 'scotch_brite', 'fake_washer_stack', 'cork', 'rubber_spatula',
                     'baseball', 'plastic_measuring_cup', 'whiteboard_eraser', 'lifesaver_hard', 'cutting_board',
-                    'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white',
+                    'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white', 'hdmi_adapter'
                 ],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch32_BrightnessContrast_NoNormalization',
+        'run_name': 'Batch32_DecoderSmaller_LR=5e-4',
 
         # Training and model parameters
-        'epochs'            : 120,
+        'epochs'            : 30,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
@@ -987,8 +1006,8 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 1e-5, # 5e-4,
-        'gamma'             : 1, # 100**(-5/1000), # 100**(-lr_step_size / epochs)
+        'learning_rate'     : 5e-4,
+        'gamma'             : 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 47, # 25
     }
