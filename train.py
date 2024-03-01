@@ -293,12 +293,12 @@ class ModulusModel():
         if self.gamma is not None:
             self.scheduler  = lr_scheduler.StepLR(self.optimizer, step_size=self.lr_step_size, gamma=self.gamma)
 
-        if self.use_transformations:
-            self.random_transformer = torchvision.transforms.Compose([
-                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.0),
-                    # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.975, 1.0), antialias=True),
-                    # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
-                ])
+        # if self.use_transformations:
+        #     self.random_transformer = torchvision.transforms.Compose([
+        #             torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.0),
+        #             # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.975, 1.0), antialias=True),
+        #             # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
+        #         ])
 
         # Load data
         self.object_names = []
@@ -541,11 +541,11 @@ class ModulusModel():
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
                 
-            # Apply random transformations for training
-            if self.use_transformations:
-                x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
-                x_frames = self.random_transformer(x_frames)
-                x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
+            # # Apply random transformations for training
+            # if self.use_transformations:
+            #     x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
+            #     x_frames = self.random_transformer(x_frames)
+            #     x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
             if self.use_RNN:
                 # Concatenate features across frames into a single vector
@@ -995,7 +995,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch64_OldTransformsAgain_JustBrightness_LR=1e-5',
+        'run_name': 'Batch64_NoRandomTransformer',
 
         # Training and model parameters
         'epochs'            : 120,
