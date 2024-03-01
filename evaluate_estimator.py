@@ -66,7 +66,7 @@ with open(csv_file_path, 'r') as file:
             object_to_material[row[1]] = row[3]
 
 # Find an optimal linear scaling for a set of modulus predictions
-def scale_predictions(prediction_dict, scale_cutoff=1e11):
+def scale_predictions(prediction_dict, scale_cutoff=1e11, quadratic=False):
     x, y = [], []
     for object_name in prediction_dict.keys():
         if object_name in EXCLUDE: continue
@@ -82,7 +82,10 @@ def scale_predictions(prediction_dict, scale_cutoff=1e11):
     
     if len(x_filtered) < 10: return prediction_dict
 
-    poly = np.polyfit(np.log2(x_filtered), np.log10(y_filtered), 2)
+    if quadratic:
+        poly = np.polyfit(np.log2(x_filtered), np.log10(y_filtered), 2)
+    else:
+        poly = np.polyfit(np.log2(x_filtered), np.log10(y_filtered), 1)
 
     # Scale all predictions accordingly
     scaled_prediction_dict = {}
@@ -91,7 +94,10 @@ def scale_predictions(prediction_dict, scale_cutoff=1e11):
         if object_name in EXCLUDE: continue
         for E in prediction_dict[object_name]:
             if E > 0 and not math.isnan(E):
-                E_scaled = 10**(np.log2(E)*poly[0] + poly[1])
+                if quadratic:
+                    E_scaled = 10**((np.log2(E)**2)*poly[0] + np.log2(E)*poly[1] + poly[2])
+                else:
+                    E_scaled = 10**(np.log2(E)*poly[0] + poly[1])
                 scaled_prediction_dict[object_name].append(E_scaled)
             else:
                 scaled_prediction_dict[object_name].append(E)
@@ -462,25 +468,25 @@ if __name__ == '__main__':
     print('Scaling Hertzian...\n')
     hertz_estimates      = [ scale_predictions(x) for x in hertz_estimates ]
     print('Scaling MDR...\n')
-    MDR_estimates        = [ scale_predictions(x) for x in MDR_estimates ]
+    MDR_estimates        = [ scale_predictions(x, quadratic=True) for x in MDR_estimates ]
     print('Scaling naive (other)...\n')
     naive_other_estimates      = [ scale_predictions(x) for x in naive_other_estimates ]
     print('Scaling Hertzian (other)...\n')
     hertz_other_estimates      = [ scale_predictions(x) for x in hertz_other_estimates ]
     print('Scaling MDR (other)...\n')
-    MDR_other_estimates        = [ scale_predictions(x) for x in MDR_other_estimates ]
+    MDR_other_estimates        = [ scale_predictions(x, quadratic=True) for x in MDR_other_estimates ]
     print('Scaling naive (both sides)...\n')
     naive_both_sides_estimates      = [ scale_predictions(x) for x in naive_both_sides_estimates ]
     print('Scaling Hertzian (both sides)...\n')
     hertz_both_sides_estimates      = [ scale_predictions(x) for x in hertz_both_sides_estimates ]
     print('Scaling MDR (both sides)...\n')
-    MDR_both_sides_estimates        = [ scale_predictions(x) for x in MDR_both_sides_estimates ]
+    MDR_both_sides_estimates        = [ scale_predictions(x, quadratic=True) for x in MDR_both_sides_estimates ]
     print('Scaling naive (avg)...\n')
     naive_avg_estimates         = [ scale_predictions(x) for x in naive_avg_estimates ]
     print('Scaling Hertzian (avg)...\n')
     hertz_avg_estimates         = [ scale_predictions(x) for x in hertz_avg_estimates ]
     print('Scaling MDR (avg)...\n')
-    MDR_avg_estimates           = [ scale_predictions(x) for x in MDR_avg_estimates ]
+    MDR_avg_estimates           = [ scale_predictions(x, quadratic=True) for x in MDR_avg_estimates ]
 
     # Evaluate each set of estimates and pick the best
     naive_stats = [
@@ -617,21 +623,21 @@ if __name__ == '__main__':
     #         with open(f'{DATA_DIR}/training_estimations/{object_name}/t={t}/E.pkl', 'wb') as file:
     #             pickle.dump(E_estimates, file)
 
-    # for object_name in naive_both_sides_estimates[naive_both_sides_i_order[0]].keys():
-    #     if object_name in EXCLUDE: continue
-    #     if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}'):
-    #         os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}')
+    for object_name in naive_avg_estimates[naive_avg_i_order[0]].keys():
+        if object_name in EXCLUDE: continue
+        if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}'):
+            os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}')
 
-    #     for t in range(len(naive_both_sides_estimates[naive_both_sides_i_order[0]][object_name])):
+        for t in range(len(naive_avg_estimates[naive_avg_i_order[0]][object_name])):
             
-    #         E_naive = closest_non_nan_element(naive_both_sides_estimates[naive_both_sides_i_order[0]][object_name], t)
-    #         E_hertz = closest_non_nan_element(hertz_both_sides_estimates[hertz_both_sides_i_order[0]][object_name], t)
-    #         E_MDR = closest_non_nan_element(MDR_both_sides_estimates[MDR_both_sides_i_order[0]][object_name], t)
-    #         assert E_naive > 0 and E_hertz > 0 and E_MDR > 0
+            E_naive = closest_non_nan_element(naive_avg_estimates[naive_avg_i_order[0]][object_name], t)
+            E_hertz = closest_non_nan_element(hertz_avg_estimates[hertz_avg_i_order[0]][object_name], t)
+            E_MDR = closest_non_nan_element(MDR_avg_estimates[MDR_avg_i_order[0]][object_name], t)
+            assert E_naive > 0 and E_hertz > 0 and E_MDR > 0
 
-    #         if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}/t={t}'):
-    #             os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}/t={t}')
+            if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}/t={t}'):
+                os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}/t={t}')
 
-    #         E_estimates = np.array([E_naive, E_hertz, E_MDR])
-    #         with open(f'{DATA_DIR}/training_estimations/{object_name}/t={t}/E.pkl', 'wb') as file:
-    #             pickle.dump(E_estimates, file)
+            E_estimates = np.array([E_naive, E_hertz, E_MDR])
+            with open(f'{DATA_DIR}/training_estimations/{object_name}/t={t}/E.pkl', 'wb') as file:
+                pickle.dump(E_estimates, file)
