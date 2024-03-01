@@ -995,18 +995,18 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch96_OldTransformsAgain_JustBrightness',
+        'run_name': 'Batch64_OldTransformsAgain_JustBrightness_LR=1e-5',
 
         # Training and model parameters
         'epochs'            : 120,
-        'batch_size'        : 96,
+        'batch_size'        : 64,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
         'img_feature_size'  : 64, # 32
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 2.5e-4,
+        'learning_rate'     : 1e-5,
         'gamma'             : 1, # 100**(-5/1000), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 47, # 25
