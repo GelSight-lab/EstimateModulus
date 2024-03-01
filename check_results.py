@@ -2,11 +2,7 @@ import csv
 import json
 
 run_names = [
-    'MoreData_AutoEncoder_Nframes=3__LR=1e-3__t=0', 
-    'MoreData_AutoEncoder_Nframes=3__LR=1e-3__drop=0.5__t=1',
-    'MoreData_AutoEncoder_Nframes=3__LR=1e-3__drop=0.5__t=0',
-    'MoreData_AutoEncoder_Nframes=3__LR=1e-4__t=1',
-    'DefinitelyFrozenPretrainedCNN__CombinedFWE__DecoderBigger__LR=1e-3__t=0',
+    f'BaselineForNow__t={i}' for i in range(20)
 ]
 
 DATA_DIR = '/media/mike/Elements/data'
