@@ -995,7 +995,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch96_OldTransformsAgain',
+        'run_name': 'Batch96_OldTransformsAgain_JustBrightness',
 
         # Training and model parameters
         'epochs'            : 120,
