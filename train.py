@@ -990,7 +990,7 @@ if __name__ == "__main__":
                     'apple', 'orange', 'strawberry', 'ripe_banana', 'unripe_banana', 
                     'lacrosse_ball', 'scotch_brite', 'fake_washer_stack', 'cork', 'rubber_spatula',
                     'baseball', 'plastic_measuring_cup', 'whiteboard_eraser', 'lifesaver_hard', 'cutting_board',
-                    'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white',
+                    'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white', 'hdmi_adapter'
                 ],
 
         # Logging on/off
