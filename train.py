@@ -28,8 +28,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
-N_FRAMES = 3
+DATA_DIR = './data' # '/media/mike/Elements/data'
+N_FRAMES = 1 # 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
 # Get the tree of all video files from a directory in place
@@ -147,7 +147,8 @@ class CustomDataset(Dataset):
         # Unpack force measurements
         self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
         if self.use_force:
-            with open(self.base_name + '_forces.pkl', 'rb') as file:
+            # with open(self.base_name + '_forces.pkl', 'rb') as file:
+            with open(self.base_name + '_force.pkl', 'rb') as file:
                 self.x_forces[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
                 self.x_forces /= self.normalization_values['max_force']
 
@@ -410,7 +411,7 @@ class ModulusModel():
 
     # Create data loaders based on configuration
     def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, csv_shape_column=2, csv_material_column=3, \
-                         training_data_folder_name=f'training_data__Nframes={N_FRAMES}__new'):
+                         training_data_folder_name=f'training_data__Nframes={N_FRAMES}'): # __new'):
         # Read CSV files with objects and labels tabulated
         self.object_to_modulus = {}
         self.object_to_material = {}
@@ -582,9 +583,9 @@ class ModulusModel():
 
                 # Execute FC layers on other data and append
                 if self.use_force: # Force measurements
-                    features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
+                    features.append(self.force_encoder(x_forces[:, :, :].squeeze(-1)))
                 if self.use_width: # Width measurements
-                    features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
+                    features.append(self.width_encoder(x_widths[:, :, :].squeeze(-1)))
                 if self.use_estimation: # Precomputed modulus estimation
                     features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
@@ -692,9 +693,9 @@ class ModulusModel():
 
                 # Execute FC layers on other data and append
                 if self.use_force: # Force measurements
-                    features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
+                    features.append(self.force_encoder(x_forces[:, :, :].squeeze(-1)))
                 if self.use_width: # Width measurements
-                    features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
+                    features.append(self.width_encoder(x_widths[:, :, :].squeeze(-1)))
                 if self.use_estimation: # Precomputed modulus estimation
                     features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
@@ -980,7 +981,7 @@ if __name__ == "__main__":
         'img_style': 'diff',
         'use_markers': True,
         'use_force': True,
-        'use_width': True,
+        'use_width': False,
         'use_estimation': False,
         'use_transformations': True,
         'use_width_transforms': True,
@@ -995,7 +996,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch32_DecoderSmaller_LR=5e-4',
+        'run_name': 'Batch32_1Frame',
 
         # Training and model parameters
         'epochs'            : 30,
@@ -1006,7 +1007,7 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 1e-5,
+        'learning_rate'     : 5e-5,
         'gamma'             : 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 47, # 25
