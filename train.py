@@ -995,10 +995,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch32_BaseMaybe',
+        'run_name': 'Batch32_DecoderSmaller',
 
         # Training and model parameters
-        'epochs'            : 60,
+        'epochs'            : 30,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
@@ -1019,10 +1019,11 @@ if __name__ == "__main__":
     for i in range(20):
         config['run_name'] = f'{base_run_name}__t={i}'
 
-        if i == 1:
-            config['random_state'] = 25
-        if i > 1:
-            config['random_state'] = random.randint(1, 100)
+        # if i == 1:
+        #     config['random_state'] = 25
+        # if i > 1:
+        #     config['random_state'] = random.randint(1, 100)
+        config['random_state'] = random.randint(1, 100)
 
         train_modulus = ModulusModel(config, device=device)
         train_modulus.train()
