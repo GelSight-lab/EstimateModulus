@@ -295,7 +295,7 @@ class ModulusModel():
 
         if self.use_transformations:
             self.random_transformer = torchvision.transforms.Compose([
-                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.0),
+                    torchvision.transforms.ColorJitter(brightness=0.2, contrast=0.1, saturation=0.0, hue=0.1),
                     # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.975, 1.0), antialias=True),
                     # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
                 ])
@@ -995,7 +995,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch32_UnFrozenPretrained',
+        'run_name': 'Batch32_UnFrozenPretrained_MoreJitter',
 
         # Training and model parameters
         'epochs'            : 120,
