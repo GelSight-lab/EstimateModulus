@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -293,12 +293,12 @@ class ModulusModel():
         if self.gamma is not None:
             self.scheduler  = lr_scheduler.StepLR(self.optimizer, step_size=self.lr_step_size, gamma=self.gamma)
 
-        # if self.use_transformations:
-        #     self.random_transformer = torchvision.transforms.Compose([
-        #             torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.0),
-        #             # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.975, 1.0), antialias=True),
-        #             # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
-        #         ])
+        if self.use_transformations:
+            self.random_transformer = torchvision.transforms.Compose([
+                    torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.0),
+                    # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.975, 1.0), antialias=True),
+                    # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
+                ])
 
         # Load data
         self.object_names = []
@@ -541,11 +541,11 @@ class ModulusModel():
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
                 
-            # # Apply random transformations for training
-            # if self.use_transformations:
-            #     x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
-            #     x_frames = self.random_transformer(x_frames)
-            #     x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
+            # Apply random transformations for training
+            if self.use_transformations:
+                x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
+                x_frames = self.random_transformer(x_frames)
+                x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
             if self.use_RNN:
                 # Concatenate features across frames into a single vector
@@ -995,19 +995,19 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch32_NoRandomTransformer',
+        'run_name': 'Batch32_FrozenPretrained',
 
         # Training and model parameters
         'epochs'            : 120,
         'batch_size'        : 32,
-        'pretrained_CNN'    : False,
+        'pretrained_CNN'    : True,
         'use_RNN'           : False, # True,
         'img_feature_size'  : 64, # 32
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'learning_rate'     : 1e-4,
-        'gamma'             : 1, # 100**(-5/1000), # 100**(-lr_step_size / epochs)
+        'gamma'             : 100**(-5/200), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 47, # 25
     }
