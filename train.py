@@ -947,7 +947,7 @@ class ModulusModel():
         mpl.rcParams['font.serif'] = ['Times New Roman']
         plt.figure()
         plt.plot([100, 10**12], [100, 10**12], 'k--', label='_')
-        plt.fill_between([100, 10**12], [10**(1.5), 10**(11.5)], [10**(2.5), 10**(12.5)], color='gray', alpha=0.2)
+        plt.fill_between([100, 10**12], [10**1, 10**11], [10**3, 10**13], color='gray', alpha=0.2)
         plt.xscale('log')
         plt.yscale('log')
 
@@ -995,7 +995,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch32_1Frame',
+        'run_name': 'Batch32_BothSides',
 
         # Training and model parameters
         'epochs'            : 30,
