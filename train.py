@@ -1001,7 +1001,7 @@ if __name__ == "__main__":
         'run_name': 'Batch32_BothSides',
 
         # Training and model parameters
-        'epochs'            : 30,
+        'epochs'            : 60,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
