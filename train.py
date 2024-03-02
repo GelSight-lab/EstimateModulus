@@ -95,8 +95,8 @@ class CustomDataset(Dataset):
         if self.use_width_transforms:
             self.input_paths = 2*self.input_paths
             self.normalized_modulus_labels = 2*self.normalized_modulus_labels
-            self.flip_horizontal = 2*self.flip_horizontal
-            self.flip_vertical = 2*self.flip_vertical
+            # self.flip_horizontal = 2*self.flip_horizontal
+            # self.flip_vertical = 2*self.flip_vertical
             self.noise_force = [ i > len(self.input_paths)/2 and i % 2 == 1 for i in range(len(self.input_paths)) ]
             self.noise_width = [ i > len(self.input_paths)/2 for i in range(len(self.input_paths)) ]
 
@@ -136,13 +136,13 @@ class CustomDataset(Dataset):
         #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
         #         self.x_frames_other /= self.normalization_values['max_depth']
                 
-        # Flip the data if desired
-        if self.use_transformations and self.flip_horizontal[idx]:
-            self.x_frames = torch.flip(self.x_frames, dims=(2,))
-            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(2,))
-        if self.use_transformations and self.flip_vertical[idx]:
-            self.x_frames = torch.flip(self.x_frames, dims=(3,))
-            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(3,))
+        # # Flip the data if desired
+        # if self.use_transformations and self.flip_horizontal[idx]:
+        #     self.x_frames = torch.flip(self.x_frames, dims=(2,))
+        #     # self.x_frames_other = torch.flip(self.x_frames_other, dims=(2,))
+        # if self.use_transformations and self.flip_vertical[idx]:
+        #     self.x_frames = torch.flip(self.x_frames, dims=(3,))
+        #     # self.x_frames_other = torch.flip(self.x_frames_other, dims=(3,))
 
         # Unpack force measurements
         self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
