@@ -221,7 +221,7 @@ class ModulusModel():
             # Compute the size of the input to the decoder based on config
             self.force_encoder = ForceFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
             self.width_encoder = WidthFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
-            self.estimation_encoder = None
+            self.estimation_decoder = None
             assert self.use_estimation == False
 
             decoder_input_size = self.img_feature_size
@@ -237,8 +237,7 @@ class ModulusModel():
             # self.width_encoder = WidthFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
             self.force_encoder = ForceFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
             self.width_encoder = WidthFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
-            # self.estimation_encoder = EstimationFC(input_dim=3, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_estimation else None
-            self.estimation_encoder = EstimationDecoderFC(input_dim=6, output_dim=1) if self.use_estimation else None
+            self.estimation_decoder = EstimationDecoderFC(input_dim=6, output_dim=1) if self.use_estimation else None
 
             # Compute the size of the input to the decoder based on config
             decoder_input_size = self.n_frames * self.img_feature_size
@@ -247,9 +246,10 @@ class ModulusModel():
                 decoder_input_size += self.fwe_feature_size
             if self.use_width: 
                 decoder_input_size += self.fwe_feature_size
-            # if self.use_estimation: 
-            #     decoder_input_size += self.fwe_feature_size
-            self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=3, dropout_pct=self.dropout_pct)
+            if self.use_estimation:
+                self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=3, dropout_pct=self.dropout_pct)
+            else:
+                self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
 
         # Send models to device
         self.video_encoder.to(self.device)
@@ -259,7 +259,7 @@ class ModulusModel():
         if self.use_width:
             self.width_encoder.to(self.device)
         if self.use_estimation:
-            self.estimation_encoder.to(self.device)
+            self.estimation_decoder.to(self.device)
         if self.use_RNN:
             self.decoderRNN.to(self.device)
         else:
@@ -285,7 +285,7 @@ class ModulusModel():
         if self.use_width: 
             self.params += list(self.width_encoder.parameters())
         if self.use_estimation: 
-            self.params += list(self.estimation_encoder.parameters())
+            self.params += list(self.estimation_decoder.parameters())
         if self.use_RNN:
             self.params += list(self.decoderRNN.parameters())
         else:
@@ -540,7 +540,7 @@ class ModulusModel():
         if self.use_width:
             self.width_encoder.train()
         if self.use_estimation:
-            self.estimation_encoder.train()
+            self.estimation_decoder.train()
         if self.use_RNN:
             self.decoderRNN.train()
         else:
@@ -606,8 +606,6 @@ class ModulusModel():
                     features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
                 if self.use_width: # Width measurements
                     features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
-                # if self.use_estimation: # Precomputed modulus estimation
-                #     features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
             if self.use_RNN:
                 # Send aggregated features to the RNN decoder
@@ -621,7 +619,7 @@ class ModulusModel():
             if self.use_estimation:
                 x_estimations = torch.clamp(x_estimations, min=self.normalization_values['min_estimate'], max=self.normalization_values['max_estimate'])
                 x_estimations = self.log_normalize(x_estimations, x_max=self.normalization_values['max_estimate'], x_min=self.normalization_values['min_estimate'], use_torch=True)
-                outputs = self.estimation_encoder(torch.cat([outputs, x_estimations.squeeze(-1)], -1))
+                outputs = self.estimation_decoder(torch.cat([outputs, x_estimations.squeeze(-1)], -1))
            
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             loss.backward()
@@ -658,7 +656,7 @@ class ModulusModel():
         if self.use_width:
             self.width_encoder.eval()
         if self.use_estimation:
-            self.estimation_encoder.eval()
+            self.estimation_decoder.eval()
         if self.use_RNN:
             self.decoderRNN.eval()
         else:
@@ -722,8 +720,6 @@ class ModulusModel():
                     features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
                 if self.use_width: # Width measurements
                     features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
-                # if self.use_estimation: # Precomputed modulus estimation
-                #     features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
             if self.use_RNN:
                 # Send aggregated features to the RNN decoder
@@ -737,7 +733,7 @@ class ModulusModel():
             if self.use_estimation:
                 x_estimations = torch.clamp(x_estimations, min=self.normalization_values['min_estimate'], max=self.normalization_values['max_estimate'])
                 x_estimations = self.log_normalize(x_estimations, x_max=self.normalization_values['max_estimate'], x_min=self.normalization_values['min_estimate'], use_torch=True)
-                outputs = self.estimation_encoder(torch.cat([outputs, x_estimations.squeeze(-1)], -1))
+                outputs = self.estimation_decoder(torch.cat([outputs, x_estimations.squeeze(-1)], -1))
 
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             val_stats['loss'] += loss.item()
@@ -883,8 +879,8 @@ class ModulusModel():
                 os.remove(f'./model/{self.run_name}/force_encoder.pth')
             if os.path.exists(f'./model/{self.run_name}/width_encoder.pth'):
                 os.remove(f'./model/{self.run_name}/width_encoder.pth')
-            if os.path.exists(f'./model/{self.run_name}/estimation_encoder.pth'):
-                os.remove(f'./model/{self.run_name}/estimation_encoder.pth')
+            if os.path.exists(f'./model/{self.run_name}/estimation_decoder.pth'):
+                os.remove(f'./model/{self.run_name}/estimation_decoder.pth')
             if os.path.exists(f'./model/{self.run_name}/decoder.pth'):
                 os.remove(f'./model/{self.run_name}/decoder.pth')
             if os.path.exists(f'./model/{self.run_name}/decoderRNN.pth'):
@@ -896,7 +892,7 @@ class ModulusModel():
         torch.save(self.video_encoder.state_dict(), f'./model/{self.run_name}/video_encoder.pth')
         if self.use_force: torch.save(self.force_encoder.state_dict(), f'./model/{self.run_name}/force_encoder.pth')
         if self.use_width: torch.save(self.width_encoder.state_dict(), f'./model/{self.run_name}/width_encoder.pth')
-        if self.use_estimation: torch.save(self.estimation_encoder.state_dict(), f'./model/{self.run_name}/estimation_encoder.pth')
+        if self.use_estimation: torch.save(self.estimation_decoder.state_dict(), f'./model/{self.run_name}/estimation_decoder.pth')
 
         if self.use_RNN:
             torch.save(self.decoderRNN.state_dict(), f'./model/{self.run_name}/decoderRNN.pth')
@@ -918,7 +914,7 @@ class ModulusModel():
         self.video_encoder.load_state_dict(torch.load(f'{folder_path}/video_encoder.pth'))
         if self.use_force: self.force_encoder.load_state_dict(torch.load(f'{folder_path}/force_encoder.pth'))
         if self.use_width: self.width_encoder.load_state_dict(torch.load(f'{folder_path}/width_encoder.pth'))
-        if self.use_estimation: self.estimation_encoder.load_state_dict(torch.load(f'{folder_path}/estimation_encoder.pth'))
+        if self.use_estimation: self.estimation_decoder.load_state_dict(torch.load(f'{folder_path}/estimation_decoder.pth'))
         if self.use_RNN:
             self.decoderRNN.load_state_dict(torch.load(f'{folder_path}/decoderRNN.pth'))
         else:
