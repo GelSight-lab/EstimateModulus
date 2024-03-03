@@ -1005,7 +1005,7 @@ if __name__ == "__main__":
         'use_markers': True,
         'use_force': True,
         'use_width': True,
-        'use_estimation': False,
+        'use_estimation': True,
         'use_transformations': True,
         'use_width_transforms': True,
         'exclude': [
@@ -1030,7 +1030,7 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 2.5e-6, # 5e-5, (for estimations)
+        'learning_rate'     : 5e-5, # (for estimations)
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 47, # 25
@@ -1043,9 +1043,13 @@ if __name__ == "__main__":
     for i in range(20):
         config['run_name'] = f'{base_run_name}__t={i}'
 
-        if i == 1:
+        # if i == 1:
+        #     config['random_state'] = 25
+        # if i > 1:
+        #     config['random_state'] = random.randint(1, 100)
+        if i == 0:
             config['random_state'] = 25
-        if i > 1:
+        if i > 0:
             config['random_state'] = random.randint(1, 100)
 
         train_modulus = ModulusModel(config, device=device)
