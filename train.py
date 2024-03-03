@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -453,6 +453,16 @@ class ModulusModel():
         paths_to_files = []
         list_files(f'{self.data_dir}/{training_data_folder_name}', paths_to_files, self.config)
         self.paths_to_files = paths_to_files
+
+        # Remove those with no estimation
+        if self.use_estimation:
+            clean_paths_to_files = []
+            for file_path in self.paths_to_files:
+                file_prefix = file_path[:file_path.find('aug=')-1]
+                file_prefix = file_prefix.replace(training_data_folder_name, 'training_estimations')
+                if os.path.isfile(f'{file_prefix}/E.pkl'):
+                    clean_paths_to_files.append(file_path)
+            self.paths_to_files = clean_paths_to_files
 
         # Create data loaders based on training / validation break-up
         self._create_data_loaders()
