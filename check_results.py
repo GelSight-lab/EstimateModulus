@@ -24,7 +24,7 @@ with open(csv_file_path, 'r') as file:
             object_to_material[row[1]] = row[3]
 
 shape_log_acc = { object_to_shape[obj]:[0, 0] for obj in object_to_shape.keys() }
-shape_log_acc_std = { object_to_material[obj]:[] for obj in object_to_material.keys() }
+shape_log_acc_std = { object_to_shape[obj]:[] for obj in object_to_shape.keys() }
 shape_log_diff = { object_to_shape[obj]:[0, 0] for obj in object_to_shape.keys() }
 material_log_acc = { object_to_material[obj]:[0, 0] for obj in object_to_material.keys() }
 material_log_acc_std = { object_to_material[obj]:[] for obj in object_to_material.keys() }
