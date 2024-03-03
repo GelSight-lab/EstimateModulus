@@ -200,8 +200,10 @@ class ModulusModel():
 
         # Create max values for scaling
         self.normalization_values = { # Based on acquired data maximums
-            'max_modulus': 1e3,
-            'min_modulus': 1e12,
+            'min_modulus': 1e3,
+            'max_modulus': 1e12,
+            'min_estimate': 1e2,
+            'max_estimate': 1e14,
             'max_depth': 7.0,
             'max_width': 0.08,
             'max_force': 60.0,
@@ -1000,7 +1002,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch32_LR=1e-5_RandomFlipping',
+        'run_name': 'Batch32_NormWasFlipped',
 
         # Training and model parameters
         'epochs'            : 60,
@@ -1012,7 +1014,7 @@ if __name__ == "__main__":
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'learning_rate'     : 1e-5,
-        'gamma'             : 100**(-5/150), # 100**(-lr_step_size / epochs)
+        'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 47, # 25
     }
