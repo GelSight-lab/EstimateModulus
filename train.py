@@ -237,7 +237,8 @@ class ModulusModel():
             # self.width_encoder = WidthFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
             self.force_encoder = ForceFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
             self.width_encoder = WidthFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
-            self.estimation_encoder = EstimationFC(input_dim=3, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_estimation else None
+            # self.estimation_encoder = EstimationFC(input_dim=3, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_estimation else None
+            self.estimation_encoder = EstimationDecoderFC(input_dim=6, output_dim=1) if self.use_estimation else None
 
             # Compute the size of the input to the decoder based on config
             decoder_input_size = self.n_frames * self.img_feature_size
@@ -246,9 +247,9 @@ class ModulusModel():
                 decoder_input_size += self.fwe_feature_size
             if self.use_width: 
                 decoder_input_size += self.fwe_feature_size
-            if self.use_estimation: 
-                decoder_input_size += self.fwe_feature_size
-            self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
+            # if self.use_estimation: 
+            #     decoder_input_size += self.fwe_feature_size
+            self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=3, dropout_pct=self.dropout_pct)
 
         # Send models to device
         self.video_encoder.to(self.device)
@@ -595,8 +596,8 @@ class ModulusModel():
                     features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
                 if self.use_width: # Width measurements
                     features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
-                if self.use_estimation: # Precomputed modulus estimation
-                    features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
+                # if self.use_estimation: # Precomputed modulus estimation
+                #     features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
             if self.use_RNN:
                 # Send aggregated features to the RNN decoder
@@ -606,6 +607,11 @@ class ModulusModel():
                 # Send aggregated features to the FC decoder
                 features = torch.cat(features, -1)
                 outputs = self.decoder(features)
+
+            if self.use_estimation:
+                x_estimations = torch.clamp(x_estimations, min=self.normalization_values['min_estimate'], max=self.normalization_values['max_estimate'])
+                x_estimations = self.log_normalize(x_estimations, x_max=self.normalization_values['max_estimate'], x_min=self.normalization_values['min_estimate'])
+                outputs = self.estimation_encoder(torch.cat([outputs, x_estimations.squeeze(-1)], -1))
            
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             loss.backward()
@@ -706,8 +712,8 @@ class ModulusModel():
                     features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
                 if self.use_width: # Width measurements
                     features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
-                if self.use_estimation: # Precomputed modulus estimation
-                    features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
+                # if self.use_estimation: # Precomputed modulus estimation
+                #     features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
             if self.use_RNN:
                 # Send aggregated features to the RNN decoder
@@ -717,7 +723,12 @@ class ModulusModel():
                 # Send aggregated features to the FC decoder
                 features = torch.cat(features, -1)
                 outputs = self.decoder(features)
-            
+
+            if self.use_estimation:
+                x_estimations = torch.clamp(x_estimations, min=self.normalization_values['min_estimate'], max=self.normalization_values['max_estimate'])
+                x_estimations = self.log_normalize(x_estimations, x_max=self.normalization_values['max_estimate'], x_min=self.normalization_values['min_estimate'])
+                outputs = self.estimation_encoder(torch.cat([outputs, x_estimations.squeeze(-1)], -1))
+
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             val_stats['loss'] += loss.item()
             val_stats['batch_count'] += 1
@@ -988,7 +999,7 @@ if __name__ == "__main__":
         'use_markers': True,
         'use_force': True,
         'use_width': True,
-        'use_estimation': False,
+        'use_estimation': True,
         'use_transformations': True,
         'use_width_transforms': True,
         'exclude': [
@@ -1002,7 +1013,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch32_NormWasFlipped',
+        'run_name': 'Batch32_EstimationsAtEnd',
 
         # Training and model parameters
         'epochs'            : 60,
