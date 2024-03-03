@@ -145,6 +145,50 @@ def compute_object_performance(prediction_dicts):
 
     return obj_prediction_log_diff, objects_avg_log_diff
 
+# Compute log difference of predictions per shape
+def compute_shape_performance(prediction_dict):
+    shapes = ['Rectangular', 'Sphere', 'Cylinder', 'Hex', 'Irregular']
+    shape_prediction_log_diff = { shape:[] for shape in shapes }
+
+    for object_name in object_names:
+        shape = object_to_shape[object_name]
+        if shape not in shapes: continue
+        for E in prediction_dict[object_name]:
+            if E > 0:
+                log_diff = abs(np.log10(E) - np.log10(object_to_modulus[object_name]))
+                shape_prediction_log_diff[shape].append(log_diff)
+
+    shape_log_diff = { shape:0 for shape in shapes }
+    shape_log_acc = { shape:0 for shape in shapes }
+    for shape in shapes:
+        if len(shape_prediction_log_diff[shape]) > 0:
+            shape_log_diff[shape] = sum(shape_prediction_log_diff[shape]) / len(shape_prediction_log_diff[shape])
+            shape_log_acc[shape] = sum(np.array(shape_prediction_log_diff[shape]) <= 1) / len(shape_prediction_log_diff[shape])
+
+    return shape_log_diff, shape_log_acc
+
+# Compute log difference of predictions per material
+def compute_material_performance(prediction_dict):
+    materials = ['Foam', 'Rubber', 'Plastic', 'Wood', 'Metal']
+    mat_prediction_log_diff = { mat:[] for mat in materials }
+
+    for object_name in object_names:
+        mat = object_to_material[object_name]
+        if mat not in materials: continue
+        for E in prediction_dict[object_name]:
+            if E > 0:
+                log_diff = abs(np.log10(E) - np.log10(object_to_modulus[object_name]))
+                mat_prediction_log_diff[mat].append(log_diff)
+
+    mat_log_diff = { mat:0 for mat in materials }
+    mat_log_acc = { mat:0 for mat in materials }
+    for mat in materials:
+        if len(mat_prediction_log_diff[mat]) > 0:
+            mat_log_diff[mat] = sum(mat_prediction_log_diff[mat]) / len(mat_prediction_log_diff[mat])
+            mat_log_acc[mat] = sum(np.array(mat_prediction_log_diff[mat]) <= 1) / len(mat_prediction_log_diff[mat])
+
+    return mat_log_diff, mat_log_acc
+
 # Compute log difference and other stats for each contact mask
 def compute_contact_mask_performance(list_of_configs, list_of_stats):
     assert len(list_of_configs) == len(list_of_stats)
@@ -575,7 +619,14 @@ if __name__ == '__main__':
     obj_predictions_log_diff_ordered = [ (object_names[i], obj_prediction_log_diff[object_names[i]]) for i in obj_i_ordered ]
 
     contact_mask_stats = compute_contact_mask_performance(naive_configs + MDR_configs, naive_stats + MDR_stats)
-    
+
+    naive_shape_log_diff, naive_shape_log_acc       = compute_shape_performance(naive_avg_estimates[naive_avg_i_order[0]])
+    naive_material_log_diff, naive_material_log_acc = compute_material_performance(naive_avg_estimates[naive_avg_i_order[0]])
+    hertz_shape_log_diff, hertz_shape_log_acc       = compute_shape_performance(hertz_avg_estimates[hertz_avg_i_order[0]])
+    hertz_material_log_diff, hertz_material_log_acc = compute_material_performance(hertz_avg_estimates[hertz_avg_i_order[0]])
+    MDR_shape_log_diff, MDR_shape_log_acc           = compute_shape_performance(MDR_avg_estimates[MDR_avg_i_order[0]])
+    MDR_material_log_diff, MDR_material_log_acc     = compute_material_performance(MDR_avg_estimates[MDR_avg_i_order[0]])
+
     # Create plots showing how well each method does
     print('Plotting naive...')
     plot_performance('Naive Elasticity Method', naive_estimates[naive_i_order[0]], object_to_modulus)
@@ -623,21 +674,21 @@ if __name__ == '__main__':
     #         with open(f'{DATA_DIR}/training_estimations/{object_name}/t={t}/E.pkl', 'wb') as file:
     #             pickle.dump(E_estimates, file)
 
-    for object_name in naive_avg_estimates[naive_avg_i_order[0]].keys():
-        if object_name in EXCLUDE: continue
-        if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}'):
-            os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}')
+    # for object_name in naive_avg_estimates[naive_avg_i_order[0]].keys():
+    #     if object_name in EXCLUDE: continue
+    #     if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}'):
+    #         os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}')
 
-        for t in range(len(naive_avg_estimates[naive_avg_i_order[0]][object_name])):
+    #     for t in range(len(naive_avg_estimates[naive_avg_i_order[0]][object_name])):
             
-            E_naive = closest_non_nan_element(naive_avg_estimates[naive_avg_i_order[0]][object_name], t)
-            E_hertz = closest_non_nan_element(hertz_avg_estimates[hertz_avg_i_order[0]][object_name], t)
-            E_MDR = closest_non_nan_element(MDR_avg_estimates[MDR_avg_i_order[0]][object_name], t)
-            assert E_naive > 0 and E_hertz > 0 and E_MDR > 0
+    #         E_naive = closest_non_nan_element(naive_avg_estimates[naive_avg_i_order[0]][object_name], t)
+    #         E_hertz = closest_non_nan_element(hertz_avg_estimates[hertz_avg_i_order[0]][object_name], t)
+    #         E_MDR = closest_non_nan_element(MDR_avg_estimates[MDR_avg_i_order[0]][object_name], t)
+    #         assert E_naive > 0 and E_hertz > 0 and E_MDR > 0
 
-            if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}/t={t}'):
-                os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}/t={t}')
+    #         if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}/t={t}'):
+    #             os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}/t={t}')
 
-            E_estimates = np.array([E_naive, E_hertz, E_MDR])
-            with open(f'{DATA_DIR}/training_estimations/{object_name}/t={t}/E.pkl', 'wb') as file:
-                pickle.dump(E_estimates, file)
+    #         E_estimates = np.array([E_naive, E_hertz, E_MDR])
+    #         with open(f'{DATA_DIR}/training_estimations/{object_name}/t={t}/E.pkl', 'wb') as file:
+    #             pickle.dump(E_estimates, file)
