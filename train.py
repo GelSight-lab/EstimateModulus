@@ -609,8 +609,8 @@ class ModulusModel():
                 outputs = self.decoder(features)
 
             if self.use_estimation:
-                x_estimations = torch.clamp(x_estimations, min=self.normalization_values['min_estimate'], max=self.normalization_values['max_estimate'])
-                x_estimations = self.log_normalize(x_estimations, x_max=self.normalization_values['max_estimate'], x_min=self.normalization_values['min_estimate'])
+                x_estimations = torch.clamp(x_estimations, min=self.normalization_values['min_estimate'], max=self.normalization_values['max_estimate'], use_torch=True)
+                x_estimations = self.log_normalize(x_estimations, x_max=self.normalization_values['max_estimate'], x_min=self.normalization_values['min_estimate'], use_torch=True)
                 outputs = self.estimation_encoder(torch.cat([outputs, x_estimations.squeeze(-1)], -1))
            
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
@@ -725,8 +725,8 @@ class ModulusModel():
                 outputs = self.decoder(features)
 
             if self.use_estimation:
-                x_estimations = torch.clamp(x_estimations, min=self.normalization_values['min_estimate'], max=self.normalization_values['max_estimate'])
-                x_estimations = self.log_normalize(x_estimations, x_max=self.normalization_values['max_estimate'], x_min=self.normalization_values['min_estimate'])
+                x_estimations = torch.clamp(x_estimations, min=self.normalization_values['min_estimate'], max=self.normalization_values['max_estimate'], use_torch=True)
+                x_estimations = self.log_normalize(x_estimations, x_max=self.normalization_values['max_estimate'], x_min=self.normalization_values['min_estimate'], use_torch=True)
                 outputs = self.estimation_encoder(torch.cat([outputs, x_estimations.squeeze(-1)], -1))
 
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
