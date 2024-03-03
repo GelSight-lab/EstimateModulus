@@ -966,10 +966,18 @@ class ModulusModel():
                     material_label_data[mat].append(self.object_to_modulus[obj])
                     count += 1
 
+        class NumpyEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, np.float32):
+                    return float(obj)
+                return json.JSONEncoder.default(self, obj)
+    
+        if not os.path.exists(f'./plotting_data/{self.run_name}'):
+            os.mkdir(f'./plotting_data/{self.run_name}')
         with open(f'./plotting_data/{self.run_name}/predictions.json', 'w') as json_file:
-            json.dump(material_prediction_data, json_file)
+            json.dump(material_prediction_data, json_file, cls=NumpyEncoder)
         with open(f'./plotting_data/{self.run_name}/labels.json', 'w') as json_file:
-            json.dump(material_label_data, json_file)
+            json.dump(material_label_data, json_file, cls=NumpyEncoder)
     
         # Create plot
         mpl.rcParams['font.family'] = ['serif']
@@ -1055,3 +1063,8 @@ if __name__ == "__main__":
 
         train_modulus = ModulusModel(config, device=device)
         train_modulus.train()
+
+    # for run_name in ['Batch32_NoEstimations__t=12', 'Batch32_NoEstimations__t=15', 'Batch32_NoEstimations__t=8', 'Batch32_NoEstimations__t=11', 'Batch32_NoEstimations__t=6']:
+    #     train_modulus = ModulusModel(config, device=device)
+    #     train_modulus.load_model(f'./model/{run_name}')
+    #     train_modulus.make_performance_plot()
