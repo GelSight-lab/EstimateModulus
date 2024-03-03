@@ -50,7 +50,7 @@ for run_name in run_names:
 
         material_log_acc[object_to_material[obj]][0] += val_object_performance[obj]['total_log_acc']
         material_log_acc[object_to_material[obj]][1] += val_object_performance[obj]['count']
-        material_log_acc_std[object_to_shape[obj]].append(val_object_performance[obj]['total_log_acc'] / val_object_performance[obj]['count'])
+        material_log_acc_std[object_to_material[obj]].append(val_object_performance[obj]['total_log_acc'] / val_object_performance[obj]['count'])
         material_log_diff[object_to_material[obj]][0] += val_object_performance[obj]['total_log_diff']
         material_log_diff[object_to_material[obj]][1] += val_object_performance[obj]['count']
 
