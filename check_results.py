@@ -1,8 +1,10 @@
 import csv
 import json
+import numpy as np
 
 run_names = [
-    f'BaselineForNow__t={i}' for i in range(20)
+    'Batch32_LR=1e-5_RandomFlipping__t=0', 'Batch32_LR=1e-5_RandomFlipping__t=1', 'Batch32_LR=1e-5_RandomFlipping__t=2',
+    'Batch32_LR=5e-4__t=0', 'Batch32_LR=5e-5_RandomFlipping__t=0', 'Batch32_LR=5e-4_RandomFlipping__t=0'
 ]
 
 DATA_DIR = '/media/mike/Elements/data'
@@ -22,8 +24,10 @@ with open(csv_file_path, 'r') as file:
             object_to_material[row[1]] = row[3]
 
 shape_log_acc = { object_to_shape[obj]:[0, 0] for obj in object_to_shape.keys() }
+shape_log_acc_std = { object_to_material[obj]:[] for obj in object_to_material.keys() }
 shape_log_diff = { object_to_shape[obj]:[0, 0] for obj in object_to_shape.keys() }
 material_log_acc = { object_to_material[obj]:[0, 0] for obj in object_to_material.keys() }
+material_log_acc_std = { object_to_material[obj]:[] for obj in object_to_material.keys() }
 material_log_diff = { object_to_material[obj]:[0, 0] for obj in object_to_material.keys() }
 poorly_predicted_pct = { obj:[0, 0] for obj in object_to_shape.keys() } # Over a factor of 100 off
 
@@ -40,11 +44,13 @@ for run_name in run_names:
     for obj in val_object_performance.keys():
         shape_log_acc[object_to_shape[obj]][0] += val_object_performance[obj]['total_log_acc']
         shape_log_acc[object_to_shape[obj]][1] += val_object_performance[obj]['count']
+        shape_log_acc_std[object_to_shape[obj]].append(val_object_performance[obj]['total_log_acc'] / val_object_performance[obj]['count'])
         shape_log_diff[object_to_shape[obj]][0] += val_object_performance[obj]['total_log_diff']
         shape_log_diff[object_to_shape[obj]][1] += val_object_performance[obj]['count']
 
         material_log_acc[object_to_material[obj]][0] += val_object_performance[obj]['total_log_acc']
         material_log_acc[object_to_material[obj]][1] += val_object_performance[obj]['count']
+        material_log_acc_std[object_to_shape[obj]].append(val_object_performance[obj]['total_log_acc'] / val_object_performance[obj]['count'])
         material_log_diff[object_to_material[obj]][0] += val_object_performance[obj]['total_log_diff']
         material_log_diff[object_to_material[obj]][1] += val_object_performance[obj]['count']
 
@@ -61,6 +67,8 @@ for key in shape_log_acc.keys():
     else:
         shape_log_diff[key] = 0
 
+    shape_log_acc_std[key] = np.std(np.array(shape_log_acc_std[key]))
+
 for key in material_log_acc.keys():
     if material_log_acc[key][1] > 0:
         material_log_acc[key] = material_log_acc[key][0] / material_log_acc[key][1]
@@ -70,6 +78,8 @@ for key in material_log_acc.keys():
         material_log_diff[key] = material_log_diff[key][0] / material_log_diff[key][1]
     else:
         material_log_diff[key] = 0
+
+    material_log_acc_std[key] = np.std(np.array(material_log_acc_std[key]))
 
 most_poorly_predicted = {}
 for key in poorly_predicted_pct.keys():
@@ -84,9 +94,13 @@ for key in poorly_predicted_pct.keys():
 
 print('shape_log_acc', shape_log_acc)
 print('\n')
+print('shape_log_acc_std', shape_log_acc_std)
+print('\n')
 print('shape_log_diff', shape_log_diff)
 print('\n')
 print('material_log_acc', material_log_acc)
+print('\n')
+print('material_log_acc_std', material_log_acc_std)
 print('\n')
 print('material_log_diff', material_log_diff)
 print('\n')
