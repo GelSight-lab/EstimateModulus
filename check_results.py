@@ -4,7 +4,7 @@ import numpy as np
 
 run_names = [
     'Batch32_LR=1e-5_RandomFlipping__t=0', 'Batch32_LR=1e-5_RandomFlipping__t=1', 'Batch32_LR=1e-5_RandomFlipping__t=2',
-    'Batch32_LR=5e-4__t=0', 'Batch32_LR=5e-5_RandomFlipping__t=0', 'Batch32_LR=5e-4_RandomFlipping__t=0'
+    'Batch32_LR=5e-4__t=0', 'Batch32_LR=5e-5_RandomFlipping__t=0', 'Batch32_LR=5e-4_RandomFlipping__t=0', 'Batch32_LR=1e-5_RandomFlipping__t=3'
 ]
 
 DATA_DIR = '/media/mike/Elements/data'
