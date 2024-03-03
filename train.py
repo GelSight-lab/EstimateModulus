@@ -1019,7 +1019,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch32_NoEstimations',
+        'run_name': 'Batch32_Estimations',
 
         # Training and model parameters
         'epochs'            : 60,
