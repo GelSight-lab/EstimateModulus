@@ -81,22 +81,22 @@ class CustomDataset(Dataset):
         self.input_paths = paths_to_files
         self.normalized_modulus_labels = labels
 
-        if self.use_transformations:
-            self.input_paths = 4*paths_to_files
-            self.normalized_modulus_labels = 4*labels
-            self.flip_horizontal = [i > 2*len(paths_to_files) for i in range(len(self.input_paths))]
-            self.flip_vertical = [i % 2 == 1 for i in range(len(self.input_paths))]
-        else:
-            self.input_paths = paths_to_files
-            self.normalized_modulus_labels = labels
-            self.flip_horizontal = [False for i in range(len(self.input_paths))]
-            self.flip_vertical = [False for i in range(len(self.input_paths))]
+        # if self.use_transformations:
+        #     self.input_paths = 4*paths_to_files
+        #     self.normalized_modulus_labels = 4*labels
+        #     self.flip_horizontal = [i > 2*len(paths_to_files) for i in range(len(self.input_paths))]
+        #     self.flip_vertical = [i % 2 == 1 for i in range(len(self.input_paths))]
+        # else:
+        #     self.input_paths = paths_to_files
+        #     self.normalized_modulus_labels = labels
+        #     self.flip_horizontal = [False for i in range(len(self.input_paths))]
+        #     self.flip_vertical = [False for i in range(len(self.input_paths))]
 
         if self.use_width_transforms:
             self.input_paths = 2*self.input_paths
             self.normalized_modulus_labels = 2*self.normalized_modulus_labels
-            self.flip_horizontal = 2*self.flip_horizontal
-            self.flip_vertical = 2*self.flip_vertical
+            # self.flip_horizontal = 2*self.flip_horizontal
+            # self.flip_vertical = 2*self.flip_vertical
             self.noise_force = [ i > len(self.input_paths)/2 and i % 2 == 1 for i in range(len(self.input_paths)) ]
             self.noise_width = [ i > len(self.input_paths)/2 for i in range(len(self.input_paths)) ]
 
@@ -136,13 +136,13 @@ class CustomDataset(Dataset):
         #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
         #         self.x_frames_other /= self.normalization_values['max_depth']
                 
-        # Flip the data if desired
-        if self.use_transformations and self.flip_horizontal[idx]:
-            self.x_frames = torch.flip(self.x_frames, dims=(2,))
-            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(2,))
-        if self.use_transformations and self.flip_vertical[idx]:
-            self.x_frames = torch.flip(self.x_frames, dims=(3,))
-            # self.x_frames_other = torch.flip(self.x_frames_other, dims=(3,))
+        # # Flip the data if desired
+        # if self.use_transformations and self.flip_horizontal[idx]:
+        #     self.x_frames = torch.flip(self.x_frames, dims=(2,))
+        #     # self.x_frames_other = torch.flip(self.x_frames_other, dims=(2,))
+        # if self.use_transformations and self.flip_vertical[idx]:
+        #     self.x_frames = torch.flip(self.x_frames, dims=(3,))
+        #     # self.x_frames_other = torch.flip(self.x_frames_other, dims=(3,))
 
         # Unpack force measurements
         self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
@@ -200,8 +200,10 @@ class ModulusModel():
 
         # Create max values for scaling
         self.normalization_values = { # Based on acquired data maximums
-            'max_modulus': 1e3,
-            'min_modulus': 1e12,
+            'min_modulus': 1e3,
+            'max_modulus': 1e12,
+            'min_estimate': 1e2,
+            'max_estimate': 1e14,
             'max_depth': 7.0,
             'max_width': 0.08,
             'max_force': 60.0,
@@ -219,7 +221,7 @@ class ModulusModel():
             # Compute the size of the input to the decoder based on config
             self.force_encoder = ForceFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
             self.width_encoder = WidthFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
-            self.estimation_encoder = None
+            self.estimation_decoder = None
             assert self.use_estimation == False
 
             decoder_input_size = self.img_feature_size
@@ -235,7 +237,7 @@ class ModulusModel():
             # self.width_encoder = WidthFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
             self.force_encoder = ForceFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
             self.width_encoder = WidthFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
-            self.estimation_encoder = EstimationFC(input_dim=3, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_estimation else None
+            self.estimation_decoder = EstimationDecoderFC(input_dim=6, output_dim=1) if self.use_estimation else None
 
             # Compute the size of the input to the decoder based on config
             decoder_input_size = self.n_frames * self.img_feature_size
@@ -244,9 +246,10 @@ class ModulusModel():
                 decoder_input_size += self.fwe_feature_size
             if self.use_width: 
                 decoder_input_size += self.fwe_feature_size
-            if self.use_estimation: 
-                decoder_input_size += self.fwe_feature_size
-            self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
+            if self.use_estimation:
+                self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=3, dropout_pct=self.dropout_pct)
+            else:
+                self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
 
         # Send models to device
         self.video_encoder.to(self.device)
@@ -256,7 +259,7 @@ class ModulusModel():
         if self.use_width:
             self.width_encoder.to(self.device)
         if self.use_estimation:
-            self.estimation_encoder.to(self.device)
+            self.estimation_decoder.to(self.device)
         if self.use_RNN:
             self.decoderRNN.to(self.device)
         else:
@@ -282,7 +285,7 @@ class ModulusModel():
         if self.use_width: 
             self.params += list(self.width_encoder.parameters())
         if self.use_estimation: 
-            self.params += list(self.estimation_encoder.parameters())
+            self.params += list(self.estimation_decoder.parameters())
         if self.use_RNN:
             self.params += list(self.decoderRNN.parameters())
         else:
@@ -295,6 +298,8 @@ class ModulusModel():
 
         if self.use_transformations:
             self.random_transformer = torchvision.transforms.Compose([
+                    torchvision.transforms.RandomHorizontalFlip(0.5),
+                    torchvision.transforms.RandomVerticalFlip(0.5),
                     torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.0),
                     # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.975, 1.0), antialias=True),
                     # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
@@ -449,6 +454,16 @@ class ModulusModel():
         list_files(f'{self.data_dir}/{training_data_folder_name}', paths_to_files, self.config)
         self.paths_to_files = paths_to_files
 
+        # Remove those with no estimation
+        if self.use_estimation:
+            clean_paths_to_files = []
+            for file_path in self.paths_to_files:
+                file_prefix = file_path[:file_path.find('aug=')-1]
+                file_prefix = file_prefix.replace(training_data_folder_name, 'training_estimations')
+                if os.path.isfile(f'{file_prefix}/E.pkl'):
+                    clean_paths_to_files.append(file_path)
+            self.paths_to_files = clean_paths_to_files
+
         # Create data loaders based on training / validation break-up
         self._create_data_loaders()
         return
@@ -525,7 +540,7 @@ class ModulusModel():
         if self.use_width:
             self.width_encoder.train()
         if self.use_estimation:
-            self.estimation_encoder.train()
+            self.estimation_decoder.train()
         if self.use_RNN:
             self.decoderRNN.train()
         else:
@@ -547,6 +562,10 @@ class ModulusModel():
                 x_frames = self.random_transformer(x_frames)
                 x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
+                # x_frames_other = x_frames_other.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
+                # x_frames_other = self.random_transformer(x_frames_other)
+                # x_frames_other = x_frames_other.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
+
             if self.use_RNN:
                 # Concatenate features across frames into a single vector
                 features = []
@@ -555,6 +574,7 @@ class ModulusModel():
 
                     # Execute CNN on video frames
                     frame_features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                    # frame_features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
 
                     # Execute FC layers on other data and append
                     if self.use_force: # Force measurements
@@ -573,6 +593,7 @@ class ModulusModel():
                     
                     # Execute CNN on video frames
                     features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                    # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
                     
                     # # Execute FC layers on other data and append
                     # if self.use_force: # Force measurements
@@ -585,8 +606,6 @@ class ModulusModel():
                     features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
                 if self.use_width: # Width measurements
                     features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
-                if self.use_estimation: # Precomputed modulus estimation
-                    features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
             if self.use_RNN:
                 # Send aggregated features to the RNN decoder
@@ -596,6 +615,11 @@ class ModulusModel():
                 # Send aggregated features to the FC decoder
                 features = torch.cat(features, -1)
                 outputs = self.decoder(features)
+
+            if self.use_estimation:
+                x_estimations = torch.clamp(x_estimations, min=self.normalization_values['min_estimate'], max=self.normalization_values['max_estimate'])
+                x_estimations = self.log_normalize(x_estimations, x_max=self.normalization_values['max_estimate'], x_min=self.normalization_values['min_estimate'], use_torch=True)
+                outputs = self.estimation_decoder(torch.cat([outputs, x_estimations.squeeze(-1)], -1))
            
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             loss.backward()
@@ -610,7 +634,7 @@ class ModulusModel():
             for i in range(self.batch_size):
                 self.train_object_performance[object_names[i]]['total_log_diff'] += abs_log_diff[i][0]
                 self.train_object_performance[object_names[i]]['count'] += 1
-                if abs_log_diff[i] <= 0.5:
+                if abs_log_diff[i] <= 1:
                     self.train_object_performance[object_names[i]]['total_log_acc'] += 1
                     train_stats['log_acc'] += 1
                 if abs_log_diff[i] >= 2:
@@ -632,7 +656,7 @@ class ModulusModel():
         if self.use_width:
             self.width_encoder.eval()
         if self.use_estimation:
-            self.estimation_encoder.eval()
+            self.estimation_decoder.eval()
         if self.use_RNN:
             self.decoderRNN.eval()
         else:
@@ -644,7 +668,6 @@ class ModulusModel():
         val_stats = {
             'loss': 0,
             'log_acc': 0,
-            'log_acc_1': 0,
             'soft_log_acc': 0,
             'hard_log_acc': 0,
             'avg_log_diff': 0,
@@ -665,6 +688,7 @@ class ModulusModel():
 
                     # Execute CNN on video frames
                     frame_features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                    # frame_features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
 
                     # Execute FC layers on other data and append
                     if self.use_force: # Force measurements
@@ -683,6 +707,7 @@ class ModulusModel():
                     
                     # Execute CNN on video frames
                     features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                    # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
 
                     # # Execute FC layers on other data and append
                     # if self.use_force: # Force measurements
@@ -695,8 +720,6 @@ class ModulusModel():
                     features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
                 if self.use_width: # Width measurements
                     features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
-                if self.use_estimation: # Precomputed modulus estimation
-                    features.append(self.estimation_encoder(self.log_normalize(x_estimations[:, :, :], use_torch=True).squeeze()))
 
             if self.use_RNN:
                 # Send aggregated features to the RNN decoder
@@ -706,7 +729,12 @@ class ModulusModel():
                 # Send aggregated features to the FC decoder
                 features = torch.cat(features, -1)
                 outputs = self.decoder(features)
-            
+
+            if self.use_estimation:
+                x_estimations = torch.clamp(x_estimations, min=self.normalization_values['min_estimate'], max=self.normalization_values['max_estimate'])
+                x_estimations = self.log_normalize(x_estimations, x_max=self.normalization_values['max_estimate'], x_min=self.normalization_values['min_estimate'], use_torch=True)
+                outputs = self.estimation_decoder(torch.cat([outputs, x_estimations.squeeze(-1)], -1))
+
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             val_stats['loss'] += loss.item()
             val_stats['batch_count'] += 1
@@ -722,15 +750,13 @@ class ModulusModel():
                 else:
                     val_stats['hard_avg_log_diff'] += abs_log_diff[i]
 
-                if abs_log_diff[i] <= 0.5:
+                if abs_log_diff[i] <= 1:
                     self.val_object_performance[object_names[i]]['total_log_acc'] += 1
                     val_stats['log_acc'] += 1
                     if self.object_to_modulus[object_names[i]] < 1e8:
                         val_stats['soft_log_acc'] += 1
                     else:
                         val_stats['hard_log_acc'] += 1
-                if abs_log_diff[i] <= 1:
-                    val_stats['log_acc_1'] += 1
 
                 if abs_log_diff[i] >= 2:
                     self.val_object_performance[object_names[i]]['total_poorly_predicted'] += 1
@@ -746,7 +772,6 @@ class ModulusModel():
         # Return loss and accuracy
         val_stats['loss']                   /= val_stats['batch_count']
         val_stats['log_acc']                /= (self.batch_size * val_stats['batch_count'])
-        val_stats['log_acc_1']              /= (self.batch_size * val_stats['batch_count'])
         val_stats['avg_log_diff']           /= (self.batch_size * val_stats['batch_count'])
         val_stats['pct_w_100_factor_err']   /= (self.batch_size * val_stats['batch_count'])
         val_stats['soft_log_acc']           /= val_stats['soft_count']
@@ -827,7 +852,6 @@ class ModulusModel():
                     "val_loss": val_stats['loss'],
                     "val_avg_log_diff": val_stats['avg_log_diff'],
                     "val_log_accuracy": val_stats['log_acc'],
-                    "val_log_accuracy_1": val_stats['log_acc_1'],
                     "val_pct_with_100_factor_err": val_stats['pct_w_100_factor_err'],
                     "val_soft_avg_log_diff": val_stats['soft_avg_log_diff'],
                     "val_soft_log_acc": val_stats['soft_log_acc'],
@@ -855,8 +879,8 @@ class ModulusModel():
                 os.remove(f'./model/{self.run_name}/force_encoder.pth')
             if os.path.exists(f'./model/{self.run_name}/width_encoder.pth'):
                 os.remove(f'./model/{self.run_name}/width_encoder.pth')
-            if os.path.exists(f'./model/{self.run_name}/estimation_encoder.pth'):
-                os.remove(f'./model/{self.run_name}/estimation_encoder.pth')
+            if os.path.exists(f'./model/{self.run_name}/estimation_decoder.pth'):
+                os.remove(f'./model/{self.run_name}/estimation_decoder.pth')
             if os.path.exists(f'./model/{self.run_name}/decoder.pth'):
                 os.remove(f'./model/{self.run_name}/decoder.pth')
             if os.path.exists(f'./model/{self.run_name}/decoderRNN.pth'):
@@ -868,7 +892,7 @@ class ModulusModel():
         torch.save(self.video_encoder.state_dict(), f'./model/{self.run_name}/video_encoder.pth')
         if self.use_force: torch.save(self.force_encoder.state_dict(), f'./model/{self.run_name}/force_encoder.pth')
         if self.use_width: torch.save(self.width_encoder.state_dict(), f'./model/{self.run_name}/width_encoder.pth')
-        if self.use_estimation: torch.save(self.estimation_encoder.state_dict(), f'./model/{self.run_name}/estimation_encoder.pth')
+        if self.use_estimation: torch.save(self.estimation_decoder.state_dict(), f'./model/{self.run_name}/estimation_decoder.pth')
 
         if self.use_RNN:
             torch.save(self.decoderRNN.state_dict(), f'./model/{self.run_name}/decoderRNN.pth')
@@ -890,7 +914,7 @@ class ModulusModel():
         self.video_encoder.load_state_dict(torch.load(f'{folder_path}/video_encoder.pth'))
         if self.use_force: self.force_encoder.load_state_dict(torch.load(f'{folder_path}/force_encoder.pth'))
         if self.use_width: self.width_encoder.load_state_dict(torch.load(f'{folder_path}/width_encoder.pth'))
-        if self.use_estimation: self.estimation_encoder.load_state_dict(torch.load(f'{folder_path}/estimation_encoder.pth'))
+        if self.use_estimation: self.estimation_decoder.load_state_dict(torch.load(f'{folder_path}/estimation_decoder.pth'))
         if self.use_RNN:
             self.decoderRNN.load_state_dict(torch.load(f'{folder_path}/decoderRNN.pth'))
         else:
@@ -947,7 +971,7 @@ class ModulusModel():
         mpl.rcParams['font.serif'] = ['Times New Roman']
         plt.figure()
         plt.plot([100, 10**12], [100, 10**12], 'k--', label='_')
-        plt.fill_between([100, 10**12], [10**(1.5), 10**(11.5)], [10**(2.5), 10**(12.5)], color='gray', alpha=0.2)
+        plt.fill_between([100, 10**12], [10**1, 10**11], [10**3, 10**13], color='gray', alpha=0.2)
         plt.xscale('log')
         plt.yscale('log')
 
@@ -981,7 +1005,7 @@ if __name__ == "__main__":
         'use_markers': True,
         'use_force': True,
         'use_width': True,
-        'use_estimation': False,
+        'use_estimation': True,
         'use_transformations': True,
         'use_width_transforms': True,
         'exclude': [
@@ -995,10 +1019,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch32_DecoderSmaller_LR=5e-4',
+        'run_name': 'Batch32_Estimations',
 
         # Training and model parameters
-        'epochs'            : 30,
+        'epochs'            : 60,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
@@ -1006,8 +1030,8 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 1e-5,
-        'gamma'             : 100**(-5/150), # 100**(-lr_step_size / epochs)
+        'learning_rate'     : 5e-5, # (for estimations)
+        'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 47, # 25
     }
@@ -1019,9 +1043,13 @@ if __name__ == "__main__":
     for i in range(20):
         config['run_name'] = f'{base_run_name}__t={i}'
 
-        if i == 1:
+        # if i == 1:
+        #     config['random_state'] = 25
+        # if i > 1:
+        #     config['random_state'] = random.randint(1, 100)
+        if i == 0:
             config['random_state'] = 25
-        if i > 1:
+        if i > 0:
             config['random_state'] = random.randint(1, 100)
 
         train_modulus = ModulusModel(config, device=device)

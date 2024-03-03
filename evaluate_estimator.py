@@ -122,7 +122,7 @@ def compute_estimation_stats(prediction_dict):
     log_diff = log_diff[~np.isnan(log_diff)]
     return {
         'avg_log_diff': log_diff.mean(),
-        'log_accuracy': np.sum(log_diff < 0.5) / len(log_diff),
+        'log_accuracy': np.sum(log_diff < 1) / len(log_diff),
         'nan_pct': nan_count / total_count,
     }
 
@@ -251,7 +251,7 @@ def plot_performance(plot_title, prediction_dict, label_dict):
     mpl.rcParams['font.serif'] = ['Times New Roman']
     plt.figure()
     plt.plot([100, 10**12], [100, 10**12], 'k--', label='_')
-    plt.fill_between([100, 10**12], [10**(1.5), 10**(11.5)], [10**(2.5), 10**(12.5)], color='gray', alpha=0.2)
+    plt.fill_between([100, 10**12], [10**1, 10**11], [10**3, 10**13], color='gray', alpha=0.2)
     plt.xscale('log')
     plt.yscale('log')
 

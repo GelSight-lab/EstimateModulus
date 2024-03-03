@@ -207,6 +207,37 @@ class DecoderFC(nn.Module):
         # x = self.fc5(x)
         return torch.sigmoid(x)
     
+    
+class EstimationDecoderFC(nn.Module):
+    def __init__(self,
+                input_dim=6,
+                FC_layer_nodes=[16, 16],
+                dropout_pct=0.5,
+                output_dim=1):
+        super(EstimationDecoderFC, self).__init__()
+    
+        self.FC_input_size = input_dim
+        self.FC_layer_nodes = FC_layer_nodes
+        self.dropout_pct = dropout_pct
+        self.output_dim = output_dim
+
+        assert len(FC_layer_nodes) == 2
+
+        self.fc1 = nn.Linear(self.FC_input_size, self.FC_layer_nodes[0])
+        self.fc2 = nn.Linear(self.FC_layer_nodes[0], self.FC_layer_nodes[1])
+        self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.output_dim)
+        self.drop = nn.Dropout(self.dropout_pct)
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = F.silu(x)
+        x = self.drop(x)
+        x = self.fc2(x)
+        x = F.silu(x)
+        x = self.drop(x)
+        x = self.fc3(x)
+        return torch.sigmoid(x)
+    
 class DecoderRNN(nn.Module):
     def __init__(self,
                  input_dim=512,
