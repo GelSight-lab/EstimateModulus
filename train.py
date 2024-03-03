@@ -1009,7 +1009,7 @@ if __name__ == "__main__":
         'use_markers': True,
         'use_force': True,
         'use_width': True,
-        'use_estimation': True,
+        'use_estimation': False,
         'use_transformations': True,
         'use_width_transforms': True,
         'exclude': [
@@ -1023,7 +1023,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch32_EstimationsAtEnd',
+        'run_name': 'Batch32_NoEstimations',
 
         # Training and model parameters
         'epochs'            : 60,
@@ -1034,7 +1034,7 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32, # 4,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'learning_rate'     : 5e-5, # 1e-5,
+        'learning_rate'     : 5e-6, # 5e-5, (for estimations)
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 47, # 25
