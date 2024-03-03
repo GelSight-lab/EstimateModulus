@@ -966,6 +966,11 @@ class ModulusModel():
                     material_label_data[mat].append(self.object_to_modulus[obj])
                     count += 1
 
+        with open(f'./plotting_data/{self.run_name}/predictions.json', 'w') as json_file:
+            json.dump(material_prediction_data, json_file)
+        with open(f'./plotting_data/{self.run_name}/labels.json', 'w') as json_file:
+            json.dump(material_label_data, json_file)
+    
         # Create plot
         mpl.rcParams['font.family'] = ['serif']
         mpl.rcParams['font.serif'] = ['Times New Roman']
@@ -1033,7 +1038,7 @@ if __name__ == "__main__":
         'learning_rate'     : 5e-5, # (for estimations)
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
-        'random_state'      : 47, # 25
+        'random_state'      : 27,
     }
     assert config['img_style'] in ['diff', 'depth']
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
@@ -1043,12 +1048,8 @@ if __name__ == "__main__":
     for i in range(20):
         config['run_name'] = f'{base_run_name}__t={i}'
 
-        # if i == 1:
-        #     config['random_state'] = 25
-        # if i > 1:
-        #     config['random_state'] = random.randint(1, 100)
         if i == 0:
-            config['random_state'] = 25
+            config['random_state'] = 27
         if i > 0:
             config['random_state'] = random.randint(1, 100)
 
