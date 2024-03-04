@@ -653,6 +653,53 @@ if __name__ == '__main__':
     print('Plotting MDR (avg)...')
     plot_performance('MDR (avg of sides)', MDR_avg_estimates[MDR_avg_i_order[0]], object_to_modulus)
     print('Done.')
+    
+    # materials = ['Foam', 'Rubber', 'Plastic', 'Rubber', 'Wood', 'Metal', 'Ceramic', 'Glass', 'Paper', 'Food']
+    # naive_material_predictions = { x:[] for x in materials }
+    # hertz_material_predictions = { x:[] for x in materials }
+    # MDR_material_predictions = { x:[] for x in materials }
+    # naive_material_labels = { x:[] for x in materials }
+    # hertz_material_labels = { x:[] for x in materials }
+    # MDR_material_labels = { x:[] for x in materials }
+
+    # for object_name in tqdm(os.listdir('./data/training_estimations')):   
+    #     for folder_name in os.listdir(f'./data/training_estimations/{object_name}'):
+    #         try:
+    #             with open(f'./data/training_estimations/{object_name}/{folder_name}/E.pkl', 'rb') as file:
+    #                 E = pickle.load(file)
+
+    #             if not (object_to_material[object_name] in materials): continue
+                
+    #             mat = object_to_material[object_name]
+                    
+    #             naive_material_predictions[mat].append(E[0])
+    #             hertz_material_predictions[mat].append(E[1])
+    #             MDR_material_predictions[mat].append(E[2])
+    #             naive_material_labels[mat].append(object_to_modulus[object_name])
+    #             hertz_material_labels[mat].append(object_to_modulus[object_name])
+    #             MDR_material_labels[mat].append(object_to_modulus[object_name])
+
+    #         except:
+    #             print('skip')
+    
+    # class NumpyEncoder(json.JSONEncoder):
+    #     def default(self, obj):
+    #         if isinstance(obj, np.float32):
+    #             return float(obj)
+    #         return json.JSONEncoder.default(self, obj)
+
+    # with open(f'./plotting_data/naive_predictions.json', 'w') as json_file:
+    #     json.dump(naive_material_predictions, json_file, cls=NumpyEncoder)
+    # with open(f'./plotting_data/naive_labels.json', 'w') as json_file:
+    #     json.dump(naive_material_labels, json_file, cls=NumpyEncoder)
+    # with open(f'./plotting_data/hertz_predictions.json', 'w') as json_file:
+    #     json.dump(hertz_material_predictions, json_file, cls=NumpyEncoder)
+    # with open(f'./plotting_data/hertz_labels.json', 'w') as json_file:
+    #     json.dump(hertz_material_labels, json_file, cls=NumpyEncoder)
+    # with open(f'./plotting_data/MDR_predictions.json', 'w') as json_file:
+    #     json.dump(MDR_material_predictions, json_file, cls=NumpyEncoder)
+    # with open(f'./plotting_data/MDR_labels.json', 'w') as json_file:
+    #     json.dump(MDR_material_labels, json_file, cls=NumpyEncoder)
 
     # # Write training estimations
     # for object_name in naive_estimates[naive_i_order[0]].keys():
