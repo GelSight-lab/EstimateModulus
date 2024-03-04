@@ -776,8 +776,9 @@ class ModulusModel():
         val_stats['pct_w_100_factor_err']   /= (self.batch_size * val_stats['batch_count'])
         val_stats['soft_log_acc']           /= val_stats['soft_count']
         val_stats['soft_avg_log_diff']      /= val_stats['soft_count']
-        val_stats['hard_log_acc']           /= val_stats['hard_count']
-        val_stats['hard_avg_log_diff']      /= val_stats['hard_count']
+        if val_stats['hard_count'] >= 0:
+            val_stats['hard_log_acc']           /= val_stats['hard_count']
+            val_stats['hard_avg_log_diff']      /= val_stats['hard_count']
 
         if track_predictions:
             return predictions
