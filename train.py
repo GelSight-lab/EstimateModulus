@@ -957,6 +957,7 @@ class ModulusModel():
         count = 0
         for obj in predictions.keys():
             if len(predictions[obj]) == 0: continue
+            if obj in self.exclude: continue
             assert obj in self.object_to_material.keys()
             mat = self.object_to_material[obj]
             for E in predictions[obj]:
