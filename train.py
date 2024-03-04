@@ -787,6 +787,7 @@ class ModulusModel():
     def train(self):
         learning_rate = self.learning_rate 
         max_val_log_acc = 0.0
+        min_val_loss = 1e10
         for epoch in range(self.epochs):
 
             # Clean performance trackers
@@ -831,10 +832,13 @@ class ModulusModel():
                 print(f'{name} : {param.data} : {name}')
                 break
 
-            # Save the best model based on validation loss
+            # Save the best model based on validation loss and accuracy
+            if val_stats['loss'] <= min_val_loss:
+                min_val_loss = val_stats['loss']
+                self.save_model(by_acc=False)
             if val_stats['log_acc'] >= max_val_log_acc:
                 max_val_log_acc = val_stats['log_acc']
-                self.save_model()
+                self.save_model(by_acc=True)
 
             # Log information to W&B
             if self.use_wandb:
@@ -863,50 +867,51 @@ class ModulusModel():
 
         return
     
-    def save_model(self):
-        if not os.path.exists(f'./model/{self.run_name}'):
-            os.mkdir(f'./model/{self.run_name}')
+    def save_model(self, by_acc=False):
+        sub_folder = 'by_acc' if by_acc else 'by_loss'
+        if not os.path.exists(f'./model/{sub_folder}/{self.run_name}'):
+            os.mkdir(f'./model/{sub_folder}/{self.run_name}')
         else:
-            if os.path.exists(f'./model/{self.run_name}/config.json'):
-                os.remove(f'./model/{self.run_name}/config.json')
-            if os.path.exists(f'./model/{self.run_name}/train_object_performance.json'):
-                os.remove(f'./model/{self.run_name}/train_object_performance.json')
-            if os.path.exists(f'./model/{self.run_name}/val_object_performance.json'):
-                os.remove(f'./model/{self.run_name}/val_object_performance.json')
-            if os.path.exists(f'./model/{self.run_name}/video_encoder.pth'):
-                os.remove(f'./model/{self.run_name}/video_encoder.pth')
-            if os.path.exists(f'./model/{self.run_name}/force_encoder.pth'):
-                os.remove(f'./model/{self.run_name}/force_encoder.pth')
-            if os.path.exists(f'./model/{self.run_name}/width_encoder.pth'):
-                os.remove(f'./model/{self.run_name}/width_encoder.pth')
-            if os.path.exists(f'./model/{self.run_name}/estimation_decoder.pth'):
-                os.remove(f'./model/{self.run_name}/estimation_decoder.pth')
-            if os.path.exists(f'./model/{self.run_name}/decoder.pth'):
-                os.remove(f'./model/{self.run_name}/decoder.pth')
-            if os.path.exists(f'./model/{self.run_name}/decoderRNN.pth'):
-                os.remove(f'./model/{self.run_name}/decoderRNN.pth')
+            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/config.json'):
+                os.remove(f'./model/{sub_folder}/{self.run_name}/config.json')
+            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/train_object_performance.json'):
+                os.remove(f'./model/{sub_folder}/{self.run_name}/train_object_performance.json')
+            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/val_object_performance.json'):
+                os.remove(f'./model/{sub_folder}/{self.run_name}/val_object_performance.json')
+            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/video_encoder.pth'):
+                os.remove(f'./model/{sub_folder}/{self.run_name}/video_encoder.pth')
+            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/force_encoder.pth'):
+                os.remove(f'./model/{sub_folder}/{self.run_name}/force_encoder.pth')
+            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/width_encoder.pth'):
+                os.remove(f'./model/{sub_folder}/{self.run_name}/width_encoder.pth')
+            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/estimation_decoder.pth'):
+                os.remove(f'./model/{sub_folder}/{self.run_name}/estimation_decoder.pth')
+            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/decoder.pth'):
+                os.remove(f'./model/{sub_folder}/{self.run_name}/decoder.pth')
+            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/decoderRNN.pth'):
+                os.remove(f'./model/{sub_folder}/{self.run_name}/decoderRNN.pth')
 
         # Save configuration dictionary and all files for the model(s)
-        with open(f'./model/{self.run_name}/config.json', 'w') as json_file:
+        with open(f'./model/{sub_folder}/{self.run_name}/config.json', 'w') as json_file:
             json.dump(self.config, json_file)
-        torch.save(self.video_encoder.state_dict(), f'./model/{self.run_name}/video_encoder.pth')
-        if self.use_force: torch.save(self.force_encoder.state_dict(), f'./model/{self.run_name}/force_encoder.pth')
-        if self.use_width: torch.save(self.width_encoder.state_dict(), f'./model/{self.run_name}/width_encoder.pth')
-        if self.use_estimation: torch.save(self.estimation_decoder.state_dict(), f'./model/{self.run_name}/estimation_decoder.pth')
+        torch.save(self.video_encoder.state_dict(), f'./model/{sub_folder}/{self.run_name}/video_encoder.pth')
+        if self.use_force: torch.save(self.force_encoder.state_dict(), f'./model/{sub_folder}/{self.run_name}/force_encoder.pth')
+        if self.use_width: torch.save(self.width_encoder.state_dict(), f'./model/{sub_folder}/{self.run_name}/width_encoder.pth')
+        if self.use_estimation: torch.save(self.estimation_decoder.state_dict(), f'./model/{sub_folder}/{self.run_name}/estimation_decoder.pth')
 
         if self.use_RNN:
-            torch.save(self.decoderRNN.state_dict(), f'./model/{self.run_name}/decoderRNN.pth')
+            torch.save(self.decoderRNN.state_dict(), f'./model/{sub_folder}/{self.run_name}/decoderRNN.pth')
         else:
-            torch.save(self.decoder.state_dict(), f'./model/{self.run_name}/decoder.pth')
+            torch.save(self.decoder.state_dict(), f'./model/{sub_folder}/{self.run_name}/decoder.pth')
 
         # Save performance data
-        with open(f'./model/{self.run_name}/train_object_performance.json', 'w') as json_file:
+        with open(f'./model/{sub_folder}/{self.run_name}/train_object_performance.json', 'w') as json_file:
             json.dump(self.train_object_performance, json_file)
-        with open(f'./model/{self.run_name}/val_object_performance.json', 'w') as json_file:
+        with open(f'./model/{sub_folder}/{self.run_name}/val_object_performance.json', 'w') as json_file:
             json.dump(self.val_object_performance, json_file)
         return
 
-    def load_model(self, folder_path):
+    def load_model(self, folder_path, by_acc=False):
         with open(f'{folder_path}/config.json', 'r') as file:
             config = json.load(file)
         self._unpack_config(config)
@@ -1035,12 +1040,12 @@ if __name__ == "__main__":
                     'apple', 'orange', 'strawberry', 'ripe_banana', 'unripe_banana', 
                     'lacrosse_ball', 'scotch_brite', 'fake_washer_stack', 'cork', 'rubber_spatula',
                     'baseball', 'plastic_measuring_cup', 'whiteboard_eraser', 'lifesaver_hard', 'cutting_board',
-                    'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white', 'hdmi_adapter'
+                    'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white'
                 ],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch32_ActuallyNoEstimations',
+        'run_name': 'Batch32_Estimations',
 
         # Training and model parameters
         'epochs'            : 60,
@@ -1059,20 +1064,28 @@ if __name__ == "__main__":
     assert config['img_style'] in ['diff', 'depth']
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
-    # # Train the model over some data
-    # base_run_name = config['run_name']
-    # for i in range(20):
-    #     config['run_name'] = f'{base_run_name}__t={i}'
+    # Train the model over some data
+    base_run_name = config['run_name']
+    for i in range(20):
+        config['run_name'] = f'{base_run_name}__t={i}'
 
-    #     if i == 0:
-    #         config['random_state'] = 27
-    #     if i > 0:
-    #         config['random_state'] = random.randint(1, 100)
+        if i == 0:
+            config['random_state'] = 27
+        if i == 1:
+            config['random_state'] = 25
+        if i == 2:
+            config['random_state'] = 74
+        if i == 3:
+            config['random_state'] = 12
+        if i == 4:
+            config['random_state'] = 4
+        else:
+            config['random_state'] = random.randint(1, 100)
 
-    #     train_modulus = ModulusModel(config, device=device)
-    #     train_modulus.train()
-
-    for run_name in ['Batch32_NoEstimations__t=12', 'Batch32_NoEstimations__t=15', 'Batch32_NoEstimations__t=8', 'Batch32_NoEstimations__t=11', 'Batch32_NoEstimations__t=6']:
         train_modulus = ModulusModel(config, device=device)
-        train_modulus.load_model(f'./model/{run_name}')
-        train_modulus.make_performance_plot()
+        train_modulus.train()
+
+    # for run_name in ['Batch32_NoEstimations__t=12', 'Batch32_NoEstimations__t=15', 'Batch32_NoEstimations__t=8', 'Batch32_NoEstimations__t=11', 'Batch32_NoEstimations__t=6']:
+    #     train_modulus = ModulusModel(config, device=device)
+    #     train_modulus.load_model(f'./model/by_acc/{run_name}')
+    #     train_modulus.make_performance_plot()
