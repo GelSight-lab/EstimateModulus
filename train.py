@@ -1048,7 +1048,7 @@ if __name__ == "__main__":
         'run_name': 'Batch32_Estimations',
 
         # Training and model parameters
-        'epochs'            : 60,
+        'epochs'            : 100,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'use_RNN'           : False, # True,
