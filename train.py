@@ -955,6 +955,7 @@ class ModulusModel():
 
         # Turn predictions into plotting data
         count = 0
+        log_acc_count = 0
         for obj in predictions.keys():
             if len(predictions[obj]) == 0: continue
             if obj in self.exclude: continue
@@ -963,9 +964,15 @@ class ModulusModel():
             for E in predictions[obj]:
                 if E > 0 and not math.isnan(E):
                     assert not math.isnan(E)
+
+                    if abs(np.log10(E) - np.log10(self.object_to_modulus[obj])) <= 1:
+                        log_acc_count += 1
+
                     material_prediction_data[mat].append(E)
                     material_label_data[mat].append(self.object_to_modulus[obj])
                     count += 1
+
+        print(log_acc_count / count)
 
         class NumpyEncoder(json.JSONEncoder):
             def default(self, obj):
@@ -1019,7 +1026,7 @@ if __name__ == "__main__":
         'use_markers': True,
         'use_force': True,
         'use_width': True,
-        'use_estimation': False,
+        'use_estimation': True,
         'use_transformations': True,
         'use_width_transforms': True,
         'exclude': [
@@ -1052,20 +1059,20 @@ if __name__ == "__main__":
     assert config['img_style'] in ['diff', 'depth']
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
-    # Train the model over some data
-    base_run_name = config['run_name']
-    for i in range(20):
-        config['run_name'] = f'{base_run_name}__t={i}'
+    # # Train the model over some data
+    # base_run_name = config['run_name']
+    # for i in range(20):
+    #     config['run_name'] = f'{base_run_name}__t={i}'
 
-        if i == 0:
-            config['random_state'] = 27
-        if i > 0:
-            config['random_state'] = random.randint(1, 100)
+    #     if i == 0:
+    #         config['random_state'] = 27
+    #     if i > 0:
+    #         config['random_state'] = random.randint(1, 100)
 
-        train_modulus = ModulusModel(config, device=device)
-        train_modulus.train()
-
-    # for run_name in ['Batch32_NoEstimations__t=12', 'Batch32_NoEstimations__t=15', 'Batch32_NoEstimations__t=8', 'Batch32_NoEstimations__t=11', 'Batch32_NoEstimations__t=6']:
     #     train_modulus = ModulusModel(config, device=device)
-    #     train_modulus.load_model(f'./model/{run_name}')
-    #     train_modulus.make_performance_plot()
+    #     train_modulus.train()
+
+    for run_name in ['Batch32_NoEstimations__t=12', 'Batch32_NoEstimations__t=15', 'Batch32_NoEstimations__t=8', 'Batch32_NoEstimations__t=11', 'Batch32_NoEstimations__t=6']:
+        train_modulus = ModulusModel(config, device=device)
+        train_modulus.load_model(f'./model/{run_name}')
+        train_modulus.make_performance_plot()
