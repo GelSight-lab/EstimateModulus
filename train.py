@@ -980,30 +980,30 @@ class ModulusModel():
         with open(f'./plotting_data/{self.run_name}/labels.json', 'w') as json_file:
             json.dump(material_label_data, json_file, cls=NumpyEncoder)
     
-        # Create plot
-        mpl.rcParams['font.family'] = ['serif']
-        mpl.rcParams['font.serif'] = ['Times New Roman']
-        plt.figure()
-        plt.plot([100, 10**12], [100, 10**12], 'k--', label='_')
-        plt.fill_between([100, 10**12], [10**1, 10**11], [10**3, 10**13], color='gray', alpha=0.2)
-        plt.xscale('log')
-        plt.yscale('log')
+        # # Create plot
+        # mpl.rcParams['font.family'] = ['serif']
+        # mpl.rcParams['font.serif'] = ['Times New Roman']
+        # plt.figure()
+        # plt.plot([100, 10**12], [100, 10**12], 'k--', label='_')
+        # plt.fill_between([100, 10**12], [10**1, 10**11], [10**3, 10**13], color='gray', alpha=0.2)
+        # plt.xscale('log')
+        # plt.yscale('log')
 
-        for mat in material_to_color.keys():
-            plt.plot(material_label_data[mat], material_prediction_data[mat], '.', markersize=10, color=material_to_color[mat], label=mat)
+        # for mat in material_to_color.keys():
+        #     plt.plot(material_label_data[mat], material_prediction_data[mat], '.', markersize=10, color=material_to_color[mat], label=mat)
 
-        plt.xlabel("Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
-        plt.ylabel("Predicted Modulus ($\\tilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
-        plt.xlim([100, 10**12])
-        plt.ylim([100, 10**12])
-        plt.title('Neural Network', fontsize=14)
+        # plt.xlabel("Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
+        # plt.ylabel("Predicted Modulus ($\\tilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
+        # plt.xlim([100, 10**12])
+        # plt.ylim([100, 10**12])
+        # plt.title('Neural Network', fontsize=14)
 
-        plt.legend()
-        plt.grid(True, which='both', linestyle='--', linewidth=0.25)
-        plt.tick_params(axis='both', which='both', labelsize=10)
+        # plt.legend()
+        # plt.grid(True, which='both', linestyle='--', linewidth=0.25)
+        # plt.tick_params(axis='both', which='both', labelsize=10)
 
-        plt.savefig('./figures/nn.png')
-        plt.show()
+        # plt.savefig('./figures/nn.png')
+        # plt.show()
         return
 
 
