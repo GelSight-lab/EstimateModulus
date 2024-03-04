@@ -440,7 +440,7 @@ class ModulusModel():
 
         # Extract object names as keys from data
         object_names = self.object_to_modulus.keys()
-        object_names = [x for x in object_names if x not in self.exclude]
+        object_names = [x for x in object_names if (x not in self.exclude and self.object_to_material[x] == 'Rubber')]
 
         # Extract corresponding elastic modulus labels for each object
         elastic_moduli = [self.object_to_modulus[x] for x in object_names]
@@ -1045,7 +1045,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch32_Estimations',
+        'run_name': 'RubberOnly_Batch32_Estimations',
 
         # Training and model parameters
         'epochs'            : 100,
