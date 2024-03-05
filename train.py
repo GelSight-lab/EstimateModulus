@@ -1080,7 +1080,7 @@ if __name__ == "__main__":
             config['random_state'] = 12
         if i == 4:
             config['random_state'] = 4
-        else:
+        if i > 4:
             config['random_state'] = random.randint(1, 100)
 
         train_modulus = ModulusModel(config, device=device)
