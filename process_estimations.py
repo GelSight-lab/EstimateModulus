@@ -131,7 +131,7 @@ for object_name in tqdm(objects):
             continue
 
         trial_number = eval(os.path.splitext(file_name)[0][file_name.find('t=')+2:])
-        file_path_prefix = f'{DATA_DIR}/estimations_new/{object_name}/t={str(trial_number)}'
+        file_path_prefix = f'{DATA_DIR}/estimations_new_new/{object_name}/t={str(trial_number)}'
 
         # Load data into estimator
         estimator._reset_data()
@@ -156,8 +156,8 @@ for object_name in tqdm(objects):
         # Remove stagnant gripper values across measurement frames
         estimator.interpolate_gripper_widths()
 
-        if not os.path.exists(f'{DATA_DIR}/estimations_new/{object_name}'):
-            os.mkdir(f'{DATA_DIR}/estimations_new/{object_name}')
+        if not os.path.exists(f'{DATA_DIR}/estimations_new_new/{object_name}'):
+            os.mkdir(f'{DATA_DIR}/estimations_new_new/{object_name}')
         if not os.path.exists(file_path_prefix):
             os.mkdir(file_path_prefix)
 

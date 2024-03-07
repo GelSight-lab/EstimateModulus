@@ -511,6 +511,16 @@ class EstimateModulus():
         self._d = np.array(d)
         self._F = np.array(F)
 
+
+        if len(d) == 0:
+            return 0
+        d_norm = self._d / self._d.max()
+        F_norm = self._F / self._F.max()
+        correlation_mask = (d_norm <= F_norm + 0.25)*(d_norm >= F_norm - 0.25)
+        x_data = self._x_data[correlation_mask]
+        y_data = self._y_data[correlation_mask]
+
+
         # Fit to modulus
         E = self.linear_coeff_fit(x_data, y_data)
 
@@ -614,6 +624,17 @@ class EstimateModulus():
         self._d = np.array(d)
         self._F = np.array(F)
 
+
+
+        if len(d) == 0:
+            return 0
+        d_norm = self._d / self._d.max()
+        F_norm = self._F / self._F.max()
+        correlation_mask = (d_norm <= F_norm + 0.25)*(d_norm >= F_norm - 0.25)
+        x_data = self._x_data[correlation_mask]
+        y_data = self._y_data[correlation_mask]
+
+
         # Fit to modulus
         E = self.linear_coeff_fit(x_data, y_data)
 
@@ -683,6 +704,16 @@ class EstimateModulus():
         self._a = np.array(a)
         self._d = np.array(d)
         self._F = np.array(F)
+
+
+        if len(d) == 0:
+            return 0
+        d_norm = self._d / self._d.max()
+        F_norm = self._F / self._F.max()
+        correlation_mask = (d_norm <= F_norm + 0.25)*(d_norm >= F_norm - 0.25)
+        x_data = self._x_data[correlation_mask]
+        y_data = self._y_data[correlation_mask]
+
 
         E_agg = self.linear_coeff_fit(x_data, y_data)
         E = (1/E_agg - 1/(10*self.E_gel))**(-1)
@@ -771,6 +802,17 @@ class EstimateModulus():
         self._a = np.array(a)
         self._d = np.array(d)
         self._F = np.array(F)
+        
+
+
+        if len(d) == 0:
+            return 0
+        d_norm = self._d / self._d.max()
+        F_norm = self._F / self._F.max()
+        correlation_mask = (d_norm <= F_norm + 0.25)*(d_norm >= F_norm - 0.25)
+        x_data = self._x_data[correlation_mask]
+        y_data = self._y_data[correlation_mask]
+
 
         E_agg = self.linear_coeff_fit(x_data, y_data)
         E = (1/E_agg - 1/(10*self.E_gel))**(-1)
@@ -873,6 +915,18 @@ class EstimateModulus():
         self._R = np.array(R)
         self._x_data = np.array(x_data)
         self._y_data = np.array(y_data)
+        
+
+
+        if len(d) == 0:
+            return 0
+        d_norm = self._d / self._d.max()
+        F_norm = self._F / self._F.max()
+        correlation_mask = (d_norm <= F_norm + 0.25)*(d_norm >= F_norm - 0.25)
+        x_data = self._x_data[correlation_mask]
+        y_data = self._y_data[correlation_mask]
+
+
 
         # Fit for E_star
         E_star = self.linear_coeff_fit(x_data, y_data)**(3/2)
@@ -999,6 +1053,17 @@ class EstimateModulus():
         self._R = np.array(R)
         self._x_data = np.array(x_data)
         self._y_data = np.array(y_data)
+        
+
+
+        if len(d) == 0:
+            return 0
+        d_norm = self._d / self._d.max()
+        F_norm = self._F / self._F.max()
+        correlation_mask = (d_norm <= F_norm + 0.25)*(d_norm >= F_norm - 0.25)
+        x_data = self._x_data[correlation_mask]
+        y_data = self._y_data[correlation_mask]
+        
 
         # Fit for E_star
         E_star = self.linear_coeff_fit(x_data, y_data)**(3/2)
