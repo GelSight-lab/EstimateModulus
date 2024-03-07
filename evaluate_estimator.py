@@ -277,6 +277,7 @@ def plot_performance(plot_title, prediction_dict, label_dict):
 if __name__ == '__main__':
 
     empty_estimate_dict     = { obj:[] for obj in object_to_modulus.keys() }
+    no_tactile_estimates    = { obj:[] for obj in object_to_modulus.keys() }
     naive_estimates         = []
     naive_configs           = []
     hertz_estimates         = []
@@ -304,6 +305,18 @@ if __name__ == '__main__':
 
         for trial_folder in os.listdir(f'{DATA_DIR}/estimations_new/{object_name}'):
             grasp_dir = f'{DATA_DIR}/estimations_new/{object_name}/{trial_folder}'
+
+
+
+
+            # Unpack no tactile estimation
+            with open(f'{grasp_dir}/no_tactile/0.pkl', 'rb') as file:
+                E_i = pickle.load(file)
+            no_tactile_estimates[object_name].append(E_i)
+
+
+
+
 
             # Unpack naive estimations for each config type
             i = 0
@@ -507,6 +520,8 @@ if __name__ == '__main__':
             ]
 
     # Find a linear scaling for each set of predictions to minimize error
+    print('Scaling no tactile...\n')
+    no_tactile_estimates = scale_predictions(no_tactile_estimates)
     print('Scaling naive...\n')
     naive_estimates      = [ scale_predictions(x) for x in naive_estimates ]
     print('Scaling Hertzian...\n')
@@ -533,6 +548,7 @@ if __name__ == '__main__':
     MDR_avg_estimates           = [ scale_predictions(x, quadratic=True) for x in MDR_avg_estimates ]
 
     # Evaluate each set of estimates and pick the best
+    no_tactile_stats = compute_estimation_stats(no_tactile_estimates)
     naive_stats = [
         compute_estimation_stats(naive_estimates[i]) for i in range(len(naive_estimates))
     ]
@@ -628,6 +644,8 @@ if __name__ == '__main__':
     MDR_material_log_diff, MDR_material_log_acc     = compute_material_performance(MDR_avg_estimates[MDR_avg_i_order[0]])
 
     # Create plots showing how well each method does
+    print('Plotting no tactile...')
+    plot_performance('No Tactile / Stiffness', no_tactile_estimates, object_to_modulus)
     print('Plotting naive...')
     plot_performance('Naive Elasticity Method', naive_estimates[naive_i_order[0]], object_to_modulus)
     print('Plotting Hertzian...')

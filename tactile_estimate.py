@@ -411,6 +411,24 @@ class EstimateModulus():
 
         return [radius, C[0], C[1], C[2]] # [ radius, center_x, center_y, center_z ]
     
+    # Compute stiffness the old fashioned way, without tactile sensing
+    def fit_modulus_no_tactile(self):
+        L0 = self.gripper_widths()[0]
+        gel_pad_area = (0.001 / PX_TO_MM)**2 * (self.depth_images()[0].shape[0]*self.depth_images()[0].shape[1]) # m^2
+
+        x_data = []
+        y_data = []
+        for i in range(len(self.forces())):
+            dL = L0 - self.gripper_widths()[i]
+            x_data.append(dL / L0)
+            y_data.append(self.forces()[i] / gel_pad_area)
+
+        self._x_data = np.array(x_data)
+        self._y_data = np.array(y_data)
+        E = self.linear_coeff_fit(x_data, y_data)
+
+        return E
+    
     # Naively estimate modulus based on gripper width change and aggregate modulus
     # (Notably requires both gripper width and tactile depth data)
     def fit_modulus_naive(self, contact_mask=None, depth_method=None, use_mean=True, use_ellipse_mask=True, \
@@ -474,7 +492,7 @@ class EstimateModulus():
             contact_area_i = (0.001 / PX_TO_MM)**2 * np.sum(mask)
             a_i = np.sqrt(contact_area_i / np.pi)
 
-            dL = -(self.gripper_widths()[i] + 2*d_i - L0)
+            dL = L0 - (self.gripper_widths()[i] + 2*d_i)
             dL_log.append(dL)
             cA_log.append(contact_area_i)
             if dL >= 0 and contact_area_i >= self.contact_area_threshold:
