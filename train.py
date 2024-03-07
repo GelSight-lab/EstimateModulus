@@ -29,6 +29,7 @@ torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
 DATA_DIR = '/media/mike/Elements/data'
+ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
 
@@ -175,7 +176,7 @@ class CustomDataset(Dataset):
         # Unpack modulus estimations
         if self.use_estimation:
             t = self.base_name[self.base_name.find('t=')+2:self.base_name.find('/aug')]
-            estimation_path = f'{DATA_DIR}/training_estimations/{object_name}/t={t}'
+            estimation_path = f'{DATA_DIR}/{ESTIMATION_DIR}/{object_name}/t={t}'
             with open(f'{estimation_path}/E.pkl', 'rb') as file:
                 self.x_estimations[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(1)
         
@@ -459,7 +460,7 @@ class ModulusModel():
             clean_paths_to_files = []
             for file_path in self.paths_to_files:
                 file_prefix = file_path[:file_path.find('aug=')-1]
-                file_prefix = file_prefix.replace(training_data_folder_name, 'training_estimations')
+                file_prefix = file_prefix.replace(training_data_folder_name, ESTIMATION_DIR)
                 if os.path.isfile(f'{file_prefix}/E.pkl'):
                     clean_paths_to_files.append(file_path)
             self.paths_to_files = clean_paths_to_files
@@ -1057,15 +1058,15 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'ExcludeTo200_Batch32_Estimations',
+        'run_name': 'NanEstimationsFiltered_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 60,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
-        'use_RNN'           : False, # True,
-        'img_feature_size'  : 64, # 32
-        'fwe_feature_size'  : 32, # 4,
+        'use_RNN'           : False,
+        'img_feature_size'  : 64,
+        'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'learning_rate'     : 5e-5, # (for estimations), # 1e-5 (for no estimations)
@@ -1097,7 +1098,7 @@ if __name__ == "__main__":
         train_modulus = ModulusModel(config, device=device)
         train_modulus.train()
 
-    # for run_name in ['Batch32_NoEstimations__t=12', 'Batch32_NoEstimations__t=15', 'Batch32_NoEstimations__t=8', 'Batch32_NoEstimations__t=11', 'Batch32_NoEstimations__t=6']:
+    # for run_name in ['ExcludeTo200_Batch32_Estimations__t=19', 'ExcludeTo200_Batch32_Estimations__t=15']:
     #     train_modulus = ModulusModel(config, device=device)
-    #     train_modulus.load_model(f'./model/by_acc/{run_name}')
+    #     train_modulus.load_model(f'./model/by_loss/{run_name}')
     #     train_modulus.make_performance_plot()
