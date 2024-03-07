@@ -1041,12 +1041,23 @@ if __name__ == "__main__":
                     'apple', 'orange', 'strawberry', 'ripe_banana', 'unripe_banana', 
                     'lacrosse_ball', 'scotch_brite', 'fake_washer_stack', 'cork', 'rubber_spatula',
                     'baseball', 'plastic_measuring_cup', 'whiteboard_eraser', 'lifesaver_hard', 'cutting_board',
-                    'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white'
+                    'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white',
+                    
+                    # Decrease to 200
+                    'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
+                    'gel', 'gel_big', 'gel_double_wide', 'wooden_spoon', 'metal_fork', 'metal_spoon', 'metal_knife',
+                    'key_ring', 'ring', 'white_bottle_cap', 'blue_bottle_cap', 'red_foam_brick', 'buckle', 'peeler',
+                    'insole', 'rubber_spatula', 'pi_usb_cable', 'hdmi_adapter', 'mechanical_pencil', 'red_electrical_piece',
+                    'heat_insert', 'iphone_brick', 'rubber_band', 'rubber_band_bundle', 'molded_rectangle', 'molded_cylinder_wide',
+                    'motorcycle_eraser', 'tennis_ball', 'mousepad', 'charger_cable', 'power_cable', 'wooden_sheet', 'chopstick', 
+                    'orange_elastic_ball', 'rubber_pancake', 'magnetic_whiteboard_eraser', 'paper_towel_bundle', 'half_rose_eraser',
+                    'fake_half_rose', 'half_bumpy_ball_eraser', 'golf_ball', 'watermelon_eraser', 'strawberry_eraser',
+                    'lion_eraser', 'crab_eraser', 'zebra_eraser', 'fox_eraser', 'bear_eraser', 'bee_eraser', 'banana_eraser', 'frog_eraser'
                 ],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Batch32_Estimations',
+        'run_name': 'ExcludeTo200_Batch32_Estimations',
 
         # Training and model parameters
         'epochs'            : 60,
