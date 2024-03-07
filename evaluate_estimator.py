@@ -299,12 +299,12 @@ if __name__ == '__main__':
     MDR_both_sides_estimates       = []
     MDR_both_sides_configs         = []
 
-    for object_name in tqdm(sorted(os.listdir(f'{DATA_DIR}/estimations_new'))):
+    for object_name in tqdm(sorted(os.listdir(f'{DATA_DIR}/estimations_new_new'))):
         if object_name.count('.') > 0: continue
         if object_name in EXCLUDE: continue
 
-        for trial_folder in os.listdir(f'{DATA_DIR}/estimations_new/{object_name}'):
-            grasp_dir = f'{DATA_DIR}/estimations_new/{object_name}/{trial_folder}'
+        for trial_folder in os.listdir(f'{DATA_DIR}/estimations_new_new/{object_name}'):
+            grasp_dir = f'{DATA_DIR}/estimations_new_new/{object_name}/{trial_folder}'
 
 
 
@@ -495,12 +495,20 @@ if __name__ == '__main__':
                     MDR_both_sides_estimates[i][object_name].append(E_i)
                     i += 1
 
+    def avg_estimate(estimate, estimate_other):
+        if estimate > 0 and estimate_other > 0:
+            return (estimate + estimate_other)/2       
+        elif estimate > 0:
+            return estimate
+        else:
+            return estimate_other
+
     naive_avg_estimates = []
     for i in range(len(naive_estimates)):
         naive_avg_estimates.append(copy.deepcopy(empty_estimate_dict))
         for object_name in MDR_estimates[i].keys():
             naive_avg_estimates[-1][object_name] = [ 
-                (naive_estimates[i][object_name][j] + naive_other_estimates[i][object_name][j])/2 for j in range(len(naive_estimates[i][object_name]))
+                avg_estimate(naive_estimates[i][object_name][j], naive_other_estimates[i][object_name][j]) for j in range(len(naive_estimates[i][object_name]))
             ]
     
     hertz_avg_estimates = []
@@ -508,7 +516,7 @@ if __name__ == '__main__':
         hertz_avg_estimates.append(copy.deepcopy(empty_estimate_dict))
         for object_name in MDR_estimates[i].keys():
             hertz_avg_estimates[-1][object_name] = [ 
-                (hertz_estimates[i][object_name][j] + hertz_other_estimates[i][object_name][j])/2 for j in range(len(hertz_estimates[i][object_name]))
+                avg_estimate(hertz_estimates[i][object_name][j], hertz_other_estimates[i][object_name][j]) for j in range(len(hertz_estimates[i][object_name]))
             ]
     
     MDR_avg_estimates = []
@@ -516,7 +524,7 @@ if __name__ == '__main__':
         MDR_avg_estimates.append(copy.deepcopy(empty_estimate_dict))
         for object_name in MDR_estimates[i].keys():
             MDR_avg_estimates[-1][object_name] = [ 
-                (MDR_estimates[i][object_name][j] + MDR_other_estimates[i][object_name][j])/2 for j in range(len(MDR_estimates[i][object_name]))
+                avg_estimate(MDR_estimates[i][object_name][j], MDR_other_estimates[i][object_name][j]) for j in range(len(MDR_estimates[i][object_name]))
             ]
 
     # Find a linear scaling for each set of predictions to minimize error
@@ -645,7 +653,7 @@ if __name__ == '__main__':
 
     # Create plots showing how well each method does
     print('Plotting no tactile...')
-    plot_performance('No Tactile / Stiffness', no_tactile_estimates, object_to_modulus)
+    plot_performance('No Tactile', no_tactile_estimates, object_to_modulus)
     print('Plotting naive...')
     plot_performance('Naive Elasticity Method', naive_estimates[naive_i_order[0]], object_to_modulus)
     print('Plotting Hertzian...')
@@ -672,7 +680,22 @@ if __name__ == '__main__':
     plot_performance('MDR (avg of sides)', MDR_avg_estimates[MDR_avg_i_order[0]], object_to_modulus)
     print('Done.')
     
-    # materials = ['Foam', 'Rubber', 'Plastic', 'Rubber', 'Wood', 'Metal', 'Ceramic', 'Glass', 'Paper', 'Food']
+    materials = ['Foam', 'Rubber', 'Plastic', 'Rubber', 'Wood', 'Metal', 'Ceramic', 'Glass', 'Paper', 'Food']
+    
+    no_tactile_material_predictions = { x:[] for x in materials }
+    for object_name in no_tactile_estimates.keys():   
+        mat = object_to_material[object_name]
+        no_tactile_material_predictions[mat].extend(no_tactile_estimates[object_name])
+    
+    class NumpyEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, np.float32):
+                return float(obj)
+            return json.JSONEncoder.default(self, obj)
+
+    with open(f'./plotting_data/no_tactile_predictions.json', 'w') as json_file:
+        json.dump(no_tactile_material_predictions, json_file, cls=NumpyEncoder)
+
     # naive_material_predictions = { x:[] for x in materials }
     # hertz_material_predictions = { x:[] for x in materials }
     # MDR_material_predictions = { x:[] for x in materials }
@@ -719,41 +742,32 @@ if __name__ == '__main__':
     # with open(f'./plotting_data/MDR_labels.json', 'w') as json_file:
     #     json.dump(MDR_material_labels, json_file, cls=NumpyEncoder)
 
-    # # Write training estimations
-    # for object_name in naive_estimates[naive_i_order[0]].keys():
-    #     if object_name in EXCLUDE: continue
-    #     if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}'):
-    #         os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}')
+    # Write training estimations
+    skipped = 0; total = 0
+    for object_name in naive_avg_estimates[naive_avg_i_order[0]].keys():
+        if object_name in EXCLUDE: continue
+        if not os.path.exists(f'{DATA_DIR}/training_estimations_nan_filtered/{object_name}'):
+            os.mkdir(f'{DATA_DIR}/training_estimations_nan_filtered/{object_name}')
 
-    #     for t in range(len(naive_estimates[naive_i_order[0]][object_name])):
+        for t in range(len(naive_avg_estimates[naive_avg_i_order[0]][object_name])):
             
-    #         E_naive = closest_non_nan_element(naive_estimates[naive_i_order[0]][object_name], t)
-    #         E_hertz = closest_non_nan_element(hertz_estimates[hertz_i_order[0]][object_name], t)
-    #         E_MDR = closest_non_nan_element(MDR_estimates[MDR_i_order[0]][object_name], t)
-    #         assert E_naive > 0 and E_hertz > 0 and E_MDR > 0
+            total += 1
+            if (not naive_avg_estimates[naive_avg_i_order[0]][object_name][t] > 0) or \
+                (not naive_avg_estimates[naive_avg_i_order[0]][object_name][t] > 0) or \
+                (not naive_avg_estimates[naive_avg_i_order[0]][object_name][t] > 0):
+                skipped += 1
+                continue
 
-    #         if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}/t={t}'):
-    #             os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}/t={t}')
+            E_naive = closest_non_nan_element(naive_avg_estimates[naive_avg_i_order[0]][object_name], t)
+            E_hertz = closest_non_nan_element(hertz_avg_estimates[hertz_avg_i_order[0]][object_name], t)
+            E_MDR = closest_non_nan_element(MDR_avg_estimates[MDR_avg_i_order[0]][object_name], t)
+            assert E_naive > 0 and E_hertz > 0 and E_MDR > 0
 
-    #         E_estimates = np.array([E_naive, E_hertz, E_MDR])
-    #         with open(f'{DATA_DIR}/training_estimations/{object_name}/t={t}/E.pkl', 'wb') as file:
-    #             pickle.dump(E_estimates, file)
+            if not os.path.exists(f'{DATA_DIR}/training_estimations_nan_filtered/{object_name}/t={t}'):
+                os.mkdir(f'{DATA_DIR}/training_estimations_nan_filtered/{object_name}/t={t}')
 
-    # for object_name in naive_avg_estimates[naive_avg_i_order[0]].keys():
-    #     if object_name in EXCLUDE: continue
-    #     if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}'):
-    #         os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}')
+            E_estimates = np.array([E_naive, E_hertz, E_MDR])
+            with open(f'{DATA_DIR}/training_estimations_nan_filtered/{object_name}/t={t}/E.pkl', 'wb') as file:
+                pickle.dump(E_estimates, file)
 
-    #     for t in range(len(naive_avg_estimates[naive_avg_i_order[0]][object_name])):
-            
-    #         E_naive = closest_non_nan_element(naive_avg_estimates[naive_avg_i_order[0]][object_name], t)
-    #         E_hertz = closest_non_nan_element(hertz_avg_estimates[hertz_avg_i_order[0]][object_name], t)
-    #         E_MDR = closest_non_nan_element(MDR_avg_estimates[MDR_avg_i_order[0]][object_name], t)
-    #         assert E_naive > 0 and E_hertz > 0 and E_MDR > 0
-
-    #         if not os.path.exists(f'{DATA_DIR}/training_estimations/{object_name}/t={t}'):
-    #             os.mkdir(f'{DATA_DIR}/training_estimations/{object_name}/t={t}')
-
-    #         E_estimates = np.array([E_naive, E_hertz, E_MDR])
-    #         with open(f'{DATA_DIR}/training_estimations/{object_name}/t={t}/E.pkl', 'wb') as file:
-    #             pickle.dump(E_estimates, file)
+    print('done')
