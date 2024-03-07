@@ -680,22 +680,9 @@ if __name__ == '__main__':
     plot_performance('MDR (avg of sides)', MDR_avg_estimates[MDR_avg_i_order[0]], object_to_modulus)
     print('Done.')
     
-    materials = ['Foam', 'Rubber', 'Plastic', 'Rubber', 'Wood', 'Metal', 'Ceramic', 'Glass', 'Paper', 'Food']
+    # materials = ['Foam', 'Rubber', 'Plastic', 'Rubber', 'Wood', 'Metal', 'Ceramic', 'Glass', 'Paper', 'Food']
     
-    no_tactile_material_predictions = { x:[] for x in materials }
-    for object_name in no_tactile_estimates.keys():   
-        mat = object_to_material[object_name]
-        no_tactile_material_predictions[mat].extend(no_tactile_estimates[object_name])
-    
-    class NumpyEncoder(json.JSONEncoder):
-        def default(self, obj):
-            if isinstance(obj, np.float32):
-                return float(obj)
-            return json.JSONEncoder.default(self, obj)
-
-    with open(f'./plotting_data/no_tactile_predictions.json', 'w') as json_file:
-        json.dump(no_tactile_material_predictions, json_file, cls=NumpyEncoder)
-
+    # no_tactile_material_predictions = { x:[] for x in materials }
     # naive_material_predictions = { x:[] for x in materials }
     # hertz_material_predictions = { x:[] for x in materials }
     # MDR_material_predictions = { x:[] for x in materials }
@@ -703,10 +690,23 @@ if __name__ == '__main__':
     # hertz_material_labels = { x:[] for x in materials }
     # MDR_material_labels = { x:[] for x in materials }
 
-    # for object_name in tqdm(os.listdir('./data/training_estimations')):   
-    #     for folder_name in os.listdir(f'./data/training_estimations/{object_name}'):
+    # for object_name in no_tactile_estimates.keys():   
+    #     mat = object_to_material[object_name]
+    #     no_tactile_material_predictions[mat].extend(no_tactile_estimates[object_name])
+    
+    # class NumpyEncoder(json.JSONEncoder):
+    #     def default(self, obj):
+    #         if isinstance(obj, np.float32):
+    #             return float(obj)
+    #         return json.JSONEncoder.default(self, obj)
+
+    # with open(f'./plotting_data/no_tactile_predictions.json', 'w') as json_file:
+    #     json.dump(no_tactile_material_predictions, json_file, cls=NumpyEncoder)
+
+    # for object_name in tqdm(os.listdir('./data/training_estimations_nan_filtered')):   
+    #     for folder_name in os.listdir(f'./data/training_estimations_nan_filtered/{object_name}'):
     #         try:
-    #             with open(f'./data/training_estimations/{object_name}/{folder_name}/E.pkl', 'rb') as file:
+    #             with open(f'./data/training_estimations_nan_filtered/{object_name}/{folder_name}/E.pkl', 'rb') as file:
     #                 E = pickle.load(file)
 
     #             if not (object_to_material[object_name] in materials): continue
@@ -742,32 +742,32 @@ if __name__ == '__main__':
     # with open(f'./plotting_data/MDR_labels.json', 'w') as json_file:
     #     json.dump(MDR_material_labels, json_file, cls=NumpyEncoder)
 
-    # Write training estimations
-    skipped = 0; total = 0
-    for object_name in naive_avg_estimates[naive_avg_i_order[0]].keys():
-        if object_name in EXCLUDE: continue
-        if not os.path.exists(f'{DATA_DIR}/training_estimations_nan_filtered/{object_name}'):
-            os.mkdir(f'{DATA_DIR}/training_estimations_nan_filtered/{object_name}')
+    # # Write training estimations
+    # skipped = 0; total = 0
+    # for object_name in naive_avg_estimates[naive_avg_i_order[0]].keys():
+    #     if object_name in EXCLUDE: continue
+    #     if not os.path.exists(f'{DATA_DIR}/training_estimations_nan_filtered/{object_name}'):
+    #         os.mkdir(f'{DATA_DIR}/training_estimations_nan_filtered/{object_name}')
 
-        for t in range(len(naive_avg_estimates[naive_avg_i_order[0]][object_name])):
+    #     for t in range(len(naive_avg_estimates[naive_avg_i_order[0]][object_name])):
             
-            total += 1
-            if (not naive_avg_estimates[naive_avg_i_order[0]][object_name][t] > 0) or \
-                (not naive_avg_estimates[naive_avg_i_order[0]][object_name][t] > 0) or \
-                (not naive_avg_estimates[naive_avg_i_order[0]][object_name][t] > 0):
-                skipped += 1
-                continue
+    #         total += 1
+    #         if (not naive_avg_estimates[naive_avg_i_order[0]][object_name][t] > 0) or \
+    #             (not naive_avg_estimates[naive_avg_i_order[0]][object_name][t] > 0) or \
+    #             (not naive_avg_estimates[naive_avg_i_order[0]][object_name][t] > 0):
+    #             skipped += 1
+    #             continue
 
-            E_naive = closest_non_nan_element(naive_avg_estimates[naive_avg_i_order[0]][object_name], t)
-            E_hertz = closest_non_nan_element(hertz_avg_estimates[hertz_avg_i_order[0]][object_name], t)
-            E_MDR = closest_non_nan_element(MDR_avg_estimates[MDR_avg_i_order[0]][object_name], t)
-            assert E_naive > 0 and E_hertz > 0 and E_MDR > 0
+    #         E_naive = closest_non_nan_element(naive_avg_estimates[naive_avg_i_order[0]][object_name], t)
+    #         E_hertz = closest_non_nan_element(hertz_avg_estimates[hertz_avg_i_order[0]][object_name], t)
+    #         E_MDR = closest_non_nan_element(MDR_avg_estimates[MDR_avg_i_order[0]][object_name], t)
+    #         assert E_naive > 0 and E_hertz > 0 and E_MDR > 0
 
-            if not os.path.exists(f'{DATA_DIR}/training_estimations_nan_filtered/{object_name}/t={t}'):
-                os.mkdir(f'{DATA_DIR}/training_estimations_nan_filtered/{object_name}/t={t}')
+    #         if not os.path.exists(f'{DATA_DIR}/training_estimations_nan_filtered/{object_name}/t={t}'):
+    #             os.mkdir(f'{DATA_DIR}/training_estimations_nan_filtered/{object_name}/t={t}')
 
-            E_estimates = np.array([E_naive, E_hertz, E_MDR])
-            with open(f'{DATA_DIR}/training_estimations_nan_filtered/{object_name}/t={t}/E.pkl', 'wb') as file:
-                pickle.dump(E_estimates, file)
+    #         E_estimates = np.array([E_naive, E_hertz, E_MDR])
+    #         with open(f'{DATA_DIR}/training_estimations_nan_filtered/{object_name}/t={t}/E.pkl', 'wb') as file:
+    #             pickle.dump(E_estimates, file)
 
-    print('done')
+    # print('done')
