@@ -297,6 +297,13 @@ class ModulusModel():
         if self.gamma is not None:
             self.scheduler  = lr_scheduler.StepLR(self.optimizer, step_size=self.lr_step_size, gamma=self.gamma)
 
+        # Normalize based on mean and std computed over the dataset
+        if self.n_channels == 3:
+            self.image_normalization = torchvision.transforms.Normalize( \
+                                            [0.49638007, 0.49770336, 0.49385751], \
+                                            [0.04634926, 0.06181679, 0.07152624] \
+                                        )
+
         if self.use_transformations:
             self.random_transformer = torchvision.transforms.Compose([
                     torchvision.transforms.RandomHorizontalFlip(0.5),
@@ -557,15 +564,17 @@ class ModulusModel():
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
                 
+            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
+
+            # Normalize images
+            if self.n_channels == 3:
+                x_frames = self.image_normalization(x_frames)
+
             # Apply random transformations for training
             if self.use_transformations:
-                x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
                 x_frames = self.random_transformer(x_frames)
-                x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
-
-                # x_frames_other = x_frames_other.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
-                # x_frames_other = self.random_transformer(x_frames_other)
-                # x_frames_other = x_frames_other.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
+                
+            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
             if self.use_RNN:
                 # Concatenate features across frames into a single vector
@@ -680,6 +689,14 @@ class ModulusModel():
             'batch_count': 0,
         }
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
+                
+            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
+
+            # Normalize images
+            if self.n_channels == 3:
+                x_frames = self.image_normalization(x_frames)
+                
+            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
                         
             if self.use_RNN:
                 # Concatenate features across frames into a single vector
@@ -1058,7 +1075,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NanEstimationsFiltered_ExcludeTo200',
+        'run_name': 'Normalized_NanEstimationsFiltered_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
