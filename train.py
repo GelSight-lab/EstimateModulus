@@ -309,7 +309,7 @@ class ModulusModel():
                     torchvision.transforms.RandomHorizontalFlip(0.5),
                     torchvision.transforms.RandomVerticalFlip(0.5),
                     # torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.0),
-                    torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.975, 1.0), antialias=True),
+                    # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.975, 1.0), antialias=True),
                     # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
                 ])
 
@@ -574,9 +574,9 @@ class ModulusModel():
             # Apply random transformations for training
             if self.use_transformations:
                 x_frames = self.random_transformer(x_frames) # Apply flips and brightness
-                # x_frames = x_frames * (
-                #         torch.rand((self.batch_size*self.n_frames, 1, self.img_size[0], self.img_size[1]), device=device) < self.random_mask_pct
-                #     ) # Randomly mask some of the image
+                x_frames = x_frames * (
+                        torch.rand((self.batch_size*self.n_frames, 1, self.img_size[0], self.img_size[1]), device=device) < self.random_mask_pct
+                    ) # Randomly mask some of the image
                 
             x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
@@ -1079,7 +1079,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoColorJitter_Cropping_Normalized_NanEstimationsFiltered_ExcludeTo200',
+        'run_name': 'RandomMasking_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 60,
