@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -400,6 +400,7 @@ class ModulusModel():
         self.fwe_feature_size   = config['fwe_feature_size']
         self.val_pct            = config['val_pct']
         self.dropout_pct        = config['dropout_pct']
+        self.random_mask_pct    = config['random_mask_pct']
         self.learning_rate      = config['learning_rate']
         self.gamma              = config['gamma']
         self.lr_step_size       = config['lr_step_size']
@@ -566,13 +567,16 @@ class ModulusModel():
                 
             x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
 
-            # Normalize images
-            if self.n_channels == 3:
-                x_frames = self.image_normalization(x_frames)
+            # # Normalize images
+            # if self.n_channels == 3:
+            #     x_frames = self.image_normalization(x_frames)
 
             # Apply random transformations for training
             if self.use_transformations:
-                x_frames = self.random_transformer(x_frames)
+                x_frames = self.random_transformer(x_frames) # Apply flips and brightness
+                # x_frames = x_frames * (
+                #         torch.rand((self.batch_size*self.n_frames, 1, self.img_size[0], self.img_size[1]), device=device) < self.random_mask_pct
+                #     ) # Randomly mask some of the image
                 
             x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
@@ -690,13 +694,13 @@ class ModulusModel():
         }
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
                 
-            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
+            # x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
 
-            # Normalize images
-            if self.n_channels == 3:
-                x_frames = self.image_normalization(x_frames)
+            # # Normalize images
+            # if self.n_channels == 3:
+            #     x_frames = self.image_normalization(x_frames)
                 
-            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
+            # x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
                         
             if self.use_RNN:
                 # Concatenate features across frames into a single vector
@@ -1075,7 +1079,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Normalized_NanEstimationsFiltered_ExcludeTo200',
+        'run_name': 'NotNormalized_NanEstimationsFiltered_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
@@ -1086,6 +1090,7 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
+        'random_mask_pct'   : 0.3,
         'learning_rate'     : 5e-5, # (for estimations), # 1e-5 (for no estimations)
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
