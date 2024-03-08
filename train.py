@@ -567,9 +567,9 @@ class ModulusModel():
                 
             x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
 
-            # # Normalize images
-            # if self.n_channels == 3:
-            #     x_frames = self.image_normalization(x_frames)
+            # Normalize images
+            if self.n_channels == 3:
+                x_frames = self.image_normalization(x_frames)
 
             # Apply random transformations for training
             if self.use_transformations:
@@ -694,13 +694,13 @@ class ModulusModel():
         }
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
                 
-            # x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
+            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
 
-            # # Normalize images
-            # if self.n_channels == 3:
-            #     x_frames = self.image_normalization(x_frames)
+            # Normalize images
+            if self.n_channels == 3:
+                x_frames = self.image_normalization(x_frames)
                 
-            # x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
+            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
                         
             if self.use_RNN:
                 # Concatenate features across frames into a single vector
@@ -1079,10 +1079,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NotNormalized_NanEstimationsFiltered_ExcludeTo200',
+        'run_name': 'Normalized_NanEstimationsFiltered_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 80,
+        'epochs'            : 60,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'use_RNN'           : False,
