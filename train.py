@@ -1079,7 +1079,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoEntryDropout_Normalized_ExcludeTo200',
+        'run_name': 'Layer4Decoder_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 60,
@@ -1101,20 +1101,13 @@ if __name__ == "__main__":
 
     # Train the model over some data
     base_run_name = config['run_name']
+    chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
     for i in range(20):
         config['run_name'] = f'{base_run_name}__t={i}'
 
-        if i == 0:
-            config['random_state'] = 27
-        if i == 1:
-            config['random_state'] = 25
-        if i == 2:
-            config['random_state'] = 74
-        if i == 3:
-            config['random_state'] = 12
-        if i == 4:
-            config['random_state'] = 4
-        if i > 4:
+        if i < len(chosen_random_states):
+            config['random_state'] = chosen_random_states[i]
+        else:
             config['random_state'] = random.randint(1, 100)
 
         train_modulus = ModulusModel(config, device=device)
