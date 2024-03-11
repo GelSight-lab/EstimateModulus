@@ -981,7 +981,7 @@ if __name__ == "__main__":
         'run_name': 'RandomMaskFeatures0.3PCT_Normalized_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 200,
+        'epochs'            : 300,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'img_feature_size'  : 64,
