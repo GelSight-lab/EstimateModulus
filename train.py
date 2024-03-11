@@ -46,6 +46,7 @@ def list_files(folder_path, file_paths, config):
 
 class CustomDataset(Dataset):
     def __init__(self, config, paths_to_files, labels, normalization_values, \
+                 validation_dataset=False,
                  frame_tensor=torch.zeros((N_FRAMES, 3, WARPED_CROPPED_IMG_SIZE[0], WARPED_CROPPED_IMG_SIZE[1])),
                  force_tensor=torch.zeros((N_FRAMES, 1)),
                  width_tensor=torch.zeros((N_FRAMES, 1)),
@@ -76,27 +77,14 @@ class CustomDataset(Dataset):
         self.gamma              = config['gamma']
         self.random_state       = config['random_state']
 
+        self.validation_dataset = validation_dataset
         self.normalization_values = normalization_values
-        
         self.input_paths = paths_to_files
         self.normalized_modulus_labels = labels
-
-        # if self.use_transformations:
-        #     self.input_paths = 4*paths_to_files
-        #     self.normalized_modulus_labels = 4*labels
-        #     self.flip_horizontal = [i > 2*len(paths_to_files) for i in range(len(self.input_paths))]
-        #     self.flip_vertical = [i % 2 == 1 for i in range(len(self.input_paths))]
-        # else:
-        #     self.input_paths = paths_to_files
-        #     self.normalized_modulus_labels = labels
-        #     self.flip_horizontal = [False for i in range(len(self.input_paths))]
-        #     self.flip_vertical = [False for i in range(len(self.input_paths))]
 
         if self.use_width_transforms:
             self.input_paths = 2*self.input_paths
             self.normalized_modulus_labels = 2*self.normalized_modulus_labels
-            # self.flip_horizontal = 2*self.flip_horizontal
-            # self.flip_vertical = 2*self.flip_vertical
             self.noise_force = [ i > len(self.input_paths)/2 and i % 2 == 1 for i in range(len(self.input_paths)) ]
             self.noise_width = [ i > len(self.input_paths)/2 for i in range(len(self.input_paths)) ]
 
@@ -135,14 +123,6 @@ class CustomDataset(Dataset):
         #     elif self.img_style == 'depth':
         #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
         #         self.x_frames_other /= self.normalization_values['max_depth']
-                
-        # # Flip the data if desired
-        # if self.use_transformations and self.flip_horizontal[idx]:
-        #     self.x_frames = torch.flip(self.x_frames, dims=(2,))
-        #     # self.x_frames_other = torch.flip(self.x_frames_other, dims=(2,))
-        # if self.use_transformations and self.flip_vertical[idx]:
-        #     self.x_frames = torch.flip(self.x_frames, dims=(3,))
-        #     # self.x_frames_other = torch.flip(self.x_frames_other, dims=(3,))
 
         # Unpack force measurements
         self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
@@ -501,6 +481,7 @@ class ModulusModel():
         kwargs = {'num_workers': 0, 'pin_memory': False, 'drop_last': True}
         self.train_dataset  = CustomDataset(self.config, x_train, y_train,
                                             self.normalization_values,
+                                            validation_dataset=False,
                                             frame_tensor=empty_frame_tensor, 
                                             force_tensor=empty_force_tensor,
                                             width_tensor=empty_width_tensor,
@@ -508,6 +489,7 @@ class ModulusModel():
                                             label_tensor=empty_label_tensor)
         self.val_dataset    = CustomDataset(self.config, x_val, y_val,
                                             self.normalization_values,
+                                            validation_dataset=True,
                                             frame_tensor=empty_frame_tensor, 
                                             force_tensor=empty_force_tensor,
                                             width_tensor=empty_width_tensor,
