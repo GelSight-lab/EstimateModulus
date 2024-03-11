@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -241,16 +241,16 @@ class ModulusModel():
             self.estimation_decoder = EstimationDecoderFC(input_dim=6, output_dim=1) if self.use_estimation else None
 
             # Compute the size of the input to the decoder based on config
-            decoder_input_size = self.n_frames * self.img_feature_size
-            # decoder_input_size += self.n_frames * self.img_feature_size
+            self.decoder_input_size = self.n_frames * self.img_feature_size
+            # self.decoder_input_size += self.n_frames * self.img_feature_size
             if self.use_force: 
-                decoder_input_size += self.fwe_feature_size
+                self.decoder_input_size += self.fwe_feature_size
             if self.use_width: 
-                decoder_input_size += self.fwe_feature_size
+                self.decoder_input_size += self.fwe_feature_size
             if self.use_estimation:
-                self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=3, dropout_pct=self.dropout_pct)
+                self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=3, dropout_pct=self.dropout_pct)
             else:
-                self.decoder = DecoderFC(input_dim=decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
+                self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
 
         # Send models to device
         self.video_encoder.to(self.device)
@@ -620,14 +620,20 @@ class ModulusModel():
                     features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
                 if self.use_width: # Width measurements
                     features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
+            
+            features = torch.cat(features, -1)
+
+            # Randomly mask features
+            features = features * (
+                        torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
+                    )
 
             if self.use_RNN:
                 # Send aggregated features to the RNN decoder
-                features = torch.cat(features, -1).permute((0, 2, 1))
+                features = features.permute((0, 2, 1))
                 outputs = self.decoderRNN(features)[:, -1, :]
             else:
-                # Send aggregated features to the FC decoder
-                features = torch.cat(features, -1)
+                # Send aggregated features to the FC decode
                 outputs = self.decoder(features)
 
             if self.use_estimation:
@@ -1079,7 +1085,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Layer4Decoder_Normalized_ExcludeTo200',
+        'run_name': 'RandomMaskFeatures0.3PCT_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 60,
