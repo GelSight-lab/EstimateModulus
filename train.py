@@ -117,6 +117,11 @@ class CustomDataset(Dataset):
                 self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
                 self.x_frames /= self.normalization_values['max_depth']
 
+        
+        if random.random() < 0.5 and (not self.validation_dataset):
+            self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0
+
+
         # with open(self.input_paths[idx].replace('_other', ''), 'rb') as file:
         #     if self.img_style == 'diff':
         #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
@@ -527,10 +532,7 @@ class ModulusModel():
 
             # Apply random transformations for training
             if self.use_transformations:
-                x_frames = self.random_transformer(x_frames) # Apply flips and brightness
-                # x_frames = x_frames * (
-                #         torch.rand((self.batch_size*self.n_frames, 1, self.img_size[0], self.img_size[1]), device=device) < self.random_mask_pct
-                #     ) # Randomly mask some of the image
+                x_frames = self.random_transformer(x_frames) # Apply V/H flips
                 
             x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
@@ -556,10 +558,10 @@ class ModulusModel():
             
             features = torch.cat(features, -1)
 
-            # Randomly mask features
-            features = features * (
-                        torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
-                    )
+            # # Randomly mask features
+            # features = features * (
+            #             torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
+            #         )
 
             # Send aggregated features to the FC decode
             outputs = self.decoder(features)
@@ -978,7 +980,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'RandomMaskFeatures0.3PCT_Normalized_ExcludeTo200',
+        'run_name': 'RandomMaskWholeFrame_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 300,
@@ -989,7 +991,7 @@ if __name__ == "__main__":
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'random_mask_pct'   : 0.3,
-        'learning_rate'     : 1e-5, # 5e-5 # (for estimations), # 1e-5 (for no estimations)
+        'learning_rate'     : 5e-5, # (for estimations), # 1e-5 (for no estimations)
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 27,
