@@ -126,9 +126,9 @@ class CustomDataset(Dataset):
                 self.x_frames /= self.normalization_values['max_depth']
 
         
-        # Random block out images for training
-        if random.random() < 0.5 and (not self.validation_dataset):
-            self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0
+        # # Random block out images for training
+        # if random.random() < 0.5 and (not self.validation_dataset):
+        #     self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0
 
         # # Random mask across all channels
         # self.x_frames = self.x_frames * (
