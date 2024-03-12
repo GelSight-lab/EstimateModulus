@@ -52,6 +52,7 @@ class CustomDataset(Dataset):
                  width_tensor=torch.zeros((N_FRAMES, 1)),
                  estimation_tensor=torch.zeros((3, 1)),
                  label_tensor=torch.zeros((1, 1)),
+                 frame_padding=0
         ):
         # Data parameters 
         self.data_dir = config['data_dir']
@@ -59,6 +60,7 @@ class CustomDataset(Dataset):
         self.img_size = config['img_size']
         self.img_style = config['img_style']
         self.n_channels = config['n_channels']
+        self.frame_padding = frame_padding
         self.use_markers = config['use_markers']
         self.use_force = config['use_force']
         self.use_width = config['use_width']
@@ -110,11 +112,17 @@ class CustomDataset(Dataset):
         object_name = os.path.basename(self.input_paths[idx]).split('__')[0]
 
         # Read and store frames in the tensor
+        if self.validation_dataset:
+            i_padding = (self.frame_padding // 2, self.frame_padding // 2)
+        else:
+            i_padding = (random.randint(0, self.frame_padding-1), random.randint(0, self.frame_padding-1))
         with open(self.input_paths[idx], 'rb') as file:
             if self.img_style == 'diff':
-                self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
+                self.x_frames[:, :, i_padding[0]:self.img_size[0]+i_padding[0], i_padding[1]:self.img_size[1]+i_padding[1]] = \
+                    torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
             elif self.img_style == 'depth':
-                self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
+                self.x_frames[:, :, i_padding[0]:self.img_size[0]+i_padding[0], i_padding[1]:self.img_size[1]+i_padding[1]] = \
+                    torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
                 self.x_frames /= self.normalization_values['max_depth']
 
         
@@ -122,10 +130,10 @@ class CustomDataset(Dataset):
         if random.random() < 0.5 and (not self.validation_dataset):
             self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0
 
-
-        self.x_frames = self.x_frames * (
-                    torch.rand((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device) < 0.3
-                )
+        # # Random mask across all channels
+        # self.x_frames = self.x_frames * (
+        #             torch.rand((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device) < 0.3
+        #         )
                 
 
 
@@ -483,7 +491,8 @@ class ModulusModel():
                 }
 
         # Create tensor's on device to send to dataset
-        empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=self.device)
+        self.frame_padding        = 20
+        empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0]+self.frame_padding, self.img_size[1]+self.frame_padding), device=self.device)
         empty_force_tensor        = torch.zeros((self.n_frames, 1), device=self.device)
         empty_width_tensor        = torch.zeros((self.n_frames, 1), device=self.device)
         empty_estimation_tensor   = torch.zeros((3, 1), device=self.device)
@@ -498,7 +507,8 @@ class ModulusModel():
                                             force_tensor=empty_force_tensor,
                                             width_tensor=empty_width_tensor,
                                             estimation_tensor=empty_estimation_tensor,
-                                            label_tensor=empty_label_tensor)
+                                            label_tensor=empty_label_tensor,
+                                            frame_padding=20)
         self.val_dataset    = CustomDataset(self.config, x_val, y_val,
                                             self.normalization_values,
                                             validation_dataset=True,
@@ -506,7 +516,8 @@ class ModulusModel():
                                             force_tensor=empty_force_tensor,
                                             width_tensor=empty_width_tensor,
                                             estimation_tensor=empty_estimation_tensor,
-                                            label_tensor=empty_label_tensor)
+                                            label_tensor=empty_label_tensor,
+                                            frame_padding=20)
         self.train_loader   = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, **kwargs)
         self.val_loader     = DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, **kwargs)
         return
@@ -531,7 +542,7 @@ class ModulusModel():
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
                 
-            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
+            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0]+self.frame_padding, self.img_size[1]+self.frame_padding)
 
             # Normalize images
             if self.n_channels == 3:
@@ -541,7 +552,7 @@ class ModulusModel():
             if self.use_transformations:
                 x_frames = self.random_transformer(x_frames) # Apply V/H flips
                 
-            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
+            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0]+self.frame_padding, self.img_size[1]+self.frame_padding)
 
             # Concatenate features across frames into a single vector
             features = []
@@ -565,10 +576,10 @@ class ModulusModel():
             
             features = torch.cat(features, -1)
 
-            # Randomly mask features
-            features = features * (
-                        torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
-                    )
+            # # Randomly mask features
+            # features = features * (
+            #             torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
+            #         )
 
             # Send aggregated features to the FC decode
             outputs = self.decoder(features)
@@ -634,13 +645,13 @@ class ModulusModel():
         }
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
                 
-            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
+            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0]+self.frame_padding, self.img_size[1]+self.frame_padding)
 
             # Normalize images
             if self.n_channels == 3:
                 x_frames = self.image_normalization(x_frames)
                 
-            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
+            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0]+self.frame_padding, self.img_size[1]+self.frame_padding)
 
             # Concatenate features across frames into a single vector
             features = []
@@ -991,10 +1002,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'All3Masks_Normalized_ExcludeTo200',
+        'run_name': 'TranslationPadding_Normalized_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 250,
+        'epochs'            : 75,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'img_feature_size'  : 64,
@@ -1002,7 +1013,7 @@ if __name__ == "__main__":
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'random_mask_pct'   : 0.2,
-        'learning_rate'     : 3e-5, # 5e-5, # (for estimations), # 1e-5 (for no estimations)
+        'learning_rate'     : 5e-5, # (for estimations), # 1e-5 (for no estimations)
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 27,
