@@ -994,7 +994,7 @@ if __name__ == "__main__":
         'run_name': 'All3Masks_Normalized_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 150,
+        'epochs'            : 250,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'img_feature_size'  : 64,
