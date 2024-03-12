@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -112,6 +112,11 @@ class CustomDataset(Dataset):
         object_name = os.path.basename(self.input_paths[idx]).split('__')[0]
 
         # Read and store frames in the tensor
+        norm_values = torch.ones((1, self.n_channels, 1, 1))
+        norm_values[:, 0, :, :] = 0.49647933
+        norm_values[:, 1, :, :] = 0.49772543
+        norm_values[:, 2, :, :] = 0.49373047
+        self.x_frames[:] = norm_values
         if self.validation_dataset:
             i_padding = (self.frame_padding // 2, self.frame_padding // 2)
         else:
@@ -126,9 +131,9 @@ class CustomDataset(Dataset):
                 self.x_frames /= self.normalization_values['max_depth']
 
         
-        # # Random block out images for training
-        # if random.random() < 0.5 and (not self.validation_dataset):
-        #     self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0
+        # Random block out images for training
+        if random.random() < 0.5 and (not self.validation_dataset):
+            self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0
 
         # # Random mask across all channels
         # self.x_frames = self.x_frames * (
@@ -1002,7 +1007,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'TranslationPadding_Normalized_ExcludeTo200',
+        'run_name': 'FixedTranslationPadding_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 75,
