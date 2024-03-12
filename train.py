@@ -718,6 +718,7 @@ class ModulusModel():
         learning_rate = self.learning_rate 
         max_val_log_acc = 0.0
         min_val_loss = 1e10
+        min_val_outlier_pct = 1e10
         for epoch in range(self.epochs):
 
             # Clean performance trackers
@@ -765,10 +766,13 @@ class ModulusModel():
             # Save the best model based on validation loss and accuracy
             if val_stats['loss'] <= min_val_loss:
                 min_val_loss = val_stats['loss']
-                self.save_model(by_acc=False)
+                self.save_model(method='by_loss')
             if val_stats['log_acc'] >= max_val_log_acc:
                 max_val_log_acc = val_stats['log_acc']
-                self.save_model(by_acc=True)
+                self.save_model(method='by_acc')
+            if val_stats['pct_w_100_factor_err'] <= min_val_outlier_pct:
+                min_val_outlier_pct = val_stats['log_acc']
+                self.save_model(method='by_outliers')
 
             # Log information to W&B
             if self.use_wandb:
@@ -797,48 +801,48 @@ class ModulusModel():
 
         return
     
-    def save_model(self, by_acc=False):
-        sub_folder = 'by_acc' if by_acc else 'by_loss'
-        if not os.path.exists(f'./model/{sub_folder}/{self.run_name}'):
-            os.mkdir(f'./model/{sub_folder}/{self.run_name}')
+    def save_model(self, method='by_loss'):
+        assert method in ['by_loss', 'by_acc', 'by_outliers']
+        if not os.path.exists(f'./model/{method}/{self.run_name}'):
+            os.mkdir(f'./model/{method}/{self.run_name}')
         else:
-            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/config.json'):
-                os.remove(f'./model/{sub_folder}/{self.run_name}/config.json')
-            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/train_object_performance.json'):
-                os.remove(f'./model/{sub_folder}/{self.run_name}/train_object_performance.json')
-            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/val_object_performance.json'):
-                os.remove(f'./model/{sub_folder}/{self.run_name}/val_object_performance.json')
-            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/video_encoder.pth'):
-                os.remove(f'./model/{sub_folder}/{self.run_name}/video_encoder.pth')
-            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/force_encoder.pth'):
-                os.remove(f'./model/{sub_folder}/{self.run_name}/force_encoder.pth')
-            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/width_encoder.pth'):
-                os.remove(f'./model/{sub_folder}/{self.run_name}/width_encoder.pth')
-            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/estimation_decoder.pth'):
-                os.remove(f'./model/{sub_folder}/{self.run_name}/estimation_decoder.pth')
-            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/decoder.pth'):
-                os.remove(f'./model/{sub_folder}/{self.run_name}/decoder.pth')
-            if os.path.exists(f'./model/{sub_folder}/{self.run_name}/decoderRNN.pth'):
-                os.remove(f'./model/{sub_folder}/{self.run_name}/decoderRNN.pth')
+            if os.path.exists(f'./model/{method}/{self.run_name}/config.json'):
+                os.remove(f'./model/{method}/{self.run_name}/config.json')
+            if os.path.exists(f'./model/{method}/{self.run_name}/train_object_performance.json'):
+                os.remove(f'./model/{method}/{self.run_name}/train_object_performance.json')
+            if os.path.exists(f'./model/{method}/{self.run_name}/val_object_performance.json'):
+                os.remove(f'./model/{method}/{self.run_name}/val_object_performance.json')
+            if os.path.exists(f'./model/{method}/{self.run_name}/video_encoder.pth'):
+                os.remove(f'./model/{method}/{self.run_name}/video_encoder.pth')
+            if os.path.exists(f'./model/{method}/{self.run_name}/force_encoder.pth'):
+                os.remove(f'./model/{method}/{self.run_name}/force_encoder.pth')
+            if os.path.exists(f'./model/{method}/{self.run_name}/width_encoder.pth'):
+                os.remove(f'./model/{method}/{self.run_name}/width_encoder.pth')
+            if os.path.exists(f'./model/{method}/{self.run_name}/estimation_decoder.pth'):
+                os.remove(f'./model/{method}/{self.run_name}/estimation_decoder.pth')
+            if os.path.exists(f'./model/{method}/{self.run_name}/decoder.pth'):
+                os.remove(f'./model/{method}/{self.run_name}/decoder.pth')
+            if os.path.exists(f'./model/{method}/{self.run_name}/decoderRNN.pth'):
+                os.remove(f'./model/{method}/{self.run_name}/decoderRNN.pth')
 
         # Save configuration dictionary and all files for the model(s)
-        with open(f'./model/{sub_folder}/{self.run_name}/config.json', 'w') as json_file:
+        with open(f'./model/{method}/{self.run_name}/config.json', 'w') as json_file:
             json.dump(self.config, json_file)
-        torch.save(self.video_encoder.state_dict(), f'./model/{sub_folder}/{self.run_name}/video_encoder.pth')
-        if self.use_force: torch.save(self.force_encoder.state_dict(), f'./model/{sub_folder}/{self.run_name}/force_encoder.pth')
-        if self.use_width: torch.save(self.width_encoder.state_dict(), f'./model/{sub_folder}/{self.run_name}/width_encoder.pth')
-        if self.use_estimation: torch.save(self.estimation_decoder.state_dict(), f'./model/{sub_folder}/{self.run_name}/estimation_decoder.pth')
+        torch.save(self.video_encoder.state_dict(), f'./model/{method}/{self.run_name}/video_encoder.pth')
+        if self.use_force: torch.save(self.force_encoder.state_dict(), f'./model/{method}/{self.run_name}/force_encoder.pth')
+        if self.use_width: torch.save(self.width_encoder.state_dict(), f'./model/{method}/{self.run_name}/width_encoder.pth')
+        if self.use_estimation: torch.save(self.estimation_decoder.state_dict(), f'./model/{method}/{self.run_name}/estimation_decoder.pth')
 
-        torch.save(self.decoder.state_dict(), f'./model/{sub_folder}/{self.run_name}/decoder.pth')
+        torch.save(self.decoder.state_dict(), f'./model/{method}/{self.run_name}/decoder.pth')
 
         # Save performance data
-        with open(f'./model/{sub_folder}/{self.run_name}/train_object_performance.json', 'w') as json_file:
+        with open(f'./model/{method}/{self.run_name}/train_object_performance.json', 'w') as json_file:
             json.dump(self.train_object_performance, json_file)
-        with open(f'./model/{sub_folder}/{self.run_name}/val_object_performance.json', 'w') as json_file:
+        with open(f'./model/{method}/{self.run_name}/val_object_performance.json', 'w') as json_file:
             json.dump(self.val_object_performance, json_file)
         return
 
-    def load_model(self, folder_path, by_acc=False):
+    def load_model(self, folder_path):
         with open(f'{folder_path}/config.json', 'r') as file:
             config = json.load(file)
         self._unpack_config(config)
