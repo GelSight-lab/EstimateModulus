@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -118,8 +118,15 @@ class CustomDataset(Dataset):
                 self.x_frames /= self.normalization_values['max_depth']
 
         
-        if random.random() < 0.5 and (not self.validation_dataset):
-            self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0
+        # Random block out images for training
+        # if random.random() < 0.5 and (not self.validation_dataset):
+        #     self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0
+
+
+        self.x_frames = self.x_frames * (
+                    torch.rand((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device) < 0.4
+                )
+                
 
 
         # with open(self.input_paths[idx].replace('_other', ''), 'rb') as file:
@@ -558,10 +565,10 @@ class ModulusModel():
             
             features = torch.cat(features, -1)
 
-            # Randomly mask features
-            features = features * (
-                        torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
-                    )
+            # # Randomly mask features
+            # features = features * (
+            #             torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
+            #         )
 
             # Send aggregated features to the FC decode
             outputs = self.decoder(features)
@@ -984,7 +991,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'RandomMaskFeatures0.2PCT_RandomMaskWholeFrame_Normalized_ExcludeTo200',
+        'run_name': 'RandomMaskAll0.4_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
