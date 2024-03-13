@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -51,8 +51,7 @@ class CustomDataset(Dataset):
                  force_tensor=torch.zeros((N_FRAMES, 1)),
                  width_tensor=torch.zeros((N_FRAMES, 1)),
                  estimation_tensor=torch.zeros((3, 1)),
-                 label_tensor=torch.zeros((1, 1)),
-                 frame_padding=0
+                 label_tensor=torch.zeros((1, 1))
         ):
         # Data parameters 
         self.data_dir = config['data_dir']
@@ -60,7 +59,6 @@ class CustomDataset(Dataset):
         self.img_size = config['img_size']
         self.img_style = config['img_style']
         self.n_channels = config['n_channels']
-        self.frame_padding = frame_padding
         self.use_markers = config['use_markers']
         self.use_force = config['use_force']
         self.use_width = config['use_width']
@@ -112,22 +110,11 @@ class CustomDataset(Dataset):
         object_name = os.path.basename(self.input_paths[idx]).split('__')[0]
 
         # Read and store frames in the tensor
-        norm_values = torch.ones((1, self.n_channels, 1, 1))
-        norm_values[:, 0, :, :] = 0.49647933
-        norm_values[:, 1, :, :] = 0.49772543
-        norm_values[:, 2, :, :] = 0.49373047
-        self.x_frames[:] = norm_values
-        if self.validation_dataset:
-            i_padding = (self.frame_padding // 2, self.frame_padding // 2)
-        else:
-            i_padding = (random.randint(0, self.frame_padding-1), random.randint(0, self.frame_padding-1))
         with open(self.input_paths[idx], 'rb') as file:
             if self.img_style == 'diff':
-                self.x_frames[:, :, i_padding[0]:self.img_size[0]+i_padding[0], i_padding[1]:self.img_size[1]+i_padding[1]] = \
-                    torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
+                self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
             elif self.img_style == 'depth':
-                self.x_frames[:, :, i_padding[0]:self.img_size[0]+i_padding[0], i_padding[1]:self.img_size[1]+i_padding[1]] = \
-                    torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
+                self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
                 self.x_frames /= self.normalization_values['max_depth']
 
         
@@ -491,8 +478,7 @@ class ModulusModel():
                 }
 
         # Create tensor's on device to send to dataset
-        self.frame_padding        = 20
-        empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0]+self.frame_padding, self.img_size[1]+self.frame_padding), device=self.device)
+        empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=self.device)
         empty_force_tensor        = torch.zeros((self.n_frames, 1), device=self.device)
         empty_width_tensor        = torch.zeros((self.n_frames, 1), device=self.device)
         empty_estimation_tensor   = torch.zeros((3, 1), device=self.device)
@@ -507,8 +493,7 @@ class ModulusModel():
                                             force_tensor=empty_force_tensor,
                                             width_tensor=empty_width_tensor,
                                             estimation_tensor=empty_estimation_tensor,
-                                            label_tensor=empty_label_tensor,
-                                            frame_padding=self.frame_padding)
+                                            label_tensor=empty_label_tensor)
         self.val_dataset    = CustomDataset(self.config, x_val, y_val,
                                             self.normalization_values,
                                             validation_dataset=True,
@@ -516,10 +501,9 @@ class ModulusModel():
                                             force_tensor=empty_force_tensor,
                                             width_tensor=empty_width_tensor,
                                             estimation_tensor=empty_estimation_tensor,
-                                            label_tensor=empty_label_tensor,
-                                            frame_padding=self.frame_padding)
+                                            label_tensor=empty_label_tensor)
         self.train_loader   = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, **kwargs)
-        self.val_loader     = DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, **kwargs)
+        self.val_loader     = DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=True, **kwargs)
         return
 
     def _train_epoch(self):
@@ -542,7 +526,7 @@ class ModulusModel():
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
             self.optimizer.zero_grad()
                 
-            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0]+self.frame_padding, self.img_size[1]+self.frame_padding)
+            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
 
             # Normalize images
             if self.n_channels == 3:
@@ -552,7 +536,7 @@ class ModulusModel():
             if self.use_transformations:
                 x_frames = self.random_transformer(x_frames) # Apply V/H flips
                 
-            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0]+self.frame_padding, self.img_size[1]+self.frame_padding)
+            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
             # Concatenate features across frames into a single vector
             features = []
@@ -645,13 +629,13 @@ class ModulusModel():
         }
         for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
                 
-            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0]+self.frame_padding, self.img_size[1]+self.frame_padding)
+            x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
 
             # Normalize images
             if self.n_channels == 3:
                 x_frames = self.image_normalization(x_frames)
                 
-            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0]+self.frame_padding, self.img_size[1]+self.frame_padding)
+            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
             # Concatenate features across frames into a single vector
             features = []
@@ -685,6 +669,8 @@ class ModulusModel():
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             val_stats['loss'] += loss.item()
             val_stats['batch_count'] += 1
+
+            print('loop')
 
             # Calculate performance metrics
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs.cpu())) - torch.log10(self.log_unnormalize(y.cpu()))).detach().numpy()
@@ -865,11 +851,11 @@ class ModulusModel():
             config = json.load(file)
         self._unpack_config(config)
 
-        self.video_encoder.load_state_dict(torch.load(f'{folder_path}/video_encoder.pth'))
-        if self.use_force: self.force_encoder.load_state_dict(torch.load(f'{folder_path}/force_encoder.pth'))
-        if self.use_width: self.width_encoder.load_state_dict(torch.load(f'{folder_path}/width_encoder.pth'))
-        if self.use_estimation: self.estimation_decoder.load_state_dict(torch.load(f'{folder_path}/estimation_decoder.pth'))
-        self.decoder.load_state_dict(torch.load(f'{folder_path}/decoder.pth'))
+        self.video_encoder.load_state_dict(torch.load(f'{folder_path}/video_encoder.pth', map_location=self.device))
+        if self.use_force: self.force_encoder.load_state_dict(torch.load(f'{folder_path}/force_encoder.pth', map_location=self.device))
+        if self.use_width: self.width_encoder.load_state_dict(torch.load(f'{folder_path}/width_encoder.pth', map_location=self.device))
+        if self.use_estimation: self.estimation_decoder.load_state_dict(torch.load(f'{folder_path}/estimation_decoder.pth', map_location=self.device))
+        self.decoder.load_state_dict(torch.load(f'{folder_path}/decoder.pth', map_location=self.device))
 
         with open(f'{folder_path}/train_object_performance.json', 'r') as file:
             train_object_performance = json.load(file)
@@ -1009,10 +995,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'All4_Normalized_ExcludeTo200',
+        'run_name': 'NoPadding_Normalized_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 185,
+        'epochs'            : 120,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'img_feature_size'  : 64,
@@ -1034,6 +1020,12 @@ if __name__ == "__main__":
     for i in range(20):
         config['run_name'] = f'{base_run_name}__t={i}'
 
+
+
+        if i == 0: continue
+
+
+
         if i < len(chosen_random_states):
             config['random_state'] = chosen_random_states[i]
         else:
@@ -1042,7 +1034,7 @@ if __name__ == "__main__":
         train_modulus = ModulusModel(config, device=device)
         train_modulus.train()
 
-    # for run_name in ['ExcludeTo200_Batch32_Estimations__t=19', 'ExcludeTo200_Batch32_Estimations__t=15']:
+    # for run_name in ['Layer4Decoder_Normalized_ExcludeTo200__t=0']:
     #     train_modulus = ModulusModel(config, device=device)
-    #     train_modulus.load_model(f'./model/by_loss/{run_name}')
+    #     train_modulus.load_model(f'./model/{run_name}')
     #     train_modulus.make_performance_plot()
