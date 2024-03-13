@@ -118,9 +118,9 @@ class CustomDataset(Dataset):
                 self.x_frames /= self.normalization_values['max_depth']
 
         
-        # Random block out images for training
-        if random.random() < 0.5 and (not self.validation_dataset):
-            self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0
+        # # Random block out images for training
+        # if random.random() < 0.5 and (not self.validation_dataset):
+        #     self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0
                 
 
 
@@ -560,10 +560,10 @@ class ModulusModel():
             
             features = torch.cat(features, -1)
 
-            # Randomly mask features
-            features = features * (
-                        torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
-                    )
+            # # Randomly mask features
+            # features = features * (
+            #             torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
+            #         )
 
             # Send aggregated features to the FC decode
             outputs = self.decoder(features)
@@ -995,7 +995,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoPadding_Normalized_ExcludeTo200',
+        'run_name': 'NoRandomMasking_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 120,
@@ -1019,13 +1019,7 @@ if __name__ == "__main__":
     chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
     for i in range(20):
         config['run_name'] = f'{base_run_name}__t={i}'
-
-
-
-        if i == 0: continue
-
-
-
+        
         if i < len(chosen_random_states):
             config['random_state'] = chosen_random_states[i]
         else:
