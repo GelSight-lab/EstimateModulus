@@ -132,12 +132,12 @@ class CustomDataset(Dataset):
 
         
         # Random block out images for training
-        if random.random() < 0.5 and (not self.validation_dataset):
+        if random.random() < 0.4 and (not self.validation_dataset):
             self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0
 
         # Random mask across all channels
         self.x_frames = self.x_frames * (
-                    torch.rand((self.n_frames, self.n_channels, self.img_size[0], self.img_size[1]), device=device) < 0.3
+                    torch.rand((self.n_frames, self.n_channels, self.img_size[0]+self.frame_padding, self.img_size[1]+self.frame_padding), device=device) < 0.3
                 )
                 
 
@@ -1017,7 +1017,7 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
-        'random_mask_pct'   : 0.2,
+        'random_mask_pct'   : 0.1,
         'learning_rate'     : 3e-5, # 5e-5, # (for estimations), # 1e-5 (for no estimations)
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
