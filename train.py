@@ -713,7 +713,7 @@ class ModulusModel():
                 else: val_stats['hard_count'] += 1
 
                 if track_predictions:
-                    predictions[object_names[i]].append(self.log_unnormalize(outputs.cpu()).detach().numpy()[i][0])
+                    predictions[object_names[i]].append(self.log_unnormalize(outputs[i][0].cpu()).detach().numpy())
             
 
         # Return loss and accuracy
@@ -903,6 +903,7 @@ class ModulusModel():
 
         # Run validation epoch to get out all predictions
         predictions = self._val_epoch(track_predictions=True)
+        log_diff_predictions = { key:[] for key in predictions.keys() }
 
         # Turn predictions into plotting data
         count = 0
@@ -913,6 +914,9 @@ class ModulusModel():
             assert obj in self.object_to_material.keys()
             mat = self.object_to_material[obj]
             for E in predictions[obj]:
+                log_diff = np.log10(E) - np.log10(self.object_to_modulus[obj])
+                log_diff_predictions[obj].append(log_diff)
+
                 if E > 0 and not math.isnan(E):
                     assert not math.isnan(E)
 
@@ -923,7 +927,8 @@ class ModulusModel():
                     material_label_data[mat].append(self.object_to_modulus[obj])
                     count += 1
 
-        print(log_acc_count / count)
+        print(log_diff_predictions)
+        print('\n', log_acc_count / count)
 
         class NumpyEncoder(json.JSONEncoder):
             def default(self, obj):
