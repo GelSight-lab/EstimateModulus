@@ -496,7 +496,7 @@ class ModulusModel():
                 }
 
         # Create tensor's on device to send to dataset
-        self.frame_padding        = 20
+        self.frame_padding        = 50
         empty_frame_tensor        = torch.zeros((self.n_frames, self.n_channels, self.img_size[0]+self.frame_padding, self.img_size[1]+self.frame_padding), device=self.device)
         empty_force_tensor        = torch.zeros((self.n_frames, 1), device=self.device)
         empty_width_tensor        = torch.zeros((self.n_frames, 1), device=self.device)
@@ -513,7 +513,7 @@ class ModulusModel():
                                             width_tensor=empty_width_tensor,
                                             estimation_tensor=empty_estimation_tensor,
                                             label_tensor=empty_label_tensor,
-                                            frame_padding=20)
+                                            frame_padding=self.frame_padding)
         self.val_dataset    = CustomDataset(self.config, x_val, y_val,
                                             self.normalization_values,
                                             validation_dataset=True,
@@ -522,7 +522,7 @@ class ModulusModel():
                                             width_tensor=empty_width_tensor,
                                             estimation_tensor=empty_estimation_tensor,
                                             label_tensor=empty_label_tensor,
-                                            frame_padding=20)
+                                            frame_padding=self.frame_padding)
         self.train_loader   = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, **kwargs)
         self.val_loader     = DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, **kwargs)
         return
@@ -1007,7 +1007,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'FixedTranslationPadding_Normalized_ExcludeTo200',
+        'run_name': 'Padding50_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 75,
