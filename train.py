@@ -923,8 +923,8 @@ class ModulusModel():
                     if abs(np.log10(E) - np.log10(self.object_to_modulus[obj])) <= 1:
                         log_acc_count += 1
 
-                    material_prediction_data[mat].append(E)
-                    material_label_data[mat].append(self.object_to_modulus[obj])
+                    material_prediction_data[mat].append(float(E))
+                    material_label_data[mat].append(float(self.object_to_modulus[obj]))
                     count += 1
 
         print(log_diff_predictions)
@@ -938,6 +938,8 @@ class ModulusModel():
     
         if not os.path.exists(f'./plotting_data/{self.run_name}'):
             os.mkdir(f'./plotting_data/{self.run_name}')
+        with open(f'./plotting_data/{self.run_name}/obj_log_diff.json', 'w') as json_file:
+            json.dump(log_diff_predictions, json_file, indent=4, sort_keys=True, cls=NumpyEncoder)
         with open(f'./plotting_data/{self.run_name}/predictions.json', 'w') as json_file:
             json.dump(material_prediction_data, json_file, cls=NumpyEncoder)
         with open(f'./plotting_data/{self.run_name}/labels.json', 'w') as json_file:
