@@ -132,14 +132,8 @@ class CustomDataset(Dataset):
 
         
         # Random block out images for training
-        if random.random() < 0.4 and (not self.validation_dataset):
+        if random.random() < 0.5 and (not self.validation_dataset):
             self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0
-
-        # Random mask across all channels
-        if not self.validation_dataset:
-            self.x_frames = self.x_frames * (
-                        torch.rand((self.n_frames, self.n_channels, self.img_size[0]+self.frame_padding, self.img_size[1]+self.frame_padding), device=device) < 0.3
-                    )
                 
 
 
