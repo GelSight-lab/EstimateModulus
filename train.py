@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -120,7 +120,7 @@ class CustomDataset(Dataset):
         
         # Random block out images for training
         if random.random() < 0.5 and (not self.validation_dataset):
-            self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0
+            self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0.5 # 0
                 
 
 
@@ -669,8 +669,6 @@ class ModulusModel():
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             val_stats['loss'] += loss.item()
             val_stats['batch_count'] += 1
-
-            print('loop')
 
             # Calculate performance metrics
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs.cpu())) - torch.log10(self.log_unnormalize(y.cpu()))).detach().numpy()
