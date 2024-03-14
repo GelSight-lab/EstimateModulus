@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -118,9 +118,9 @@ class CustomDataset(Dataset):
                 self.x_frames /= self.normalization_values['max_depth']
 
         
-        # # Random block out images for training
-        # if random.random() < 0.5 and (not self.validation_dataset):
-        #     self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0
+        # Random block out images for training
+        if random.random() < 0.5 and (not self.validation_dataset):
+            self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0
                 
 
 
@@ -503,7 +503,7 @@ class ModulusModel():
                                             estimation_tensor=empty_estimation_tensor,
                                             label_tensor=empty_label_tensor)
         self.train_loader   = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, **kwargs)
-        self.val_loader     = DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=True, **kwargs)
+        self.val_loader     = DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, **kwargs)
         return
 
     def _train_epoch(self):
@@ -530,7 +530,7 @@ class ModulusModel():
 
             # Normalize images
             if self.n_channels == 3:
-                x_frames = self.image_normalization(x_frames)
+                x_frames = (self.image_normalization(x_frames) + 10) / 20
 
             # Apply random transformations for training
             if self.use_transformations:
@@ -560,10 +560,10 @@ class ModulusModel():
             
             features = torch.cat(features, -1)
 
-            # # Randomly mask features
-            # features = features * (
-            #             torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
-            #         )
+            # Randomly mask features
+            features = features * (
+                        torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
+                    )
 
             # Send aggregated features to the FC decode
             outputs = self.decoder(features)
@@ -633,7 +633,7 @@ class ModulusModel():
 
             # Normalize images
             if self.n_channels == 3:
-                x_frames = self.image_normalization(x_frames)
+                x_frames = (self.image_normalization(x_frames) + 10) / 20
                 
             x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
@@ -995,7 +995,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoRandomMasking_Normalized_ExcludeTo200',
+        'run_name': 'ScaleNormalization_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 120,
