@@ -474,6 +474,7 @@ class ModulusModel():
                     'total_log_diff': 0,
                     'total_log_acc': 0,
                     'total_poorly_predicted': 0, # Off by factor of 100 or more
+                    'total_very_poorly_predicted': 0, # Off by factor of 1000 or more
                     'count': 0
                 }
 
@@ -623,6 +624,7 @@ class ModulusModel():
             'soft_avg_log_diff': 0,
             'hard_avg_log_diff': 0,
             'pct_w_100_factor_err': 0,
+            'pct_w_1000_factor_err': 0,
             'soft_count': 0,
             'hard_count': 0,
             'batch_count': 0,
@@ -693,6 +695,10 @@ class ModulusModel():
                     self.val_object_performance[object_names[i]]['total_poorly_predicted'] += 1
                     val_stats['pct_w_100_factor_err'] += 1
 
+                if abs_log_diff[i] >= 3:
+                    self.val_object_performance[object_names[i]]['total_very_poorly_predicted'] += 1
+                    val_stats['pct_w_1000_factor_err'] += 1
+
                 if self.object_to_modulus[object_names[i]] < 1e8: val_stats['soft_count'] += 1
                 else: val_stats['hard_count'] += 1
 
@@ -705,6 +711,7 @@ class ModulusModel():
         val_stats['log_acc']                /= (self.batch_size * val_stats['batch_count'])
         val_stats['avg_log_diff']           /= (self.batch_size * val_stats['batch_count'])
         val_stats['pct_w_100_factor_err']   /= (self.batch_size * val_stats['batch_count'])
+        val_stats['pct_w_1000_factor_err']  /= (self.batch_size * val_stats['batch_count'])
         val_stats['soft_log_acc']           /= val_stats['soft_count']
         val_stats['soft_avg_log_diff']      /= val_stats['soft_count']
         if val_stats['hard_count'] > 0:
@@ -736,6 +743,7 @@ class ModulusModel():
                     'total_log_diff': 0,
                     'total_log_acc': 0,
                     'total_poorly_predicted': 0, # Off by factor of 100 or more
+                    'total_very_poorly_predicted': 0, # Off by factor of 100 or more
                     'count': 0
                 }
 
@@ -793,6 +801,7 @@ class ModulusModel():
                     "val_avg_log_diff": val_stats['avg_log_diff'],
                     "val_log_accuracy": val_stats['log_acc'],
                     "val_pct_with_100_factor_err": val_stats['pct_w_100_factor_err'],
+                    "val_pct_with_1000_factor_err": val_stats['pct_w_1000_factor_err'],
                     "val_soft_avg_log_diff": val_stats['soft_avg_log_diff'],
                     "val_soft_log_acc": val_stats['soft_log_acc'],
                     "val_hard_avg_log_diff": val_stats['hard_avg_log_diff'],
