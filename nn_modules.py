@@ -170,7 +170,7 @@ class ModifiedResNet18(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[512, 512, 256, 128, 32],
+                FC_layer_nodes=[1024, 1024, 512, 256, 32],
                 dropout_pct=0.5,
                 output_dim=1):
         super(DecoderFC, self).__init__()

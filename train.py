@@ -993,10 +993,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'FatArch_Normalized_ExcludeTo200',
+        'run_name': 'FattestArch_Normalized_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 125,
+        'epochs'            : 150,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'img_feature_size'  : 128,
