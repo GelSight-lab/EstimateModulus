@@ -22,7 +22,7 @@ class EncoderCNN(nn.Module):
                  img_x=200,
                  img_y=200,
                  input_channels=1,
-                 fc_hidden1=128,
+                 fc_hidden1=256,
                  fc_hidden2=64,
                  dropout_pct=0.5,
                  CNN_embed_dim=128):
@@ -170,7 +170,7 @@ class ModifiedResNet18(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[256, 256, 64, 32],
+                FC_layer_nodes=[512, 512, 256, 128, 32],
                 dropout_pct=0.5,
                 output_dim=1):
         super(DecoderFC, self).__init__()
