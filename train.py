@@ -530,7 +530,7 @@ class ModulusModel():
 
             # Normalize images
             if self.n_channels == 3:
-                x_frames = (self.image_normalization(x_frames) + 10) / 20
+                x_frames = self.image_normalization(x_frames)
 
             # Apply random transformations for training
             if self.use_transformations:
@@ -633,7 +633,7 @@ class ModulusModel():
 
             # Normalize images
             if self.n_channels == 3:
-                x_frames = (self.image_normalization(x_frames) + 10) / 20
+                x_frames = self.image_normalization(x_frames)
                 
             x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
@@ -993,7 +993,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'ScaleNormalization_Normalized_ExcludeTo200',
+        'run_name': 'NormalizationBack_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 120,
