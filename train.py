@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -993,14 +993,14 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NormalizationBack_Normalized_ExcludeTo200',
+        'run_name': 'LeanArch_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 120,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
-        'img_feature_size'  : 64,
-        'fwe_feature_size'  : 32,
+        'img_feature_size'  : 32,
+        'fwe_feature_size'  : 16,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'random_mask_pct'   : 0.1,

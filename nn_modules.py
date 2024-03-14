@@ -170,7 +170,7 @@ class ModifiedResNet18(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[256, 256, 128, 32], # [256, 128, 32],
+                FC_layer_nodes=[128, 128, 64, 32],
                 dropout_pct=0.5,
                 output_dim=1):
         super(DecoderFC, self).__init__()
@@ -294,8 +294,8 @@ class ForceFC(nn.Module):
         self.dropout_pct = dropout_pct
 
         self.fc1 = nn.Linear(input_dim, self.hidden_size)
-        # self.fc1 = nn.Linear(N_FRAMES, self.hidden_size)
-        self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
+        self.fc2 = nn.Linear(self.hidden_size, self.hidden_size)
+        self.fc3 = nn.Linear(self.hidden_size, self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
 
     def forward(self, x):
@@ -303,6 +303,9 @@ class ForceFC(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x)
+        x = F.silu(x)
+        x = self.drop(x)
+        x = self.fc3(x)
         return x
     
 class WidthFC(nn.Module):
@@ -314,8 +317,8 @@ class WidthFC(nn.Module):
         self.dropout_pct = dropout_pct
 
         self.fc1 = nn.Linear(input_dim, self.hidden_size)
-        # self.fc1 = nn.Linear(N_FRAMES, self.hidden_size)
-        self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
+        self.fc2 = nn.Linear(self.hidden_size, self.hidden_size)
+        self.fc3 = nn.Linear(self.hidden_size, self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
 
     def forward(self, x):
@@ -323,6 +326,9 @@ class WidthFC(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x)
+        x = F.silu(x)
+        x = self.drop(x)
+        x = self.fc3(x)
         return x
  
 class EstimationFC(nn.Module):
