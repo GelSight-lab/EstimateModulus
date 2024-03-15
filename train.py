@@ -1002,14 +1002,14 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'FattestArch_Normalized_ExcludeTo200',
+        'run_name': 'MediumDeepArch_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 150,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
-        'img_feature_size'  : 128,
-        'fwe_feature_size'  : 64,
+        'img_feature_size'  : 64,
+        'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'random_mask_pct'   : 0.1,
@@ -1024,7 +1024,7 @@ if __name__ == "__main__":
     # Train the model over some data
     base_run_name = config['run_name']
     chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
-    for i in range(20):
+    for i in range(len(chosen_random_states)):
         config['run_name'] = f'{base_run_name}__t={i}'
         
         if i < len(chosen_random_states):
