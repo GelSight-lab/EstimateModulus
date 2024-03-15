@@ -1002,14 +1002,14 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Decoder2Layer_Normalized_ExcludeTo200',
+        'run_name': 'Decoder5Layer_FW3Layer_Normalized_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 150,
+        'epochs'            : 80,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
-        'img_feature_size'  : 32, # 64
-        'fwe_feature_size'  : 16, # 32
+        'img_feature_size'  : 64,
+        'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'random_mask_pct'   : 0.1,

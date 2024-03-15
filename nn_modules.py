@@ -22,7 +22,7 @@ class EncoderCNN(nn.Module):
                  img_x=200,
                  img_y=200,
                  input_channels=1,
-                 fc_hidden1=128, # 256
+                 fc_hidden1=256,
                  fc_hidden2=64,
                  dropout_pct=0.5,
                  CNN_embed_dim=128):
@@ -170,7 +170,7 @@ class ModifiedResNet18(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[128, 64], # [512, 256, 128, 32],
+                FC_layer_nodes=[512, 256, 128, 32],
                 dropout_pct=0.5,
                 output_dim=1):
         super(DecoderFC, self).__init__()
@@ -180,13 +180,13 @@ class DecoderFC(nn.Module):
         self.dropout_pct = dropout_pct
         self.output_dim = output_dim
 
-        assert len(FC_layer_nodes) == 2
+        assert len(FC_layer_nodes) == 4
 
         self.fc1 = nn.Linear(self.FC_input_size, self.FC_layer_nodes[0])
         self.fc2 = nn.Linear(self.FC_layer_nodes[0], self.FC_layer_nodes[1])
-        self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.output_dim)
-        # self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
-        # self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.FC_layer_nodes[3])
+        self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
+        self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.FC_layer_nodes[3])
+        self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.output_dim)
         # self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.FC_layer_nodes[4])
         # self.fc6 = nn.Linear(self.FC_layer_nodes[4], self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
@@ -199,12 +199,12 @@ class DecoderFC(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x)
-        # x = F.silu(x)
-        # x = self.drop(x)
-        # x = self.fc4(x)
-        # x = F.silu(x)
-        # x = self.drop(x)
-        # x = self.fc5(x)
+        x = F.silu(x)
+        x = self.drop(x)
+        x = self.fc4(x)
+        x = F.silu(x)
+        x = self.drop(x)
+        x = self.fc5(x)
         # x = F.silu(x)
         # x = self.drop(x)
         # x = self.fc6(x)
