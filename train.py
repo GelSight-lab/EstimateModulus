@@ -644,9 +644,8 @@ class ModulusModel():
             for i in range(N_FRAMES):
                 
                 # Execute CNN on video frames
-                x_frames_out = self.video_encoder(x_frames[:, i, :, :, :])
-                features.append(x_frames_out)
-                print('CNN Outputs:', x_frames_out[0:5,:])
+                features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                print('CNN Outputs:', self.video_encoder(x_frames[:, i, :, :, :])[0:5,:])
 
                 # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
 
@@ -658,14 +657,12 @@ class ModulusModel():
 
             # Execute FC layers on other data and append
             if self.use_force: # Force measurements
-                x_forces = self.force_encoder(x_forces[:, :, :].squeeze())
-                features.append(x_forces)
-                print('Force Outputs:', x_forces[0:5,:])
+                features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
+                print('Force Outputs:', self.force_encoder(x_forces[:, :, :].squeeze())[0:2,:])
 
             if self.use_width: # Width measurements
-                x_widths = self.width_encoder(x_widths[:, :, :].squeeze())
-                features.append(x_widths)
-                print('Width Outputs:', x_widths[0:5,:])
+                features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
+                print('Force Outputs:', self.width_encoder(x_widths[:, :, :].squeeze())[0:2,:])
 
             # Send aggregated features to the FC decoder
             features = torch.cat(features, -1)
