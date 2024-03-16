@@ -1011,7 +1011,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoRandomMasking_SangwoonCNN_Decoder4Layer_Normalized_ExcludeTo200',
+        'run_name': 'NoRandomMasking_MikeyCNN_Decoder4Layer_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 250,

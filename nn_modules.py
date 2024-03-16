@@ -35,7 +35,6 @@ class EncoderCNN(nn.Module):
         self.fc_hidden = fc_hidden
         self.dropout_pct = dropout_pct
 
-        '''
         # CNN architechtures
         self.ch1, self.ch2, self.ch3, self.ch4, self.ch5 = 32, 64, 128, 256, 512
         self.k1, self.k2, self.k3, self.k4, self.k5 = (5, 5), (3, 3), (3, 3), (3, 3), (3, 3)  # 2d kernal size
@@ -116,9 +115,8 @@ class EncoderCNN(nn.Module):
             self.fc_hidden,
             self.CNN_embed_dim
         )  # Output = CNN embedding latent variables
-        '''
 
-        
+        '''        
         # CNN architechtures
         self.ch1, self.ch2, self.ch3, self.ch4 = 8, 16, 32, 64
         self.k1, self.k2, self.k3, self.k4 = (5, 5), (3, 3), (3, 3), (
@@ -190,14 +188,15 @@ class EncoderCNN(nn.Module):
         self.fc2 = nn.Linear(
             self.fc_hidden1,
             self.CNN_embed_dim)  # output = CNN embedding latent variables
+        '''
 
     def forward(self, x):
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
-        # x = self.conv5(x)
-        # x = self.avgpool(x)
+        x = self.conv5(x)
+        x = self.avgpool(x)
         x = x.view(x.size(0), -1) # Flatten the output of conv
         x = self.drop(x)
         x = self.fc1(x)
