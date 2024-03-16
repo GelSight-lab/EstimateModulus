@@ -288,7 +288,7 @@ class DecoderRNN(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[512, 128], # [512, 256, 128, 64], # [512, 256, 128, 32],
+                FC_layer_nodes=[512, 512, 128], # [512, 256, 128, 64], # [512, 256, 128, 32],
                 dropout_pct=0.5,
                 output_dim=1):
         super(DecoderFC, self).__init__()
@@ -298,12 +298,12 @@ class DecoderFC(nn.Module):
         self.dropout_pct = dropout_pct
         self.output_dim = output_dim
 
-        assert len(FC_layer_nodes) == 2
+        assert len(FC_layer_nodes) == 3
 
         self.fc1 = nn.Linear(self.FC_input_size, self.FC_layer_nodes[0])
         self.fc2 = nn.Linear(self.FC_layer_nodes[0], self.FC_layer_nodes[1])
-        self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.output_dim)
-        # self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
+        self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
+        self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.output_dim)
         # self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.FC_layer_nodes[3])
         # self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
@@ -316,9 +316,9 @@ class DecoderFC(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x)
-        # x = F.silu(x)
-        # x = self.drop(x)
-        # x = self.fc4(x)
+        x = F.silu(x)
+        x = self.drop(x)
+        x = self.fc4(x)
         # x = F.silu(x)
         # x = self.drop(x)
         # x = self.fc5(x)
