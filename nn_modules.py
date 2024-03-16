@@ -35,6 +35,7 @@ class EncoderCNN(nn.Module):
         self.fc_hidden = fc_hidden
         self.dropout_pct = dropout_pct
 
+        '''
         # CNN architechtures
         self.ch1, self.ch2, self.ch3, self.ch4, self.ch5 = 32, 64, 128, 256, 512
         self.k1, self.k2, self.k3, self.k4, self.k5 = (5, 5), (3, 3), (3, 3), (3, 3), (3, 3)  # 2d kernal size
@@ -115,14 +116,88 @@ class EncoderCNN(nn.Module):
             self.fc_hidden,
             self.CNN_embed_dim
         )  # Output = CNN embedding latent variables
+        '''
+
+        
+        # CNN architechtures
+        self.ch1, self.ch2, self.ch3, self.ch4 = 8, 16, 32, 64
+        self.k1, self.k2, self.k3, self.k4 = (5, 5), (3, 3), (3, 3), (
+            3, 3)  # 2d kernal size
+        self.s1, self.s2, self.s3, self.s4 = (2, 2), (2, 2), (2, 2), (
+            2, 2)  # 2d strides
+        self.pd1, self.pd2, self.pd3, self.pd4 = (0, 0), (0, 0), (0, 0), (
+            0, 0)  # 2d padding
+
+        # conv2D output shapes
+        self.conv1_outshape = conv2D_output_size((self.img_x, self.img_y),
+                                                 self.pd1, self.k1,
+                                                 self.s1)  # Conv1 output shape
+        self.conv2_outshape = conv2D_output_size(self.conv1_outshape, self.pd2,
+                                                 self.k2, self.s2)
+        self.conv3_outshape = conv2D_output_size(self.conv2_outshape, self.pd3,
+                                                 self.k3, self.s3)
+        self.conv4_outshape = conv2D_output_size(self.conv3_outshape, self.pd4,
+                                                 self.k4, self.s4)
+
+        # fully connected layer hidden nodes
+        self.fc_hidden1 = fc_hidden
+        self.drop_p = dropout_pct
+
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_channels=input_channels,
+                      out_channels=self.ch1,
+                      kernel_size=self.k1,
+                      stride=self.s1,
+                      padding=self.pd1),
+            nn.BatchNorm2d(self.ch1, momentum=0.01),
+            nn.ReLU(inplace=True),
+        )
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(in_channels=self.ch1,
+                      out_channels=self.ch2,
+                      kernel_size=self.k2,
+                      stride=self.s2,
+                      padding=self.pd2),
+            nn.BatchNorm2d(self.ch2, momentum=0.01),
+            nn.ReLU(inplace=True),
+        )
+
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(in_channels=self.ch2,
+                      out_channels=self.ch3,
+                      kernel_size=self.k3,
+                      stride=self.s3,
+                      padding=self.pd3),
+            nn.BatchNorm2d(self.ch3, momentum=0.01),
+            nn.ReLU(inplace=True),
+        )
+
+        self.conv4 = nn.Sequential(
+            nn.Conv2d(in_channels=self.ch3,
+                      out_channels=self.ch4,
+                      kernel_size=self.k4,
+                      stride=self.s4,
+                      padding=self.pd4),
+            nn.BatchNorm2d(self.ch4, momentum=0.01),
+            nn.ReLU(inplace=True),
+        )
+
+        self.drop = nn.Dropout(self.drop_p)
+        self.pool = nn.MaxPool2d(2)
+        self.fc1 = nn.Linear(
+            self.ch4 * self.conv4_outshape[0] * self.conv4_outshape[1],
+            self.fc_hidden1)
+        self.fc2 = nn.Linear(
+            self.fc_hidden1,
+            self.CNN_embed_dim)  # output = CNN embedding latent variables
 
     def forward(self, x):
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
-        x = self.conv5(x)
-        x = self.avgpool(x)
+        # x = self.conv5(x)
+        # x = self.avgpool(x)
         x = x.view(x.size(0), -1) # Flatten the output of conv
         x = self.drop(x)
         x = self.fc1(x)
@@ -213,7 +288,7 @@ class DecoderRNN(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[512, 256, 128, 64], # [512, 256, 128, 32],
+                FC_layer_nodes=[512, 128], # [512, 256, 128, 64], # [512, 256, 128, 32],
                 dropout_pct=0.5,
                 output_dim=1):
         super(DecoderFC, self).__init__()
@@ -223,13 +298,14 @@ class DecoderFC(nn.Module):
         self.dropout_pct = dropout_pct
         self.output_dim = output_dim
 
-        assert len(FC_layer_nodes) == 4
+        assert len(FC_layer_nodes) == 2
 
         self.fc1 = nn.Linear(self.FC_input_size, self.FC_layer_nodes[0])
         self.fc2 = nn.Linear(self.FC_layer_nodes[0], self.FC_layer_nodes[1])
-        self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
-        self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.FC_layer_nodes[3])
-        self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.output_dim)
+        self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.output_dim)
+        # self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
+        # self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.FC_layer_nodes[3])
+        # self.fc5 = nn.Linear(self.FC_layer_nodes[3], self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
 
     def forward(self, x):
@@ -240,12 +316,12 @@ class DecoderFC(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x)
-        x = F.silu(x)
-        x = self.drop(x)
-        x = self.fc4(x)
-        x = F.silu(x)
-        x = self.drop(x)
-        x = self.fc5(x)
+        # x = F.silu(x)
+        # x = self.drop(x)
+        # x = self.fc4(x)
+        # x = F.silu(x)
+        # x = self.drop(x)
+        # x = self.fc5(x)
         if self.output_dim == 1:
             return torch.sigmoid(x)
         else:

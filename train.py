@@ -984,8 +984,8 @@ if __name__ == "__main__":
         'img_size': WARPED_CROPPED_IMG_SIZE,
         'img_style': 'diff',
         'use_markers': True,
-        'use_force': True,
-        'use_width': True,
+        'use_force': False,
+        'use_width': False,
         'use_estimation': True,
         'use_transformations': True,
         'use_width_transforms': True,
@@ -1011,7 +1011,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoActBtwnDecoders_Normalized_ExcludeTo200',
+        'run_name': 'SimpleSangwoon_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 250,
