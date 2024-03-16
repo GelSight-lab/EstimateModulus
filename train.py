@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -644,9 +644,9 @@ class ModulusModel():
             for i in range(N_FRAMES):
                 
                 # Execute CNN on video frames
-                x_frames = self.video_encoder(x_frames[:, i, :, :, :])
-                features.append(x_frames)
-                print('CNN Outputs:', x_frames[0:5,:])
+                x_frames_out = self.video_encoder(x_frames[:, i, :, :, :])
+                features.append(x_frames_out)
+                print('CNN Outputs:', x_frames_out[0:5,:])
 
                 # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
 
@@ -1025,7 +1025,7 @@ if __name__ == "__main__":
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'random_mask_pct'   : 0.1,
-        'learning_rate'     : 5e-6, # 3e-5, # 5e-5, # (for estimations), # 1e-5 (for no estimations)
+        'learning_rate'     : 3e-6, # 3e-5, # 5e-5, # (for estimations), # 1e-5 (for no estimations)
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 27,
