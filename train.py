@@ -644,7 +644,10 @@ class ModulusModel():
             for i in range(N_FRAMES):
                 
                 # Execute CNN on video frames
-                features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                x_frames = self.video_encoder(x_frames[:, i, :, :, :])
+                features.append(x_frames)
+                print('CNN Outputs:', x_frames[0:5,:])
+
                 # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
 
                 # # Execute FC layers on other data and append
@@ -655,22 +658,27 @@ class ModulusModel():
 
             # Execute FC layers on other data and append
             if self.use_force: # Force measurements
-                features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
+                x_forces = self.force_encoder(x_forces[:, :, :].squeeze())
+                features.append(x_forces)
+                print('Force Outputs:', x_forces[0:5,:])
+
             if self.use_width: # Width measurements
-                features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
+                x_widths = self.width_encoder(x_widths[:, :, :].squeeze())
+                features.append(x_widths)
+                print('Width Outputs:', x_widths[0:5,:])
 
             # Send aggregated features to the FC decoder
             features = torch.cat(features, -1)
             outputs = self.decoder(features)
 
-            print(outputs)
+            print('Decoder Outputs:', outputs[0:5,:])
 
             if self.use_estimation:
                 x_estimations = torch.clamp(x_estimations, min=self.normalization_values['min_estimate'], max=self.normalization_values['max_estimate'])
                 x_estimations = self.log_normalize(x_estimations, x_max=self.normalization_values['max_estimate'], x_min=self.normalization_values['min_estimate'], use_torch=True)
                 outputs = self.estimation_decoder(torch.cat([outputs, x_estimations.squeeze(-1)], -1))
 
-            print(outputs)
+            print('Final Outputs:', outputs[0:5,:])
 
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             val_stats['loss'] += loss.item()
@@ -1017,7 +1025,7 @@ if __name__ == "__main__":
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'random_mask_pct'   : 0.1,
-        'learning_rate'     : 1e-5, # 3e-5, # 5e-5, # (for estimations), # 1e-5 (for no estimations)
+        'learning_rate'     : 5e-6, # 3e-5, # 5e-5, # (for estimations), # 1e-5 (for no estimations)
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 27,
