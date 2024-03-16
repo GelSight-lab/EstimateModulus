@@ -1006,7 +1006,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'SiLuBtwnDecoders_MaxPool_Normalized_ExcludeTo200',
+        'run_name': 'NoActBtwnDecoders_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 100,

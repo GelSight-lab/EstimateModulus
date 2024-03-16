@@ -104,8 +104,8 @@ class EncoderCNN(nn.Module):
         )
 
         self.drop = nn.Dropout(self.dropout_pct)
-        self.pool = nn.MaxPool2d(2)
-        # self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        # self.pool = nn.MaxPool2d(2)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         self.fc1 = nn.Linear(
             self.ch5 * (self.conv5_outshape[0] // 2) * (self.conv5_outshape[1] // 2), # self.ch5 * self.conv5_outshape[0] * self.conv5_outshape[1],
@@ -122,7 +122,7 @@ class EncoderCNN(nn.Module):
         x = self.conv3(x)
         x = self.conv4(x)
         x = self.conv5(x)
-        x = self.pool(x)
+        x = self.avgpool(x)
         x = x.view(x.size(0), -1) # Flatten the output of conv
         x = self.drop(x)
         x = self.fc1(x)
@@ -161,6 +161,55 @@ class ModifiedResNet18(nn.Module):
         self.resnet18 = self.resnet18.to(device)
         return self
     
+class DecoderRNN(nn.Module):
+    def __init__(self,
+                 input_dim=512,
+                 h_RNN_layers=2,
+                 h_RNN=512,
+                 h_FC_dim=256,
+                 dropout_pct=0.5,
+                 output_dim=1):
+        super(DecoderRNN, self).__init__()
+
+        self.RNN_input_size = input_dim
+        self.h_RNN_layers = h_RNN_layers  # RNN hidden layers
+        self.h_RNN = h_RNN  # RNN hidden nodes
+        self.h_FC_dim = h_FC_dim
+        self.dropout_pct = dropout_pct
+        self.output_dim = output_dim
+
+        self.LSTM = nn.LSTM(
+                input_size=self.RNN_input_size,
+                hidden_size=self.h_RNN,
+                num_layers=self.h_RNN_layers,
+                batch_first=True,
+                dropout=self.dropout_pct
+            )
+
+        self.fc1 = nn.Linear(self.h_RNN, self.h_FC_dim)
+        self.bn = nn.BatchNorm1d(self.h_FC_dim)
+        self.fc2 = nn.Linear(self.h_FC_dim, self.output_dim)
+        self.drop = nn.Dropout(self.dropout_pct)
+
+    def forward(self, x):
+        self.LSTM.flatten_parameters()
+        RNN_out, _ = self.LSTM(x, None)
+        x = self.fc1(RNN_out)
+        x = F.silu(x)
+        x = self.drop(x)
+        x = self.fc2(x)
+        x = torch.sigmoid(x)
+        return x
+
+    # def forward_single(self, x, h_nc):
+    #     self.LSTM.flatten_parameters()
+    #     RNN_out, h_nc_ = self.LSTM(x, h_nc)
+    #     x = self.fc1(RNN_out)
+    #     x = F.silu(x)
+    #     x = self.drop(x)
+    #     x = torch.sigmoid(self.fc2(x))
+    #     return x, h_nc_
+ 
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
@@ -200,7 +249,7 @@ class DecoderFC(nn.Module):
         if self.output_dim == 1:
             return torch.sigmoid(x)
         else:
-            return F.silu(x)
+            return x # F.silu(x)
     
 class EstimationDecoderFC(nn.Module):
     def __init__(self,
@@ -231,55 +280,7 @@ class EstimationDecoderFC(nn.Module):
         x = self.drop(x)
         x = self.fc3(x)
         return torch.sigmoid(x)
-    
-class DecoderRNN(nn.Module):
-    def __init__(self,
-                 input_dim=512,
-                 h_RNN_layers=2,
-                 h_RNN=512,
-                 h_FC_dim=256,
-                 dropout_pct=0.5,
-                 output_dim=1):
-        super(DecoderRNN, self).__init__()
 
-        self.RNN_input_size = input_dim
-        self.h_RNN_layers = h_RNN_layers  # RNN hidden layers
-        self.h_RNN = h_RNN  # RNN hidden nodes
-        self.h_FC_dim = h_FC_dim
-        self.dropout_pct = dropout_pct
-        self.output_dim = output_dim
-
-        self.LSTM = nn.LSTM(
-                input_size=self.RNN_input_size,
-                hidden_size=self.h_RNN,
-                num_layers=self.h_RNN_layers,
-                batch_first=True,
-                dropout=self.dropout_pct
-            )
-
-        self.fc1 = nn.Linear(self.h_RNN, self.h_FC_dim)
-        self.bn = nn.BatchNorm1d(self.h_FC_dim)
-        self.fc2 = nn.Linear(self.h_FC_dim, self.output_dim)
-        self.drop = nn.Dropout(self.dropout_pct)
-
-    def forward(self, x):
-        self.LSTM.flatten_parameters()
-        RNN_out, _ = self.LSTM(x, None)
-        x = self.fc1(RNN_out)
-        x = F.silu(x)
-        x = self.drop(x)
-        x = torch.sigmoid(self.fc2(x))
-        return x
-
-    # def forward_single(self, x, h_nc):
-    #     self.LSTM.flatten_parameters()
-    #     RNN_out, h_nc_ = self.LSTM(x, h_nc)
-    #     x = self.fc1(RNN_out)
-    #     x = F.silu(x)
-    #     x = self.drop(x)
-    #     x = torch.sigmoid(self.fc2(x))
-    #     return x, h_nc_
- 
 class ForceFC(nn.Module):
     def __init__(self, input_dim=1, hidden_size=16, output_dim=16, dropout_pct=0.5):
         super(ForceFC, self).__init__()
