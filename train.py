@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -663,6 +663,8 @@ class ModulusModel():
             features = torch.cat(features, -1)
             outputs = self.decoder(features)
 
+            print(outputs)
+
             if self.use_estimation:
                 x_estimations = torch.clamp(x_estimations, min=self.normalization_values['min_estimate'], max=self.normalization_values['max_estimate'])
                 x_estimations = self.log_normalize(x_estimations, x_max=self.normalization_values['max_estimate'], x_min=self.normalization_values['min_estimate'], use_torch=True)
@@ -766,12 +768,12 @@ class ModulusModel():
                 '\n'
             )
 
-            for name, param in self.video_encoder.named_parameters():
-                print(f'{name} : {param.data} : {name}')
-                break
-            for name, param in self.force_encoder.named_parameters():
-                print(f'{name} : {param.data} : {name}')
-                break
+            # for name, param in self.video_encoder.named_parameters():
+            #     print(f'{name} : {param.data} : {name}')
+            #     break
+            # for name, param in self.force_encoder.named_parameters():
+            #     print(f'{name} : {param.data} : {name}')
+            #     break
 
             # Save the best model based on validation loss and accuracy
             if val_stats['loss'] <= min_val_loss:
