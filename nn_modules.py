@@ -197,8 +197,10 @@ class DecoderFC(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc5(x)
-        return torch.sigmoid(x)
-    
+        if self.output_dim == 1:
+            return torch.sigmoid(x)
+        else:
+            return F.silu(x)
     
 class EstimationDecoderFC(nn.Module):
     def __init__(self,
