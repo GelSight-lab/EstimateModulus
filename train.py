@@ -118,9 +118,9 @@ class CustomDataset(Dataset):
                 self.x_frames /= self.normalization_values['max_depth']
 
         
-        # Random block out images for training
-        if random.random() < 0.5 and (not self.validation_dataset):
-            self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0.5 # 0
+        # # Random block out images for training
+        # if random.random() < 0.5 and (not self.validation_dataset):
+        #     self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0.5 # 0
                 
 
 
@@ -561,10 +561,10 @@ class ModulusModel():
             
             features = torch.cat(features, -1)
 
-            # Randomly mask features
-            features = features * (
-                        torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
-                    )
+            # # Randomly mask features
+            # features = features * (
+            #             torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
+            #         )
 
             # Send aggregated features to the FC decode
             outputs = self.decoder(features)
@@ -1011,7 +1011,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'SimpleSangwoon_Normalized_ExcludeTo200',
+        'run_name': 'NoRandomMasking_SimpleSangwoon_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 250,
