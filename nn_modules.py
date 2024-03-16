@@ -108,7 +108,7 @@ class EncoderCNN(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         self.fc1 = nn.Linear(
-            self.ch5 * (self.conv5_outshape[0] // 2) * (self.conv5_outshape[1] // 2), # self.ch5 * self.conv5_outshape[0] * self.conv5_outshape[1],
+            self.ch5, # self.ch5 * self.conv5_outshape[0] * self.conv5_outshape[1],
             self.fc_hidden
         ) # Fully connected layer, output k classes
         self.fc2 = nn.Linear(
