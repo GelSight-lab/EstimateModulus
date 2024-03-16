@@ -947,30 +947,30 @@ class ModulusModel():
         with open(f'./plotting_data/{self.run_name}/labels.json', 'w') as json_file:
             json.dump(material_label_data, json_file, cls=NumpyEncoder)
     
-        # # Create plot
-        # mpl.rcParams['font.family'] = ['serif']
-        # mpl.rcParams['font.serif'] = ['Times New Roman']
-        # plt.figure()
-        # plt.plot([100, 10**12], [100, 10**12], 'k--', label='_')
-        # plt.fill_between([100, 10**12], [10**1, 10**11], [10**3, 10**13], color='gray', alpha=0.2)
-        # plt.xscale('log')
-        # plt.yscale('log')
+        # Create plot
+        mpl.rcParams['font.family'] = ['serif']
+        mpl.rcParams['font.serif'] = ['Times New Roman']
+        plt.figure()
+        plt.plot([100, 10**12], [100, 10**12], 'k--', label='_')
+        plt.fill_between([100, 10**12], [10**1, 10**11], [10**3, 10**13], color='gray', alpha=0.2)
+        plt.xscale('log')
+        plt.yscale('log')
 
-        # for mat in material_to_color.keys():
-        #     plt.plot(material_label_data[mat], material_prediction_data[mat], '.', markersize=10, color=material_to_color[mat], label=mat)
+        for mat in material_to_color.keys():
+            plt.plot(material_label_data[mat], material_prediction_data[mat], '.', markersize=10, color=material_to_color[mat], label=mat)
 
-        # plt.xlabel("Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
-        # plt.ylabel("Predicted Modulus ($\\tilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
-        # plt.xlim([100, 10**12])
-        # plt.ylim([100, 10**12])
-        # plt.title('Neural Network', fontsize=14)
+        plt.xlabel("Ground Truth Modulus ($E$) [$\\frac{N}{m^2}$]", fontsize=12)
+        plt.ylabel("Predicted Modulus ($\\tilde{E}$) [$\\frac{N}{m^2}$]", fontsize=12)
+        plt.xlim([100, 10**12])
+        plt.ylim([100, 10**12])
+        plt.title('Neural Network', fontsize=14)
 
-        # plt.legend()
-        # plt.grid(True, which='both', linestyle='--', linewidth=0.25)
-        # plt.tick_params(axis='both', which='both', labelsize=10)
+        plt.legend()
+        plt.grid(True, which='both', linestyle='--', linewidth=0.25)
+        plt.tick_params(axis='both', which='both', labelsize=10)
 
-        # plt.savefig('./figures/nn.png')
-        # plt.show()
+        plt.savefig('./figures/nn.png')
+        plt.show()
         return
 
 
@@ -1014,7 +1014,7 @@ if __name__ == "__main__":
         'run_name': 'NoActBtwnDecoders_Normalized_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 100,
+        'epochs'            : 250,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'img_feature_size'  : 64,
@@ -1022,7 +1022,7 @@ if __name__ == "__main__":
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'random_mask_pct'   : 0.1,
-        'learning_rate'     : 3e-6, # 3e-5, # 5e-5, # (for estimations), # 1e-5 (for no estimations)
+        'learning_rate'     : 5e-6, # 3e-5, # 5e-5, # (for estimations), # 1e-5 (for no estimations)
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 27,
@@ -1046,5 +1046,5 @@ if __name__ == "__main__":
 
     # for run_name in ['Layer4Decoder_Normalized_ExcludeTo200__t=0']:
     #     train_modulus = ModulusModel(config, device=device)
-    #     train_modulus.load_model(f'./model/{run_name}')
+    #     train_modulus.load_model(f'./model/by_loss/{run_name}')
     #     train_modulus.make_performance_plot()
