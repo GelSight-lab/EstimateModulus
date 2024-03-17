@@ -354,7 +354,7 @@ class EstimationDecoderFC(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x)
-        return torch.sigmoid(x)
+        return 12 * torch.sigmoid(x)
 
 class ForceFC(nn.Module):
     def __init__(self, input_dim=1, hidden_size=16, output_dim=16, dropout_pct=0.5):

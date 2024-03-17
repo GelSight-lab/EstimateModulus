@@ -376,13 +376,13 @@ class ModulusModel():
         if x_min is None: x_min = self.normalization_values['min_modulus']
         if use_torch:
             return (torch.log10(x) - torch.log10(self.x_min_cuda)) / (torch.log10(self.x_max_cuda) - torch.log10(self.x_min_cuda))
-        return (np.log10(x) - np.log10(x_min)) / (np.log10(x_max) - np.log10(x_min))
+        return 12*(np.log10(x) - np.log10(x_min)) / (np.log10(x_max) - np.log10(x_min))
     
     # Unnormalize labels from maximum on log scale
     def log_unnormalize(self, x_normal, x_max=None, x_min=None):
         if x_max is None: x_max = self.normalization_values['max_modulus']
         if x_min is None: x_min = self.normalization_values['min_modulus']
-        return x_min * (x_max/x_min)**(x_normal)
+        return x_min * (x_max/x_min)**(x_normal / 12)
 
     # Create data loaders based on configuration
     def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, csv_shape_column=2, csv_material_column=3, \
@@ -1011,7 +1011,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoRandomMasking_MikeyCNN_Decoder4Layer_Normalized_ExcludeTo200',
+        'run_name': 'OutputBy12_MikeyCNN_Decoder4Layer_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 250,
