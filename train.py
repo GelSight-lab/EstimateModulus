@@ -1016,7 +1016,7 @@ if __name__ == "__main__":
         'run_name': 'FW_MikeyCNN_Decoder4Layer_Normalized_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 300,
+        'epochs'            : 60,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'img_feature_size'  : 64,
@@ -1024,7 +1024,7 @@ if __name__ == "__main__":
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'random_mask_pct'   : 0.1,
-        'learning_rate'     : 3e-6, # 1e-5, # (for estimations), # 1e-5 (for no estimations)
+        'learning_rate'     : 1e-5, # (for estimations), # 1e-5 (for no estimations)
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 27,
