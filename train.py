@@ -376,13 +376,13 @@ class ModulusModel():
         if x_min is None: x_min = self.normalization_values['min_modulus']
         if use_torch:
             return (torch.log10(x) - torch.log10(self.x_min_cuda)) / (torch.log10(self.x_max_cuda) - torch.log10(self.x_min_cuda))
-        return 12*(np.log10(x) - np.log10(x_min)) / (np.log10(x_max) - np.log10(x_min))
+        return 10*(np.log10(x) - np.log10(x_min)) / (np.log10(x_max) - np.log10(x_min))
     
     # Unnormalize labels from maximum on log scale
     def log_unnormalize(self, x_normal, x_max=None, x_min=None):
         if x_max is None: x_max = self.normalization_values['max_modulus']
         if x_min is None: x_min = self.normalization_values['min_modulus']
-        return x_min * (x_max/x_min)**(x_normal / 12)
+        return x_min * (x_max/x_min)**(x_normal/10)
 
     # Create data loaders based on configuration
     def _load_data_paths(self, labels_csv_name='objects_and_labels.csv', csv_modulus_column=14, csv_shape_column=2, csv_material_column=3, \
@@ -1011,10 +1011,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'OutputBy12_MikeyCNN_Decoder4Layer_Normalized_ExcludeTo200',
+        'run_name': 'OutputBy10_MikeyCNN_Decoder4Layer_Normalized_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 250,
+        'epochs'            : 200,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'img_feature_size'  : 64,
@@ -1022,7 +1022,7 @@ if __name__ == "__main__":
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.4,
         'random_mask_pct'   : 0.1,
-        'learning_rate'     : 1e-5, # 3e-5, # 5e-5, # (for estimations), # 1e-5 (for no estimations)
+        'learning_rate'     : 5e-6, # 1e-5, # (for estimations), # 1e-5 (for no estimations)
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 27,
@@ -1033,7 +1033,7 @@ if __name__ == "__main__":
     # Train the model over some data
     base_run_name = config['run_name']
     chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
-    for i in range(len(chosen_random_states)):
+    for i in range(20):
         config['run_name'] = f'{base_run_name}__t={i}'
         
         if i < len(chosen_random_states):
