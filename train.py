@@ -561,10 +561,10 @@ class ModulusModel():
             
             features = torch.cat(features, -1)
 
-            # # Randomly mask features
-            # features = features * (
-            #             torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
-            #         )
+            # Randomly mask features
+            features = features * (
+                        torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
+                    )
 
             # Send aggregated features to the FC decode
             outputs = self.decoder(features)
@@ -1014,7 +1014,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'SiLuBtwnModels_Normalized_ExcludeTo200',
+        'run_name': 'RandMaskFeatures_SiLuBtwnModels_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 100,
