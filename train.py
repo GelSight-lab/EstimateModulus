@@ -681,7 +681,8 @@ class ModulusModel():
             val_stats['loss'] += loss.item()
             val_stats['batch_count'] += 1
 
-            outputs = torch.clamp(outputs, min=0, max=10)
+            # Clamp to possible range
+            outputs = torch.clamp(outputs, min=0, max=1)
 
             # Calculate performance metrics
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs.cpu())) - torch.log10(self.log_unnormalize(y.cpu()))).detach().numpy()
@@ -1013,7 +1014,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'FW_MikeyCNN_Decoder4Layer_Normalized_ExcludeTo200',
+        'run_name': 'SiLuActivation_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,

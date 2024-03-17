@@ -248,7 +248,7 @@ class DecoderFC(nn.Module):
         # x = self.drop(x)
         # x = self.fc5(x)
         if self.output_dim == 1:
-            return torch.sigmoid(x)
+            return F.silu(x) # torch.sigmoid(x)
         else:
             return x # F.silu(x)
     
@@ -280,7 +280,7 @@ class EstimationDecoderFC(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x)
-        return torch.sigmoid(x)
+        return F.silu(x) # torch.sigmoid(x)
 
 class ForceFC(nn.Module):
     def __init__(self, input_dim=1, hidden_size=16, output_dim=16, dropout_pct=0.5):
