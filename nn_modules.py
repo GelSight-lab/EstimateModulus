@@ -129,7 +129,7 @@ class EncoderCNN(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x) # CNN embedding
-        return F.silu(x)
+        return x # F.silu(x)
 
 class ModifiedResNet18(nn.Module):
     def __init__(self, CNN_embed_dim=128):
@@ -250,7 +250,7 @@ class DecoderFC(nn.Module):
         if self.output_dim == 1:
             return torch.sigmoid(x)
         else:
-            return F.silu(x)
+            return x # F.silu(x)
     
 class EstimationDecoderFC(nn.Module):
     def __init__(self,
@@ -303,7 +303,7 @@ class ForceFC(nn.Module):
         # x = F.silu(x)
         # x = self.drop(x)
         # x = self.fc3(x)
-        return F.silu(x)
+        return x # F.silu(x)
     
 class WidthFC(nn.Module):
     def __init__(self, input_dim=1, hidden_size=16, output_dim=16, dropout_pct=0.5):
@@ -326,7 +326,7 @@ class WidthFC(nn.Module):
         # x = F.silu(x)
         # x = self.drop(x)
         # x = self.fc3(x)
-        return F.silu(x)
+        return x # F.silu(x)
  
 class EstimationFC(nn.Module):
     def __init__(self, input_dim=3, hidden_size=16, output_dim=16, dropout_pct=0.5):
@@ -345,4 +345,4 @@ class EstimationFC(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x)
-        return F.silu(x)
+        return x # F.silu(x)
