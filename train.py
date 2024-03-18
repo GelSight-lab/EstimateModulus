@@ -1043,7 +1043,7 @@ if __name__ == "__main__":
         'run_name': '200Exclusions_Normalized_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 120,
+        'epochs'            : 80,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'img_feature_size'  : 64,
@@ -1064,6 +1064,8 @@ if __name__ == "__main__":
     chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
     for i in range(20):
         config['run_name'] = f'{base_run_name}__t={i}'
+
+        if i == 0: continue
         
         if i < len(chosen_random_states):
             config['random_state'] = chosen_random_states[i]
