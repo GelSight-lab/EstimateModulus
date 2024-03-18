@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -427,6 +427,38 @@ class ModulusModel():
                 if os.path.isfile(f'{file_prefix}/E.pkl'):
                     clean_paths_to_files.append(file_path)
             self.paths_to_files = clean_paths_to_files
+
+        # Remove those with no force change
+        if self.use_force:
+            clean_paths_to_files = []
+            for file_path in self.paths_to_files:
+                file_prefix = file_path[:file_path.find('_aug=')+6]
+                with open(file_prefix + '_forces.pkl', 'rb') as file:
+                    F = pickle.load(file)
+                if F[-1] > F[0]:
+                    clean_paths_to_files.append(file_path)
+            self.paths_to_files = clean_paths_to_files
+
+        # Remove those with no width change
+        if self.use_width:
+            clean_paths_to_files = []
+            for file_path in self.paths_to_files:
+                file_prefix = file_path[:file_path.find('_aug=')+6]
+                with open(file_prefix + '_widths.pkl', 'rb') as file:
+                    w = pickle.load(file)
+                if w[-1] < w[0]:
+                    clean_paths_to_files.append(file_path)
+            self.paths_to_files = clean_paths_to_files
+        
+        # clean_paths_to_files = []
+        # for file_path in self.paths_to_files:
+        #     file_prefix = file_path[:file_path.find('_aug=')+6]
+        #     marker_signal = '_other' if config['use_markers'] else ''
+        #     with open(file_prefix + f'_depth{marker_signal}.pkl', 'rb') as file:
+        #         depth_images = pickle.load(file)
+        #     if depth_images[-1, 50:200, 75:275].max() > 0.5*depth_images[-1, :, :].max():
+        #         clean_paths_to_files.append(file_path)
+        # self.paths_to_files = clean_paths_to_files
 
         # Create data loaders based on training / validation break-up
         self._create_data_loaders()
@@ -1002,7 +1034,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'SiLuBtwnModels_Normalized_ExcludeTo200',
+        'run_name': 'FWMustChange_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 100,
