@@ -1030,7 +1030,7 @@ if __name__ == "__main__":
                     'orange_elastic_ball', 'rubber_pancake', 'magnetic_whiteboard_eraser', 'paper_towel_bundle', 'half_rose_eraser',
                     'fake_half_rose', 'half_bumpy_ball_eraser', 'golf_ball', 'watermelon_eraser', 'strawberry_eraser',
                     'lion_eraser', 'crab_eraser', 'zebra_eraser', 'fox_eraser', 'bear_eraser', 'bee_eraser', 'banana_eraser', 'frog_eraser',
-                    'scotch_brite', 'lifesaver_hard', 'blue_sponge_wet', 'fake_washer_stack
+                    'scotch_brite', 'lifesaver_hard', 'blue_sponge_wet', 'fake_washer_stack'
 
                     # 'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
                     # 'wooden_spoon', 'metal_spoon', 'metal_knife',
