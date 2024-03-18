@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -428,27 +428,27 @@ class ModulusModel():
                     clean_paths_to_files.append(file_path)
             self.paths_to_files = clean_paths_to_files
 
-        # Remove those with no force change
-        if self.use_force:
-            clean_paths_to_files = []
-            for file_path in self.paths_to_files:
-                file_prefix = file_path[:file_path.find('_aug=')+6]
-                with open(file_prefix + '_forces.pkl', 'rb') as file:
-                    F = pickle.load(file)
-                if F[-1] > F[0]:
-                    clean_paths_to_files.append(file_path)
-            self.paths_to_files = clean_paths_to_files
+        # # Remove those with no force change
+        # if self.use_force:
+        #     clean_paths_to_files = []
+        #     for file_path in self.paths_to_files:
+        #         file_prefix = file_path[:file_path.find('_aug=')+6]
+        #         with open(file_prefix + '_forces.pkl', 'rb') as file:
+        #             F = pickle.load(file)
+        #         if F[-1] > F[0]:
+        #             clean_paths_to_files.append(file_path)
+        #     self.paths_to_files = clean_paths_to_files
 
-        # Remove those with no width change
-        if self.use_width:
-            clean_paths_to_files = []
-            for file_path in self.paths_to_files:
-                file_prefix = file_path[:file_path.find('_aug=')+6]
-                with open(file_prefix + '_widths.pkl', 'rb') as file:
-                    w = pickle.load(file)
-                if w[-1] < w[0]:
-                    clean_paths_to_files.append(file_path)
-            self.paths_to_files = clean_paths_to_files
+        # # Remove those with no width change
+        # if self.use_width:
+        #     clean_paths_to_files = []
+        #     for file_path in self.paths_to_files:
+        #         file_prefix = file_path[:file_path.find('_aug=')+6]
+        #         with open(file_prefix + '_widths.pkl', 'rb') as file:
+        #             w = pickle.load(file)
+        #         if w[-1] < w[0]:
+        #             clean_paths_to_files.append(file_path)
+        #     self.paths_to_files = clean_paths_to_files
         
         # clean_paths_to_files = []
         # for file_path in self.paths_to_files:
@@ -1040,7 +1040,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'OutsideDepthOkay_200Exclusions_Normalized_ExcludeTo200',
+        'run_name': 'Control_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
@@ -1064,8 +1064,6 @@ if __name__ == "__main__":
     chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
     for i in range(20):
         config['run_name'] = f'{base_run_name}__t={i}'
-
-        if i == 0: continue
         
         if i < len(chosen_random_states):
             config['random_state'] = chosen_random_states[i]
