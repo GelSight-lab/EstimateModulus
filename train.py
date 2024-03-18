@@ -1020,30 +1020,30 @@ if __name__ == "__main__":
                     'baseball', 'plastic_measuring_cup', 'whiteboard_eraser', 'cutting_board',
                     'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white',
                     
-                    # Decrease to 200
-                    'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
-                    'gel', 'gel_big', 'gel_double_wide', 'wooden_spoon', 'metal_fork', 'metal_spoon', 'metal_knife',
-                    'key_ring', 'ring', 'white_bottle_cap', 'blue_bottle_cap', 'red_foam_brick', 'buckle', 'peeler',
-                    'insole', 'pi_usb_cable', 'hdmi_adapter', 'mechanical_pencil', 'red_electrical_piece',
-                    'heat_insert', 'iphone_brick', 'rubber_band', 'rubber_band_bundle', 'molded_rectangle', 'molded_cylinder_wide',
-                    'motorcycle_eraser', 'tennis_ball', 'mousepad', 'charger_cable', 'power_cable', 'wooden_sheet', 'chopstick', 
-                    'orange_elastic_ball', 'rubber_pancake', 'magnetic_whiteboard_eraser', 'paper_towel_bundle', 'half_rose_eraser',
-                    'fake_half_rose', 'half_bumpy_ball_eraser', 'golf_ball', 'watermelon_eraser', 'strawberry_eraser',
-                    'lion_eraser', 'crab_eraser', 'zebra_eraser', 'fox_eraser', 'bear_eraser', 'bee_eraser', 'banana_eraser', 'frog_eraser',
-                    'scotch_brite', 'lifesaver_hard',
-
+                    # # Decrease to 200
                     # 'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
-                    # 'wooden_spoon', 'metal_spoon', 'metal_knife',
-                    # 'red_foam_brick', 'molded_rectangle', 'molded_cylinder_wide', 'wooden_sheet',
-                    # 'mousepad', 'chopstick', 'rubber_band_bundle',  
+                    # 'gel', 'gel_big', 'gel_double_wide', 'wooden_spoon', 'metal_fork', 'metal_spoon', 'metal_knife',
+                    # 'key_ring', 'ring', 'white_bottle_cap', 'blue_bottle_cap', 'red_foam_brick', 'buckle', 'peeler',
+                    # 'insole', 'pi_usb_cable', 'hdmi_adapter', 'mechanical_pencil', 'red_electrical_piece',
+                    # 'heat_insert', 'iphone_brick', 'rubber_band', 'rubber_band_bundle', 'molded_rectangle', 'molded_cylinder_wide',
+                    # 'motorcycle_eraser', 'tennis_ball', 'mousepad', 'charger_cable', 'power_cable', 'wooden_sheet', 'chopstick', 
+                    # 'orange_elastic_ball', 'rubber_pancake', 'magnetic_whiteboard_eraser', 'paper_towel_bundle', 'half_rose_eraser',
+                    # 'fake_half_rose', 'half_bumpy_ball_eraser', 'golf_ball', 'watermelon_eraser', 'strawberry_eraser',
+                    # 'lion_eraser', 'crab_eraser', 'zebra_eraser', 'fox_eraser', 'bear_eraser', 'bee_eraser', 'banana_eraser', 'frog_eraser',
+                    # 'scotch_brite', 'lifesaver_hard',
+
+                    'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
+                    'wooden_spoon', 'metal_spoon', 'metal_knife',
+                    'red_foam_brick', 'molded_rectangle', 'molded_cylinder_wide', 'wooden_sheet',
+                    'mousepad', 'chopstick', 'rubber_band_bundle',  
                 ],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'DepthCenter_FWMustChange_Normalized_ExcludeTo200',
+        'run_name': 'LessExclusions_Normalized_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 100,
+        'epochs'            : 120,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'img_feature_size'  : 64,
