@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -450,15 +450,15 @@ class ModulusModel():
                     clean_paths_to_files.append(file_path)
             self.paths_to_files = clean_paths_to_files
         
-        # clean_paths_to_files = []
-        # for file_path in self.paths_to_files:
-        #     file_prefix = file_path[:file_path.find('_aug=')+6]
-        #     marker_signal = '_other' if config['use_markers'] else ''
-        #     with open(file_prefix + f'_depth{marker_signal}.pkl', 'rb') as file:
-        #         depth_images = pickle.load(file)
-        #     if depth_images[-1, 50:200, 75:275].max() > 0.5*depth_images[-1, :, :].max():
-        #         clean_paths_to_files.append(file_path)
-        # self.paths_to_files = clean_paths_to_files
+        clean_paths_to_files = []
+        for file_path in self.paths_to_files:
+            file_prefix = file_path[:file_path.find('_aug=')+6]
+            marker_signal = '_other' if config['use_markers'] else ''
+            with open(file_prefix + f'_depth{marker_signal}.pkl', 'rb') as file:
+                depth_images = pickle.load(file)
+            if depth_images[-1, 50:200, 75:275].max() > 0.5*depth_images[-1, :, :].max():
+                clean_paths_to_files.append(file_path)
+        self.paths_to_files = clean_paths_to_files
 
         # Create data loaders based on training / validation break-up
         self._create_data_loaders()
@@ -1013,28 +1013,34 @@ if __name__ == "__main__":
         'use_transformations': True,
         'use_width_transforms': True,
         'exclude': [
-                    'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
+                    'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', # 'blue_sponge_wet', \
                     'blue_foam_brick', 'green_foam_brick', # 'yellow_foam_brick', 'red_foam_brick', 
-                    'apple', 'orange', 'strawberry', 'ripe_banana', 'unripe_banana', 
-                    'lacrosse_ball', 'scotch_brite', 'fake_washer_stack', 'cork', 'rubber_spatula',
-                    'baseball', 'plastic_measuring_cup', 'whiteboard_eraser', 'lifesaver_hard', 'cutting_board',
+                    'apple', 'orange', 'strawberry', 'ripe_banana', 'unripe_banana', 'tennis_ball', 
+                    'lacrosse_ball', 'cork', 'rubber_spatula', # 'fake_washer_stack',
+                    'baseball', 'plastic_measuring_cup', 'whiteboard_eraser', 'cutting_board',
                     'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white',
                     
                     # Decrease to 200
                     'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
                     'gel', 'gel_big', 'gel_double_wide', 'wooden_spoon', 'metal_fork', 'metal_spoon', 'metal_knife',
                     'key_ring', 'ring', 'white_bottle_cap', 'blue_bottle_cap', 'red_foam_brick', 'buckle', 'peeler',
-                    'insole', 'rubber_spatula', 'pi_usb_cable', 'hdmi_adapter', 'mechanical_pencil', 'red_electrical_piece',
+                    'insole', 'pi_usb_cable', 'hdmi_adapter', 'mechanical_pencil', 'red_electrical_piece',
                     'heat_insert', 'iphone_brick', 'rubber_band', 'rubber_band_bundle', 'molded_rectangle', 'molded_cylinder_wide',
                     'motorcycle_eraser', 'tennis_ball', 'mousepad', 'charger_cable', 'power_cable', 'wooden_sheet', 'chopstick', 
                     'orange_elastic_ball', 'rubber_pancake', 'magnetic_whiteboard_eraser', 'paper_towel_bundle', 'half_rose_eraser',
                     'fake_half_rose', 'half_bumpy_ball_eraser', 'golf_ball', 'watermelon_eraser', 'strawberry_eraser',
-                    'lion_eraser', 'crab_eraser', 'zebra_eraser', 'fox_eraser', 'bear_eraser', 'bee_eraser', 'banana_eraser', 'frog_eraser'
+                    'lion_eraser', 'crab_eraser', 'zebra_eraser', 'fox_eraser', 'bear_eraser', 'bee_eraser', 'banana_eraser', 'frog_eraser',
+                    'scotch_brite', 'lifesaver_hard',
+
+                    # 'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
+                    # 'wooden_spoon', 'metal_spoon', 'metal_knife',
+                    # 'red_foam_brick', 'molded_rectangle', 'molded_cylinder_wide', 'wooden_sheet',
+                    # 'mousepad', 'chopstick', 'rubber_band_bundle',  
                 ],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'FWMustChange_Normalized_ExcludeTo200',
+        'run_name': 'DepthCenter_FWMustChange_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 100,
