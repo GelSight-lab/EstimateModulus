@@ -428,37 +428,37 @@ class ModulusModel():
                     clean_paths_to_files.append(file_path)
             self.paths_to_files = clean_paths_to_files
 
-        # # Remove those with no force change
-        # if self.use_force:
-        #     clean_paths_to_files = []
-        #     for file_path in self.paths_to_files:
-        #         file_prefix = file_path[:file_path.find('_aug=')+6]
-        #         with open(file_prefix + '_forces.pkl', 'rb') as file:
-        #             F = pickle.load(file)
-        #         if F[-1] > F[0]:
-        #             clean_paths_to_files.append(file_path)
-        #     self.paths_to_files = clean_paths_to_files
+        # Remove those with no force change
+        if self.use_force:
+            clean_paths_to_files = []
+            for file_path in self.paths_to_files:
+                file_prefix = file_path[:file_path.find('_aug=')+6]
+                with open(file_prefix + '_forces.pkl', 'rb') as file:
+                    F = pickle.load(file)
+                if F[-1] > F[0]:
+                    clean_paths_to_files.append(file_path)
+            self.paths_to_files = clean_paths_to_files
 
-        # # Remove those with no width change
-        # if self.use_width:
-        #     clean_paths_to_files = []
-        #     for file_path in self.paths_to_files:
-        #         file_prefix = file_path[:file_path.find('_aug=')+6]
-        #         with open(file_prefix + '_widths.pkl', 'rb') as file:
-        #             w = pickle.load(file)
-        #         if w[-1] < w[0]:
-        #             clean_paths_to_files.append(file_path)
-        #     self.paths_to_files = clean_paths_to_files
+        # Remove those with no width change
+        if self.use_width:
+            clean_paths_to_files = []
+            for file_path in self.paths_to_files:
+                file_prefix = file_path[:file_path.find('_aug=')+6]
+                with open(file_prefix + '_widths.pkl', 'rb') as file:
+                    w = pickle.load(file)
+                if w[-1] < w[0]:
+                    clean_paths_to_files.append(file_path)
+            self.paths_to_files = clean_paths_to_files
         
-        # clean_paths_to_files = []
-        # for file_path in self.paths_to_files:
-        #     file_prefix = file_path[:file_path.find('_aug=')+6]
-        #     marker_signal = '_other' if config['use_markers'] else ''
-        #     with open(file_prefix + f'_depth{marker_signal}.pkl', 'rb') as file:
-        #         depth_images = pickle.load(file)
-        #     if depth_images[-1, 50:200, 75:275].max() > 0.5*depth_images[-1, :, :].max():
-        #         clean_paths_to_files.append(file_path)
-        # self.paths_to_files = clean_paths_to_files
+        clean_paths_to_files = []
+        for file_path in self.paths_to_files:
+            file_prefix = file_path[:file_path.find('_aug=')+6]
+            marker_signal = '_other' if config['use_markers'] else ''
+            with open(file_prefix + f'_depth{marker_signal}.pkl', 'rb') as file:
+                depth_images = pickle.load(file)
+            if depth_images[-1, 50:200, 75:275].max() > 0.5*depth_images[-1, :, :].max():
+                clean_paths_to_files.append(file_path)
+        self.paths_to_files = clean_paths_to_files
 
         # Create data loaders based on training / validation break-up
         self._create_data_loaders()
@@ -1020,27 +1020,27 @@ if __name__ == "__main__":
                     'baseball', 'plastic_measuring_cup', 'whiteboard_eraser', 'cutting_board',
                     'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white',
                     
-                    # Decrease to 200
-                    'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
-                    'gel', 'gel_big', 'gel_double_wide', 'wooden_spoon', 'metal_fork', 'metal_spoon', 'metal_knife',
-                    'key_ring', 'ring', 'white_bottle_cap', 'blue_bottle_cap', 'red_foam_brick', 'buckle', 'peeler',
-                    'insole', 'pi_usb_cable', 'hdmi_adapter', 'mechanical_pencil', 'red_electrical_piece',
-                    'heat_insert', 'iphone_brick', 'rubber_band', 'rubber_band_bundle', 'molded_rectangle', 'molded_cylinder_wide',
-                    'motorcycle_eraser', 'tennis_ball', 'mousepad', 'charger_cable', 'power_cable', 'wooden_sheet', 'chopstick', 
-                    'orange_elastic_ball', 'rubber_pancake', 'magnetic_whiteboard_eraser', 'paper_towel_bundle', 'half_rose_eraser',
-                    'fake_half_rose', 'half_bumpy_ball_eraser', 'golf_ball', 'watermelon_eraser', 'strawberry_eraser',
-                    'lion_eraser', 'crab_eraser', 'zebra_eraser', 'fox_eraser', 'bear_eraser', 'bee_eraser', 'banana_eraser', 'frog_eraser',
-                    'scotch_brite', 'lifesaver_hard', 'blue_sponge_wet', 'fake_washer_stack'
-
+                    # # Decrease to 200
                     # 'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
-                    # 'wooden_spoon', 'metal_spoon', 'metal_knife',
-                    # 'red_foam_brick', 'molded_rectangle', 'molded_cylinder_wide', 'wooden_sheet',
-                    # 'mousepad', 'chopstick', 'rubber_band_bundle',  
+                    # 'gel', 'gel_big', 'gel_double_wide', 'wooden_spoon', 'metal_fork', 'metal_spoon', 'metal_knife',
+                    # 'key_ring', 'ring', 'white_bottle_cap', 'blue_bottle_cap', 'red_foam_brick', 'buckle', 'peeler',
+                    # 'insole', 'pi_usb_cable', 'hdmi_adapter', 'mechanical_pencil', 'red_electrical_piece',
+                    # 'heat_insert', 'iphone_brick', 'rubber_band', 'rubber_band_bundle', 'molded_rectangle', 'molded_cylinder_wide',
+                    # 'motorcycle_eraser', 'tennis_ball', 'mousepad', 'charger_cable', 'power_cable', 'wooden_sheet', 'chopstick', 
+                    # 'orange_elastic_ball', 'rubber_pancake', 'magnetic_whiteboard_eraser', 'paper_towel_bundle', 'half_rose_eraser',
+                    # 'fake_half_rose', 'half_bumpy_ball_eraser', 'golf_ball', 'watermelon_eraser', 'strawberry_eraser',
+                    # 'lion_eraser', 'crab_eraser', 'zebra_eraser', 'fox_eraser', 'bear_eraser', 'bee_eraser', 'banana_eraser', 'frog_eraser',
+                    # 'scotch_brite', 'lifesaver_hard', 'blue_sponge_wet', 'fake_washer_stack'
+
+                    'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
+                    'wooden_spoon', 'metal_spoon', 'metal_knife',
+                    'red_foam_brick', 'molded_rectangle', 'molded_cylinder_wide', 'wooden_sheet',
+                    'mousepad', 'chopstick', 'rubber_band_bundle',  
                 ],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'ActBtwnRemoved_Normalized_ExcludeTo200',
+        'run_name': 'LessExclusions_FWIncDec_DepthCenter',
 
         # Training and model parameters
         'epochs'            : 80,
