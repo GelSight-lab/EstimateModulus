@@ -116,14 +116,7 @@ class CustomDataset(Dataset):
             elif self.img_style == 'depth':
                 self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
                 self.x_frames /= self.normalization_values['max_depth']
-
-        
-        # Random block out images for training
-        if random.random() < 0.5 and (not self.validation_dataset):
-            self.x_frames[random.randint(0, self.n_frames-1), :, :, :] = 0.5 # 0
                 
-
-
         # with open(self.input_paths[idx].replace('_other', ''), 'rb') as file:
         #     if self.img_style == 'diff':
         #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
@@ -560,11 +553,6 @@ class ModulusModel():
                 features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
             
             features = torch.cat(features, -1)
-
-            # # Randomly mask features
-            # features = features * (
-            #             torch.rand((1, self.decoder_input_size), device=device) < self.random_mask_pct
-            #         )
 
             # Send aggregated features to the FC decode
             outputs = self.decoder(features)
@@ -1014,7 +1002,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'RandMaskFrames_SiLuBtwnModels_Normalized_ExcludeTo200',
+        'run_name': 'SiLuBtwnModels_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 100,
