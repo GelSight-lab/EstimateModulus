@@ -450,15 +450,15 @@ class ModulusModel():
                     clean_paths_to_files.append(file_path)
             self.paths_to_files = clean_paths_to_files
         
-        clean_paths_to_files = []
-        for file_path in self.paths_to_files:
-            file_prefix = file_path[:file_path.find('_aug=')+6]
-            marker_signal = '_other' if config['use_markers'] else ''
-            with open(file_prefix + f'_depth{marker_signal}.pkl', 'rb') as file:
-                depth_images = pickle.load(file)
-            if depth_images[-1, 50:200, 75:275].max() > 0.5*depth_images[-1, :, :].max():
-                clean_paths_to_files.append(file_path)
-        self.paths_to_files = clean_paths_to_files
+        # clean_paths_to_files = []
+        # for file_path in self.paths_to_files:
+        #     file_prefix = file_path[:file_path.find('_aug=')+6]
+        #     marker_signal = '_other' if config['use_markers'] else ''
+        #     with open(file_prefix + f'_depth{marker_signal}.pkl', 'rb') as file:
+        #         depth_images = pickle.load(file)
+        #     if depth_images[-1, 50:200, 75:275].max() > 0.5*depth_images[-1, :, :].max():
+        #         clean_paths_to_files.append(file_path)
+        # self.paths_to_files = clean_paths_to_files
 
         # Create data loaders based on training / validation break-up
         self._create_data_loaders()
@@ -1040,7 +1040,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': '200Exclusions_Normalized_ExcludeTo200',
+        'run_name': 'OutsideDepthOkay_200Exclusions_Normalized_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
