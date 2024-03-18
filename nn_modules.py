@@ -255,7 +255,7 @@ class DecoderFC(nn.Module):
 class EstimationDecoderFC(nn.Module):
     def __init__(self,
                 input_dim=6,
-                FC_layer_nodes=[16, 16],
+                FC_layer_nodes=[64, 64, 64],
                 dropout_pct=0.5,
                 output_dim=1):
         super(EstimationDecoderFC, self).__init__()
@@ -265,11 +265,12 @@ class EstimationDecoderFC(nn.Module):
         self.dropout_pct = dropout_pct
         self.output_dim = output_dim
 
-        assert len(FC_layer_nodes) == 2
+        assert len(FC_layer_nodes) == 3
 
         self.fc1 = nn.Linear(self.FC_input_size, self.FC_layer_nodes[0])
         self.fc2 = nn.Linear(self.FC_layer_nodes[0], self.FC_layer_nodes[1])
-        self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.output_dim)
+        self.fc3 = nn.Linear(self.FC_layer_nodes[1], self.FC_layer_nodes[2])
+        self.fc4 = nn.Linear(self.FC_layer_nodes[2], self.output_dim)
         self.drop = nn.Dropout(self.dropout_pct)
 
     def forward(self, x):
@@ -280,6 +281,9 @@ class EstimationDecoderFC(nn.Module):
         x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x)
+        x = F.silu(x)
+        x = self.drop(x)
+        x = self.fc4(x)
         return torch.sigmoid(x)
 
 class ForceFC(nn.Module):

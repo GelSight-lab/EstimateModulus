@@ -1040,7 +1040,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'ExcludeTo200_FWIncDec_DepthCenter',
+        'run_name': 'LargerEstDecoder_ExcludeTo200_FWIncDec_DepthCenter',
 
         # Training and model parameters
         'epochs'            : 80,
