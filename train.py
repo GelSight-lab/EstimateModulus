@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -529,7 +529,7 @@ class ModulusModel():
                                             estimation_tensor=empty_estimation_tensor,
                                             label_tensor=empty_label_tensor)
         self.train_loader   = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, **kwargs)
-        self.val_loader     = DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, **kwargs)
+        self.val_loader     = DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=True, **kwargs)
         return
 
     def _train_epoch(self):
@@ -678,11 +678,13 @@ class ModulusModel():
             # Execute FC layers on other data and append
             if self.use_force: # Force measurements
                 features.append(self.force_encoder(x_forces[:, :, :].squeeze()))
-                print('Force Outputs:', self.force_encoder(x_forces[:, :, :].squeeze())[0:2,:])
+                print('Force Inputs:', x_forces[0:3, :, :])
+                print('Force Outputs:', self.force_encoder(x_forces[:, :, :].squeeze())[0:3,:])
 
             if self.use_width: # Width measurements
                 features.append(self.width_encoder(x_widths[:, :, :].squeeze()))
-                print('Force Outputs:', self.width_encoder(x_widths[:, :, :].squeeze())[0:2,:])
+                print('Width Inputs:', x_widths[0:3, :, :])
+                print('Width Outputs:', self.width_encoder(x_widths[:, :, :].squeeze())[0:3,:])
 
             # Send aggregated features to the FC decoder
             features = torch.cat(features, -1)
@@ -1040,7 +1042,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'LargerEstDecoder_Drop0.05_ExcludeTo200_FWIncDec_DepthCenter',
+        'run_name': 'LargerEstDecoder_5LayerDecoder_Drop0.05_ExcludeTo200_FWIncDec_DepthCenter',
 
         # Training and model parameters
         'epochs'            : 80,
