@@ -333,7 +333,7 @@ class WidthFC(nn.Module):
         return x # F.silu(x)
  
 class EstimationFC(nn.Module):
-    def __init__(self, input_dim=3, hidden_size=16, output_dim=16, dropout_pct=0.5):
+    def __init__(self, input_dim=3, hidden_size=16, output_dim=16, dropout_pct=0.05):
         super(EstimationFC, self).__init__()
 
         self.hidden_size = hidden_size
