@@ -1041,7 +1041,8 @@ if __name__ == "__main__":
                 ],
 
         # Logging on/off
-        'use_wandb': 'DropoutOffEst_EstBiased_FWLayer1_ExcludeTo200',
+        'use_wandb': True,
+        'run_name': 'EstDropoutOff_EstBiased_FWLayer1_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
