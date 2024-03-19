@@ -1049,7 +1049,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'L2Norm_LRScheduler_NoTransforms_FWLayer1_ExcludeTo200',
+        'run_name': 'L2Norm_LRScheduler_NoTransforms_NoFW_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
@@ -1070,16 +1070,22 @@ if __name__ == "__main__":
     # Train the model over some data
     base_run_name = config['run_name']
     chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
-    for i in range(20):
-        config['run_name'] = f'{base_run_name}__t={i}'
-        
-        if i < len(chosen_random_states):
-            config['random_state'] = chosen_random_states[i]
-        else:
-            config['random_state'] = random.randint(1, 100)
 
-        train_modulus = ModulusModel(config, device=device)
-        train_modulus.train()
+    for use_est in [False, True]:
+
+        config['use_estimation'] = use_est
+        base_run_name = f'Est{use_est}_{base_run_name}'
+
+        for i in range(3):
+            config['run_name'] = f'{base_run_name}__t={i}'
+            
+            if i < len(chosen_random_states):
+                config['random_state'] = chosen_random_states[i]
+            else:
+                config['random_state'] = random.randint(1, 100)
+
+            train_modulus = ModulusModel(config, device=device)
+            train_modulus.train()
 
     # for run_name in ['Layer4Decoder_Normalized_ExcludeTo200__t=0']:
     #     train_modulus = ModulusModel(config, device=device)
