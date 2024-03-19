@@ -598,10 +598,10 @@ class ModulusModel():
 
             
             
-            l2_reg = torch.tensor(0., device=self.device)
-            for param in self.params:
-                l2_reg += torch.norm(param)
-            loss += 0.00005 * l2_reg
+            # l2_reg = torch.tensor(0., device=self.device)
+            # for param in self.params:
+            #     l2_reg += torch.norm(param)
+            # loss += 0.00005 * l2_reg
 
 
 
@@ -1049,7 +1049,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'ELU_L2Norm_NoTransforms_NoFW_ExcludeTo200',
+        'run_name': 'ELU_NoTransforms_NoFW_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
@@ -1059,8 +1059,8 @@ if __name__ == "__main__":
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
-        'learning_rate'     : 1e-5, # 5e-6,
-        'gamma'             : 0.95, # 100**(-5/150), # 100**(-lr_step_size / epochs)
+        'learning_rate'     : 5e-6, # 1e-5,
+        'gamma'             : 0.975, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 1,
         'random_state'      : 27,
     }
