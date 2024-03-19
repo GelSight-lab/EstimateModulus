@@ -1012,7 +1012,7 @@ if __name__ == "__main__":
         'use_force': True,
         'use_width': True,
         'use_estimation': True,
-        'use_transformations': True,
+        'use_transformations': False,
         'use_width_transforms': True,
         'exclude': [
                     'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', # 'blue_sponge_wet', \
@@ -1042,7 +1042,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'AllDropout0.3_FWLayer1_ExcludeTo200',
+        'run_name': 'NoTransforms_NoDropout_FWLayer1_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
@@ -1051,7 +1051,7 @@ if __name__ == "__main__":
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
-        'dropout_pct'       : 0.3,
+        'dropout_pct'       : 0.0, # 0.3,
         'learning_rate'     : 5e-6, # 1e-5
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
