@@ -1041,7 +1041,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Simple_ReLU_ExcludeTo200',
+        'run_name': 'Simple_SiLU_FWLayer1_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
