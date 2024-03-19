@@ -116,11 +116,6 @@ class CustomDataset(Dataset):
             elif self.img_style == 'depth':
                 self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
                 self.x_frames /= self.normalization_values['max_depth']
-
-        if random.random() > 0.5 and not self.validation_dataset:
-            self.x_frames = torchvision.transforms.functional.hflip(self.x_frames)
-        if random.random() > 0.5 and not self.validation_dataset:
-            self.x_frames = torchvision.transforms.functional.vflip(self.x_frames)
                 
         # with open(self.input_paths[idx].replace('_other', ''), 'rb') as file:
         #     if self.img_style == 'diff':
@@ -268,14 +263,14 @@ class ModulusModel():
                                             [0.04634926, 0.06181679, 0.07152624] \
                                         )
 
-        # if self.use_transformations:
-        #     self.random_transformer = torchvision.transforms.Compose([
-        #             torchvision.transforms.RandomHorizontalFlip(0.5),
-        #             torchvision.transforms.RandomVerticalFlip(0.5),
-        #             # torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.0),
-        #             # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.975, 1.0), antialias=True),
-        #             # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
-        #         ])
+        if self.use_transformations:
+            self.random_transformer = torchvision.transforms.Compose([
+                    torchvision.transforms.RandomHorizontalFlip(0.5),
+                    torchvision.transforms.RandomVerticalFlip(0.5),
+                    # torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.0),
+                    # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.975, 1.0), antialias=True),
+                    # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
+                ])
 
         # Load data
         self.object_names = []
@@ -1047,7 +1042,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'VHAppliedAcrossVid_EstBiased_FWLayer1_ExcludeTo200',
+        'run_name': 'NoVHFlip_EstBiased_FWLayer1_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
