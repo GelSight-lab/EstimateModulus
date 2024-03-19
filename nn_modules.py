@@ -61,7 +61,7 @@ class EncoderCNN(nn.Module):
                       stride=self.s1,
                       padding=self.pd1),
             nn.BatchNorm2d(self.ch1),
-            nn.SiLU(inplace=True),
+            nn.ELU(inplace=True),
         )
         self.conv2 = nn.Sequential(
             nn.Conv2d(in_channels=self.ch1,
@@ -70,7 +70,7 @@ class EncoderCNN(nn.Module):
                       stride=self.s2,
                       padding=self.pd2),
             nn.BatchNorm2d(self.ch2),
-            nn.SiLU(inplace=True),
+            nn.ELU(inplace=True),
         )
 
         self.conv3 = nn.Sequential(
@@ -80,7 +80,7 @@ class EncoderCNN(nn.Module):
                       stride=self.s3,
                       padding=self.pd3),
             nn.BatchNorm2d(self.ch3),
-            nn.SiLU(inplace=True),
+            nn.ELU(inplace=True),
         )
 
         self.conv4 = nn.Sequential(
@@ -90,7 +90,7 @@ class EncoderCNN(nn.Module):
                       stride=self.s4,
                       padding=self.pd4),
             nn.BatchNorm2d(self.ch4),
-            nn.SiLU(inplace=True),
+            nn.ELU(inplace=True),
         )
 
         self.conv5 = nn.Sequential(
@@ -100,7 +100,7 @@ class EncoderCNN(nn.Module):
                       stride=self.s5,
                       padding=self.pd5),
             nn.BatchNorm2d(self.ch5),
-            nn.SiLU(inplace=True),
+            nn.ELU(inplace=True),
         )
 
         self.drop = nn.Dropout(self.dropout_pct)
@@ -126,10 +126,10 @@ class EncoderCNN(nn.Module):
         x = x.view(x.size(0), -1) # Flatten the output of conv
         x = self.drop(x)
         x = self.fc1(x)
-        x = F.silu(x)
+        x = F.elu(x)
         x = self.drop(x)
         x = self.fc2(x) # CNN embedding
-        return x # F.silu(x)
+        return x # F.elu(x)
 
 class ModifiedResNet18(nn.Module):
     def __init__(self, CNN_embed_dim=128):
@@ -195,7 +195,7 @@ class DecoderRNN(nn.Module):
         self.LSTM.flatten_parameters()
         RNN_out, _ = self.LSTM(x, None)
         x = self.fc1(RNN_out)
-        x = F.silu(x)
+        x = F.elu(x)
         x = self.drop(x)
         x = self.fc2(x)
         x = torch.sigmoid(x)
@@ -205,7 +205,7 @@ class DecoderRNN(nn.Module):
     #     self.LSTM.flatten_parameters()
     #     RNN_out, h_nc_ = self.LSTM(x, h_nc)
     #     x = self.fc1(RNN_out)
-    #     x = F.silu(x)
+    #     x = F.elu(x)
     #     x = self.drop(x)
     #     x = torch.sigmoid(self.fc2(x))
     #     return x, h_nc_
@@ -235,16 +235,16 @@ class DecoderFC(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
-        x = F.silu(x)
+        x = F.elu(x)
         x = self.drop(x)
         x = self.fc2(x)
-        x = F.silu(x)
+        x = F.elu(x)
         x = self.drop(x)
         x = self.fc3(x)
-        x = F.silu(x)
+        x = F.elu(x)
         x = self.drop(x)
         x = self.fc4(x)
-        # x = F.silu(x)
+        # x = F.elu(x)
         # x = self.drop(x)
         # x = self.fc5(x)
         if self.output_dim == 1:
@@ -275,13 +275,13 @@ class EstimationDecoderFC(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
-        x = F.silu(x)
+        x = F.elu(x)
         x = self.drop(x)
         x = self.fc2(x)
-        x = F.silu(x)
+        x = F.elu(x)
         x = self.drop(x)
         x = self.fc3(x)
-        x = F.silu(x)
+        x = F.elu(x)
         x = self.drop(x)
         x = self.fc4(x)
         return torch.sigmoid(x)
@@ -301,10 +301,10 @@ class ForceFC(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
-        # x = F.silu(x)
+        # x = F.elu(x)
         # x = self.drop(x)
         # x = self.fc2(x)
-        # x = F.silu(x)
+        # x = F.elu(x)
         # x = self.drop(x)
         # x = self.fc3(x)
         return x
@@ -324,10 +324,10 @@ class WidthFC(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
-        # x = F.silu(x)
+        # x = F.elu(x)
         # x = self.drop(x)
         # x = self.fc2(x)
-        # x = F.silu(x)
+        # x = F.elu(x)
         # x = self.drop(x)
         # x = self.fc3(x)
         return x
