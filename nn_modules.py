@@ -139,7 +139,7 @@ class ModifiedResNet18(nn.Module):
         # self.resnet18.eval()
         # for param in self.resnet18.parameters():
         #     param.requires_grad = False
-        self.fc = nn.Linear(1000, CNN_embed_dim)
+        self.fc = nn.Linear(1024, CNN_embed_dim)
 
     def forward(self, x):
         x = self.resnet18(x)
@@ -296,8 +296,8 @@ class ForceFC(nn.Module):
 
         self.fc1 = nn.Linear(input_dim, self.hidden_size)
         # self.fc2 = nn.Linear(self.hidden_size, self.hidden_size)
-        self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
-        self.drop = nn.Dropout(self.dropout_pct)
+        # self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
+        # self.drop = nn.Dropout(self.dropout_pct)
 
     def forward(self, x):
         x = self.fc1(x)
@@ -318,9 +318,9 @@ class WidthFC(nn.Module):
         self.dropout_pct = dropout_pct
 
         self.fc1 = nn.Linear(input_dim, self.hidden_size)
-        self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
-        # self.fc3 = nn.Linear(self.hidden_size, self.output_dim)
-        self.drop = nn.Dropout(self.dropout_pct)
+        # self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
+        # # self.fc3 = nn.Linear(self.hidden_size, self.output_dim)
+        # self.drop = nn.Dropout(self.dropout_pct)
 
     def forward(self, x):
         x = self.fc1(x)

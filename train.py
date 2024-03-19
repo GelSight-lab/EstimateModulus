@@ -202,7 +202,7 @@ class ModulusModel():
         # self.width_encoder = WidthFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
         self.force_encoder = ForceFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size, dropout_pct=self.dropout_pct) if self.use_force else None
         self.width_encoder = WidthFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size, dropout_pct=self.dropout_pct) if self.use_width else None
-        self.estimation_decoder = EstimationDecoderFC(input_dim=6, output_dim=1) if self.use_estimation else None
+        self.estimation_decoder = EstimationDecoderFC(input_dim=6, output_dim=1, dropout_pct=self.dropout_pct) if self.use_estimation else None
 
         # Compute the size of the input to the decoder based on config
         self.decoder_input_size = self.n_frames * self.img_feature_size
@@ -815,7 +815,7 @@ class ModulusModel():
                 max_val_log_acc = val_stats['log_acc']
                 self.save_model(method='by_acc')
             if val_stats['pct_w_100_factor_err'] <= min_val_outlier_pct:
-                min_val_outlier_pct = val_stats['log_acc']
+                min_val_outlier_pct = val_stats['pct_w_100_factor_err']
                 self.save_model(method='by_outliers')
 
             # Log information to W&B
@@ -1042,7 +1042,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoDropoutAll_FWLayer1_ExcludeTo200',
+        'run_name': 'AllDropout0.3_FWLayer1_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
@@ -1051,7 +1051,7 @@ if __name__ == "__main__":
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
-        'dropout_pct'       : 0.0,
+        'dropout_pct'       : 0.3,
         'learning_rate'     : 5e-6, # 1e-5
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
