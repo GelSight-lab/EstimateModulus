@@ -355,7 +355,6 @@ class ModulusModel():
         self.fwe_feature_size   = config['fwe_feature_size']
         self.val_pct            = config['val_pct']
         self.dropout_pct        = config['dropout_pct']
-        self.random_mask_pct    = config['random_mask_pct']
         self.learning_rate      = config['learning_rate']
         self.gamma              = config['gamma']
         self.lr_step_size       = config['lr_step_size']
@@ -1042,7 +1041,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'DropAll0.05_LargerEstDecoder_5LayerDecoder_ExcludeTo200_FWIncDec_DepthCenter',
+        'run_name': 'ReLU_LargerEstDecoder_5LayerDecoder_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
@@ -1051,8 +1050,7 @@ if __name__ == "__main__":
         'img_feature_size'  : 64,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
-        'dropout_pct'       : 0.05,
-        'random_mask_pct'   : 0.1,
+        'dropout_pct'       : 0.4,
         'learning_rate'     : 1e-5, # (for estimations), # 1e-5 (for no estimations)
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
