@@ -703,9 +703,6 @@ class ModulusModel():
             val_stats['loss'] += loss.item()
             val_stats['batch_count'] += 1
 
-            # # Clamp to possible range
-            # outputs = torch.clamp(outputs, min=0, max=1)
-
             # Calculate performance metrics
             abs_log_diff = torch.abs(torch.log10(self.log_unnormalize(outputs.cpu())) - torch.log10(self.log_unnormalize(y.cpu()))).detach().numpy()
             val_stats['avg_log_diff'] += abs_log_diff.sum()
@@ -1042,7 +1039,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoTransforms_NoDropout_FWLayer1_ExcludeTo200',
+        'run_name': 'LRScheduler_NoTransforms_NoDropout_FWLayer1_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
@@ -1053,8 +1050,8 @@ if __name__ == "__main__":
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.0, # 0.3,
         'learning_rate'     : 5e-6, # 1e-5
-        'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
-        'lr_step_size'      : 5,
+        'gamma'             : 0.95, # 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
+        'lr_step_size'      : 1,
         'random_state'      : 27,
     }
     assert config['img_style'] in ['diff', 'depth']
