@@ -601,7 +601,7 @@ class ModulusModel():
             l2_reg = torch.tensor(0., device=self.device)
             for param in self.params:
                 l2_reg += torch.norm(param)
-            loss += 0.0005 * l2_reg
+            loss += 0.00005 * l2_reg
 
 
 
