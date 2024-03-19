@@ -595,6 +595,16 @@ class ModulusModel():
                 outputs = self.estimation_decoder(torch.cat([outputs, x_estimations.squeeze(-1)], -1))
            
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
+
+            
+            
+            l2_reg = torch.tensor(0., device=self.device)
+            for param in self.params:
+                l2_reg += torch.norm(param)
+            loss += 0.001 * l2_reg
+
+
+
             loss.backward()
             self.optimizer.step()
 
@@ -1006,8 +1016,8 @@ if __name__ == "__main__":
         'img_size': WARPED_CROPPED_IMG_SIZE,
         'img_style': 'diff',
         'use_markers': True,
-        'use_force': True,
-        'use_width': True,
+        'use_force': False,
+        'use_width': False,
         'use_estimation': True,
         'use_transformations': False,
         'use_width_transforms': True,
@@ -1039,7 +1049,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'LRScheduler_NoTransforms_NoDropout_FWLayer1_ExcludeTo200',
+        'run_name': 'L2Norm_LRScheduler_NoTransforms_FWLayer1_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
@@ -1048,8 +1058,8 @@ if __name__ == "__main__":
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
-        'dropout_pct'       : 0.0, # 0.3,
-        'learning_rate'     : 1e-5, # 5e-6, # 1e-5
+        'dropout_pct'       : 0.3,
+        'learning_rate'     : 1e-5, # 5e-6,
         'gamma'             : 0.95, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 1,
         'random_state'      : 27,
