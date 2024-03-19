@@ -126,10 +126,10 @@ class EncoderCNN(nn.Module):
         x = x.view(x.size(0), -1) # Flatten the output of conv
         x = self.drop(x)
         x = self.fc1(x)
-        x = F.relu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x) # CNN embedding
-        return x # F.relu(x)
+        return x # F.silu(x)
 
 class ModifiedResNet18(nn.Module):
     def __init__(self, CNN_embed_dim=128):
@@ -195,7 +195,7 @@ class DecoderRNN(nn.Module):
         self.LSTM.flatten_parameters()
         RNN_out, _ = self.LSTM(x, None)
         x = self.fc1(RNN_out)
-        x = F.relu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x)
         x = torch.sigmoid(x)
@@ -205,7 +205,7 @@ class DecoderRNN(nn.Module):
     #     self.LSTM.flatten_parameters()
     #     RNN_out, h_nc_ = self.LSTM(x, h_nc)
     #     x = self.fc1(RNN_out)
-    #     x = F.relu(x)
+    #     x = F.silu(x)
     #     x = self.drop(x)
     #     x = torch.sigmoid(self.fc2(x))
     #     return x, h_nc_
@@ -213,7 +213,7 @@ class DecoderRNN(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[512, 512, 128], # [512, 256, 128, 64], # [512, 256, 128, 32],
+                FC_layer_nodes=[512, 256, 64], # [512, 256, 128, 64], # [512, 256, 128, 32],
                 dropout_pct=0.5,
                 output_dim=1):
         super(DecoderFC, self).__init__()
@@ -235,16 +235,16 @@ class DecoderFC(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
-        x = F.relu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x)
-        x = F.relu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x)
-        x = F.relu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc4(x)
-        # x = F.relu(x)
+        # x = F.silu(x)
         # x = self.drop(x)
         # x = self.fc5(x)
         if self.output_dim == 1:
@@ -275,13 +275,13 @@ class EstimationDecoderFC(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
-        x = F.relu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc2(x)
-        x = F.relu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc3(x)
-        x = F.relu(x)
+        x = F.silu(x)
         x = self.drop(x)
         x = self.fc4(x)
         return torch.sigmoid(x)
@@ -301,10 +301,10 @@ class ForceFC(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
-        # x = F.relu(x)
+        # x = F.silu(x)
         # x = self.drop(x)
         # x = self.fc2(x)
-        # x = F.relu(x)
+        # x = F.silu(x)
         # x = self.drop(x)
         # x = self.fc3(x)
         return x
@@ -324,29 +324,10 @@ class WidthFC(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
-        # x = F.relu(x)
+        # x = F.silu(x)
         # x = self.drop(x)
         # x = self.fc2(x)
-        # x = F.relu(x)
+        # x = F.silu(x)
         # x = self.drop(x)
         # x = self.fc3(x)
-        return x
- 
-class EstimationFC(nn.Module):
-    def __init__(self, input_dim=3, hidden_size=16, output_dim=16, dropout_pct=0.05):
-        super(EstimationFC, self).__init__()
-
-        self.hidden_size = hidden_size
-        self.output_dim = output_dim
-        self.dropout_pct = dropout_pct
-
-        self.fc1 = nn.Linear(input_dim, self.hidden_size)
-        self.fc2 = nn.Linear(self.hidden_size, self.output_dim)
-        self.drop = nn.Dropout(self.dropout_pct)
-
-    def forward(self, x):
-        x = self.fc1(x)
-        x = F.relu(x)
-        x = self.drop(x)
-        x = self.fc2(x)
         return x
