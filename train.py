@@ -200,8 +200,8 @@ class ModulusModel():
         # Initialize force, width, estimation based on config
         # self.force_encoder = ForceFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
         # self.width_encoder = WidthFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
-        self.force_encoder = ForceFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
-        self.width_encoder = WidthFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
+        self.force_encoder = ForceFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size, dropout_pct=self.dropout_pct) if self.use_force else None
+        self.width_encoder = WidthFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size, dropout_pct=self.dropout_pct) if self.use_width else None
         self.estimation_decoder = EstimationDecoderFC(input_dim=6, output_dim=1) if self.use_estimation else None
 
         # Compute the size of the input to the decoder based on config
@@ -558,9 +558,9 @@ class ModulusModel():
             if self.n_channels == 3:
                 x_frames = self.image_normalization(x_frames)
 
-            # # Apply random transformations for training
-            # if self.use_transformations:
-            #     x_frames = self.random_transformer(x_frames) # Apply V/H flips
+            # Apply random transformations for training
+            if self.use_transformations:
+                x_frames = self.random_transformer(x_frames) # Apply V/H flips
                 
             x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
@@ -1041,8 +1041,7 @@ if __name__ == "__main__":
                 ],
 
         # Logging on/off
-        'use_wandb': True,
-        'run_name': 'NoVHFlip_EstBiased_FWLayer1_ExcludeTo200',
+        'use_wandb': 'DropoutOffEst_EstBiased_FWLayer1_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
