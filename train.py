@@ -1042,17 +1042,17 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoDropout_EstBiased_FWLayer1_ExcludeTo200',
+        'run_name': 'NoEstDropout_FWLayer1_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 80,
+        'epochs'            : 100,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
-        'dropout_pct'       : 0.0, # 0.5
-        'learning_rate'     : 1e-5, # 1e-5
+        'dropout_pct'       : 0.4,
+        'learning_rate'     : 5e-6, # 1e-5
         'gamma'             : 1, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 5,
         'random_state'      : 27,
