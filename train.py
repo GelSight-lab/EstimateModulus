@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -235,7 +235,8 @@ class ModulusModel():
         summary(torchvision.models.resnet18(), (self.batch_size, self.n_channels,  self.img_size[0], self.img_size[1]), col_names=col_names)
         if self.use_force:
             summary(self.force_encoder, (self.batch_size, self.n_frames), col_names=col_names, device=device)
-        summary(self.decoder, (self.batch_size, decoder_input_size), col_names=col_names, device=device)
+        summary(self.decoder, (self.batch_size, self.decoder_input_size), col_names=col_names, device=device)
+        summary(self.estimation_decoder, (self.batch_size, 6), col_names=col_names, device=device)
         print('Done.')
         '''
 
@@ -1041,7 +1042,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Simple_SiLU_FWLayer1_ExcludeTo200',
+        'run_name': 'EstBiased_FWLayer1_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 80,
