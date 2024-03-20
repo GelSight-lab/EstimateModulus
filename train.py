@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = './data' # '/media/mike/Elements/data'
+DATA_DIR = '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -599,7 +599,8 @@ class ModulusModel():
             l2_reg = torch.tensor(0., device=self.device)
             for param in self.params:
                 l2_reg += torch.norm(param)
-            loss += 0.00005 * l2_reg
+            alpha = 0.001 # 0.00005 (for MSE)
+            loss += alpha * l2_reg
 
 
 
@@ -1051,7 +1052,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'MSLogDiffLoss_NoTransforms_NoFW_LessExclusions',
+        'run_name': 'MSLogDiffLoss_L2Norm_NoTransforms_NoFW_LessExclusions',
 
         # Training and model parameters
         'epochs'            : 50,
