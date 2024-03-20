@@ -1035,21 +1035,21 @@ if __name__ == "__main__":
                     'key_ring', 'white_bottle_cap', 'blue_bottle_cap', 'red_foam_brick', 'buckle', 'peeler', 'ring',
                     'insole', 'pi_usb_cable', 'hdmi_adapter', 'red_electrical_piece', 'mechanical_pencil', 
                     'iphone_brick', 'rubber_band', 'rubber_band_bundle', 'molded_rectangle', 'molded_cylinder_wide', 'heat_insert',
-                    'motorcycle_eraser', 'tennis_ball', 'wooden_sheet', 'chopstick', 'charger_cable', 'power_cable', 'mousepad',
+                    'motorcycle_eraser', 'wooden_sheet', 'chopstick', 'charger_cable', 'power_cable', 'mousepad',
                     'orange_elastic_ball', 'rubber_pancake', 'magnetic_whiteboard_eraser', 'paper_towel_bundle', 'half_rose_eraser',
                     'fake_half_rose', 'half_bumpy_ball_eraser', 'watermelon_eraser', 'strawberry_eraser', 'golf_ball', 
                     'lion_eraser', 'crab_eraser', 'zebra_eraser', 'fox_eraser', 'bear_eraser', 'bee_eraser', 'banana_eraser', 'frog_eraser',
                     'scotch_brite', 'fake_washer_stack', 'lifesaver_hard',
 
                     # 'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
-                    # 'wooden_spoon', 'metal_spoon', 'metal_knife',
-                    # 'red_foam_brick', 'molded_rectangle', 'molded_cylinder_wide', 'wooden_sheet',
-                    # 'mousepad', 'chopstick', 'rubber_band_bundle',  
+                    # 'wooden_spoon', 'metal_spoon', 'metal_knife', 'pi_usb_cable', 'hdmi_adapter',
+                    # 'molded_rectangle', 'molded_cylinder_wide', 'magnetic_whiteboard_eraser', 
+                    # 'rubber_band_bundle', 'white_bottle_cap', 'blue_bottle_cap', 'half_bumpy_ball_eraser',
                 ],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'DecoderFeatures6_ELU_CNNrelu_L2Norm_Transforms_NoFW_ExcludeTo200',
+        'run_name': 'WideDecoder_DecoderFeatures6_ELU_CNNrelu_L2Norm_Transforms_NoFW_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 40,
