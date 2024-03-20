@@ -255,7 +255,7 @@ class DecoderFC(nn.Module):
 class EstimationDecoderFC(nn.Module):
     def __init__(self,
                 input_dim=6,
-                FC_layer_nodes=[64, 64, 32],
+                FC_layer_nodes=[128, 128, 32],
                 dropout_pct=0.0,
                 output_dim=1):
         super(EstimationDecoderFC, self).__init__()

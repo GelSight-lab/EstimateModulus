@@ -1049,7 +1049,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoTransforms_NoFW_ExcludeTo200',
+        'run_name': 'LargerEstDecoder_NoTransforms_NoFW_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 40,
