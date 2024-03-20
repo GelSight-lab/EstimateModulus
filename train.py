@@ -360,7 +360,7 @@ class ModulusModel():
         self.gamma              = config['gamma']
         self.lr_step_size       = config['lr_step_size']
         self.random_state       = config['random_state']
-        self.criterion          = nn.MSELoss()
+        self.criterion          = LogDifferenceLoss() # nn.MSELoss()
         return
     
     # Normalize labels to maximum on log scale
@@ -592,7 +592,7 @@ class ModulusModel():
                 x_estimations = self.log_normalize(x_estimations, x_max=self.normalization_values['max_estimate'], x_min=self.normalization_values['min_estimate'], use_torch=True)
                 outputs = self.estimation_decoder(torch.cat([outputs, x_estimations.squeeze(-1)], -1))
            
-            loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
+            loss = self.criterion(self.log_unnormalize(outputs.squeeze(1)), self.log_unnormalize(y.squeeze(1)))
 
             
             
@@ -710,7 +710,8 @@ class ModulusModel():
             # Clamp into acceptable range
             outputs = torch.clamp(outputs, min=0, max=1)
 
-            loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
+            loss = self.criterion(self.log_unnormalize(outputs.squeeze(1)), self.log_unnormalize(y.squeeze(1)))
+
             val_stats['loss'] += loss.item()
             val_stats['batch_count'] += 1
 
@@ -1050,7 +1051,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'AddMaxPoolLayer_Conv4_NoTransforms_NoFW_LessExclusions',
+        'run_name': 'LogDiffLoss_NoTransforms_NoFW_LessExclusions',
 
         # Training and model parameters
         'epochs'            : 50,
