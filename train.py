@@ -709,6 +709,9 @@ class ModulusModel():
 
             print('Final Outputs:', outputs[0:5,:])
 
+            # Clamp into acceptable range
+            outputs = torch.clamp(outputs, min=0, max=1)
+
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
             val_stats['loss'] += loss.item()
             val_stats['batch_count'] += 1
@@ -1049,7 +1052,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'LessExclusions_NoTransforms_NoFW_ExcludeTo200',
+        'run_name': 'SiluFinalAct_NoTransforms_NoFW_LessExclusions',
 
         # Training and model parameters
         'epochs'            : 50,
@@ -1069,7 +1072,7 @@ if __name__ == "__main__":
 
     # Train the model over some data
     base_run_name = config['run_name']
-    chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
+    chosen_random_states = [8, 71, 27, 60, 74, 24, 16, 12, 4, 88]
     for i in range(20):
         config['run_name'] = f'{base_run_name}__t={i}'
 
