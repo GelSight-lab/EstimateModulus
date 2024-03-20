@@ -1098,14 +1098,14 @@ if __name__ == "__main__":
         'run_name': 'PreTrainedVIT_NoTransforms_NoFW_LessExclusions',
 
         # Training and model parameters
-        'epochs'            : 150,
+        'epochs'            : 80,
         'batch_size'        : 32,
         'pretrained_CNN'    : True,
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
-        'learning_rate'     : 3e-6, # 1e-5,
+        'learning_rate'     : 5e-6, # 1e-5,
         'gamma'             : 0.975, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 1,
         'random_state'      : 27,
