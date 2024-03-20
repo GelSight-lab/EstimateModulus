@@ -104,7 +104,7 @@ class EncoderCNN(nn.Module):
         )
 
         self.drop = nn.Dropout(self.dropout_pct)
-        # self.pool = nn.MaxPool2d(2)
+        self.pool = nn.MaxPool2d(2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         self.fc1 = nn.Linear(
@@ -120,6 +120,7 @@ class EncoderCNN(nn.Module):
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
+        x = self.pool(x)
         x = self.conv4(x)
         x = self.conv5(x)
         x = self.avgpool(x)
@@ -284,7 +285,7 @@ class EstimationDecoderFC(nn.Module):
         x = F.elu(x)
         x = self.drop(x)
         x = self.fc4(x)
-        return F.silu(x) # torch.sigmoid(x)
+        return torch.sigmoid(x)
 
 class ForceFC(nn.Module):
     def __init__(self, input_dim=1, hidden_size=16, output_dim=16, dropout_pct=0.5):
