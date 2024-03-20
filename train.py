@@ -1029,30 +1029,30 @@ if __name__ == "__main__":
                     'baseball', 'plastic_measuring_cup', # 'whiteboard_eraser', # 'cutting_board',
                     'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white',
                     
-                    # Decrease to 200
-                    'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
-                    'gel', 'gel_big', 'gel_double_wide', 'wooden_spoon', 'metal_fork', 'metal_spoon', 'metal_knife',
-                    'key_ring', 'white_bottle_cap', 'blue_bottle_cap', 'red_foam_brick', 'buckle', 'peeler', 'ring',
-                    'insole', 'pi_usb_cable', 'hdmi_adapter', 'red_electrical_piece', 'mechanical_pencil', 
-                    'iphone_brick', 'rubber_band', 'rubber_band_bundle', 'molded_rectangle', 'molded_cylinder_wide', 'heat_insert',
-                    'motorcycle_eraser', 'wooden_sheet', 'chopstick', 'charger_cable', 'power_cable', 'mousepad',
-                    'orange_elastic_ball', 'rubber_pancake', 'magnetic_whiteboard_eraser', 'paper_towel_bundle', 'half_rose_eraser',
-                    'fake_half_rose', 'half_bumpy_ball_eraser', 'watermelon_eraser', 'strawberry_eraser', 'golf_ball', 
-                    'lion_eraser', 'crab_eraser', 'zebra_eraser', 'fox_eraser', 'bear_eraser', 'bee_eraser', 'banana_eraser', 'frog_eraser',
-                    'scotch_brite', 'fake_washer_stack', 'lifesaver_hard',
-
+                    # # Decrease to 200
                     # 'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
-                    # 'wooden_spoon', 'metal_spoon', 'metal_knife', 'pi_usb_cable', 'hdmi_adapter',
-                    # 'molded_rectangle', 'molded_cylinder_wide', 'magnetic_whiteboard_eraser', 
-                    # 'rubber_band_bundle', 'white_bottle_cap', 'blue_bottle_cap', 'half_bumpy_ball_eraser',
+                    # 'gel', 'gel_big', 'gel_double_wide', 'wooden_spoon', 'metal_fork', 'metal_spoon', 'metal_knife',
+                    # 'key_ring', 'white_bottle_cap', 'blue_bottle_cap', 'red_foam_brick', 'buckle', 'peeler', 'ring',
+                    # 'insole', 'pi_usb_cable', 'hdmi_adapter', 'red_electrical_piece', 'mechanical_pencil', 
+                    # 'iphone_brick', 'rubber_band', 'rubber_band_bundle', 'molded_rectangle', 'molded_cylinder_wide', 'heat_insert',
+                    # 'motorcycle_eraser', 'wooden_sheet', 'chopstick', 'charger_cable', 'power_cable', 'mousepad',
+                    # 'orange_elastic_ball', 'rubber_pancake', 'magnetic_whiteboard_eraser', 'paper_towel_bundle', 'half_rose_eraser',
+                    # 'fake_half_rose', 'half_bumpy_ball_eraser', 'watermelon_eraser', 'strawberry_eraser', 'golf_ball', 
+                    # 'lion_eraser', 'crab_eraser', 'zebra_eraser', 'fox_eraser', 'bear_eraser', 'bee_eraser', 'banana_eraser', 'frog_eraser',
+                    # 'scotch_brite', 'fake_washer_stack', 'lifesaver_hard',
+
+                    'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
+                    'wooden_spoon', 'metal_spoon', 'metal_knife', 'pi_usb_cable', 'hdmi_adapter',
+                    'molded_rectangle', 'molded_cylinder_wide', 'magnetic_whiteboard_eraser', 
+                    'rubber_band_bundle', 'white_bottle_cap', 'blue_bottle_cap', 'half_bumpy_ball_eraser',
                 ],
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'LargerEstDecoder_NoTransforms_NoFW_ExcludeTo200',
+        'run_name': 'LessExclusions_NoTransforms_NoFW_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 40,
+        'epochs'            : 50,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'img_feature_size'  : 128,
@@ -1072,6 +1072,8 @@ if __name__ == "__main__":
     chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
     for i in range(20):
         config['run_name'] = f'{base_run_name}__t={i}'
+
+        if i < 3: continue
         
         if i < len(chosen_random_states):
             config['random_state'] = chosen_random_states[i]
