@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -191,7 +191,18 @@ class ModulusModel():
 
         # Initialize CNN based on config
         if self.pretrained_CNN:
-            self.video_encoder = ModifiedResNet18(CNN_embed_dim=self.img_feature_size)
+
+            self.pretrained_img_size = 224
+            self.video_encoder = VisionTransformer(
+                img_size=self.pretrained_img_size, patch_size=16, embed_dim=768, depth=12, num_heads=12, in_chans=self.n_channels, pre_norm=True
+            )
+            self.video_encoder.head = nn.Identity()
+            self.video_encoder.eval()
+            for param in self.video_encoder.parameters():
+                param.requires_grad = False
+            self.video_encoder_head = nn.Linear(768, self.img_feature_size)
+
+            # self.video_encoder = ModifiedResNet18(CNN_embed_dim=self.img_feature_size)
             # self.other_video_encoder = ModifiedResNet18(CNN_embed_dim=self.img_feature_size)
         else:
             self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size, dropout_pct=self.dropout_pct)
@@ -241,8 +252,12 @@ class ModulusModel():
         '''
 
         # Concatenate parameters of all models
-        self.params = list(self.video_encoder.parameters())
-        # self.params += list(self.other_video_encoder.parameters())
+        if self.pretrained_CNN:
+            self.params = list(self.video_encoder_head.parameters())
+        else:
+            self.params = list(self.video_encoder.parameters())
+            # self.params += list(self.other_video_encoder.parameters())
+
         if self.use_force: 
             self.params += list(self.force_encoder.parameters())
         if self.use_width: 
@@ -263,14 +278,18 @@ class ModulusModel():
                                             [0.04634926, 0.06181679, 0.07152624] \
                                         )
 
+        # Apply random flipping transformations
         if self.use_transformations:
             self.random_transformer = torchvision.transforms.Compose([
                     torchvision.transforms.RandomHorizontalFlip(0.5),
                     torchvision.transforms.RandomVerticalFlip(0.5),
-                    # torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.0),
-                    # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.975, 1.0), antialias=True),
-                    # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
                 ])
+
+        # Resize image as expected by thee pretrained network weights
+        if self.pretrained_CNN:
+            self.resize_transformer = torchvision.transforms.Resize(
+                (self.pretrained_img_size, self.pretrained_img_size), interpolation=torchvision.transforms.InterpolationMode.BILINEAR
+            )
 
         # Load data
         self.object_names = []
@@ -531,7 +550,10 @@ class ModulusModel():
         return
 
     def _train_epoch(self):
-        self.video_encoder.train()
+        if self.pretrained_CNN:
+            self.video_encoder_head.train()
+        else:
+            self.video_encoder.train()
         if self.use_force:
             self.force_encoder.train()
         if self.use_width:
@@ -552,6 +574,10 @@ class ModulusModel():
                 
             x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
 
+            # Resize to 224x224
+            if self.pretrained_CNN:
+                x_frames = self.resize_transformer(x_frames)
+
             # Normalize images
             if self.n_channels == 3:
                 x_frames = self.image_normalization(x_frames)
@@ -559,16 +585,22 @@ class ModulusModel():
             # Apply random transformations for training
             if self.use_transformations:
                 x_frames = self.random_transformer(x_frames) # Apply V/H flips
-                
-            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
+            
+            if self.pretrained_CNN:
+                x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.pretrained_img_size, self.pretrained_img_size)
+            else:
+                x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
             # Concatenate features across frames into a single vector
             features = []
             for i in range(N_FRAMES):
                 
                 # Execute CNN on video frames
-                features.append(self.video_encoder(x_frames[:, i, :, :, :]))
-                # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
+                if self.pretrained_CNN:
+                    features.append(self.video_encoder_head(self.video_encoder(x_frames[:, i, :, :, :])))
+                else:
+                    features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                    # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
                 
                 # # Execute FC layers on other data and append
                 # if self.use_force: # Force measurements
@@ -594,15 +626,12 @@ class ModulusModel():
            
             loss = self.criterion(self.log_unnormalize(outputs.squeeze(1)), self.log_unnormalize(y.squeeze(1)))
 
-            
-            
+            # Add regularization to loss
             l2_reg = torch.tensor(0., device=self.device)
             for param in self.params:
                 l2_reg += torch.norm(param)
             alpha = 0.001 # 0.00005 (for MSE)
             loss += alpha * l2_reg
-
-
 
             loss.backward()
             self.optimizer.step()
@@ -632,7 +661,10 @@ class ModulusModel():
         return train_stats
 
     def _val_epoch(self, track_predictions=False):
-        self.video_encoder.eval()
+        if self.pretrained_CNN:
+            self.video_encoder_head.eval()
+        else:
+            self.video_encoder.eval()
         if self.use_force:
             self.force_encoder.eval()
         if self.use_width:
@@ -662,19 +694,30 @@ class ModulusModel():
                 
             x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
 
+            # Resize to 224x224
+            if self.pretrained_CNN:
+                x_frames = self.resize_transformer(x_frames)
+
             # Normalize images
             if self.n_channels == 3:
                 x_frames = self.image_normalization(x_frames)
                 
-            x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
+            if self.pretrained_CNN:
+                x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.pretrained_img_size, self.pretrained_img_size)
+            else:
+                x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
             # Concatenate features across frames into a single vector
             features = []
             for i in range(N_FRAMES):
                 
                 # Execute CNN on video frames
-                features.append(self.video_encoder(x_frames[:, i, :, :, :]))
-                print('CNN Outputs:', self.video_encoder(x_frames[:, i, :, :, :])[0:5,:])
+                if self.pretrained_CNN:
+                    features.append(self.video_encoder_head(self.video_encoder(x_frames[:, i, :, :, :])))
+                else:
+                    features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                    # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
+                    print('CNN Outputs:', self.video_encoder(x_frames[:, i, :, :, :])[0:5,:])
 
                 # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
 
@@ -1052,17 +1095,17 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'MSLogDiffLossWithLARGEOutlierPenalty_L2Norm_NoTransforms_NoFW_LessExclusions',
+        'run_name': 'PreTrainedVIT_NoTransforms_NoFW_LessExclusions',
 
         # Training and model parameters
         'epochs'            : 50,
         'batch_size'        : 32,
-        'pretrained_CNN'    : False,
+        'pretrained_CNN'    : True,
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
-        'learning_rate'     : 5e-6, # 1e-5,
+        'learning_rate'     : 3e-6, # 1e-5,
         'gamma'             : 0.975, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 1,
         'random_state'      : 27,

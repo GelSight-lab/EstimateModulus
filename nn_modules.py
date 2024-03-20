@@ -4,6 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 
+from timm.models.vision_transformer import VisionTransformer
+
 def conv2D_output_size(img_size, padding, kernel_size, stride):
 	output_shape=(np.floor((img_size[0] + 2 * padding[0] - (kernel_size[0] - 1) - 1) / stride[0] + 1).astype(int),
 				  np.floor((img_size[1] + 2 * padding[1] - (kernel_size[1] - 1) - 1) / stride[1] + 1).astype(int))
@@ -221,7 +223,7 @@ class DecoderRNN(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=3 * 512,
-                FC_layer_nodes=[256, 256, 64],
+                FC_layer_nodes=[1024, 1024, 256],
                 dropout_pct=0.5,
                 output_dim=1):
         super(DecoderFC, self).__init__()
@@ -264,7 +266,7 @@ class EstimationDecoderFC(nn.Module):
     def __init__(self,
                 input_dim=6,
                 FC_layer_nodes=[64, 64, 16],
-                dropout_pct=0.0,
+                dropout_pct=0.25,
                 output_dim=1):
         super(EstimationDecoderFC, self).__init__()
     
