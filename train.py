@@ -1056,7 +1056,7 @@ if __name__ == "__main__":
         'epochs'            : 50,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
-        'img_feature_size'  : 128,
+        'img_feature_size'  : 64,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
