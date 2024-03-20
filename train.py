@@ -202,7 +202,7 @@ class ModulusModel():
         # self.width_encoder = WidthFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
         self.force_encoder = ForceFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size, dropout_pct=self.dropout_pct) if self.use_force else None
         self.width_encoder = WidthFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size, dropout_pct=self.dropout_pct) if self.use_width else None
-        self.estimation_decoder = EstimationDecoderFC(input_dim=6, output_dim=1, dropout_pct=self.dropout_pct) if self.use_estimation else None
+        self.estimation_decoder = EstimationDecoderFC(input_dim=19, output_dim=1, dropout_pct=self.dropout_pct) if self.use_estimation else None
 
         # Compute the size of the input to the decoder based on config
         self.decoder_input_size = self.n_frames * self.img_feature_size
@@ -212,7 +212,7 @@ class ModulusModel():
         if self.use_width: 
             self.decoder_input_size += self.fwe_feature_size
         if self.use_estimation:
-            self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=3, dropout_pct=self.dropout_pct)
+            self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=16, dropout_pct=self.dropout_pct)
         else:
             self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
 
@@ -1032,14 +1032,14 @@ if __name__ == "__main__":
                     # Decrease to 200
                     'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
                     'gel', 'gel_big', 'gel_double_wide', 'wooden_spoon', 'metal_fork', 'metal_spoon', 'metal_knife',
-                    'key_ring', 'white_bottle_cap', 'blue_bottle_cap', 'red_foam_brick', 'buckle', 'peeler', # 'ring',
-                    'insole', 'pi_usb_cable', 'hdmi_adapter', 'red_electrical_piece', # 'mechanical_pencil', 
-                    'iphone_brick', 'rubber_band', 'rubber_band_bundle', 'molded_rectangle', 'molded_cylinder_wide', # 'heat_insert',
-                    'motorcycle_eraser', 'tennis_ball', 'wooden_sheet', # 'chopstick', 'charger_cable', 'power_cable', 'mousepad',
+                    'key_ring', 'white_bottle_cap', 'blue_bottle_cap', 'red_foam_brick', 'buckle', 'peeler', 'ring',
+                    'insole', 'pi_usb_cable', 'hdmi_adapter', 'red_electrical_piece', 'mechanical_pencil', 
+                    'iphone_brick', 'rubber_band', 'rubber_band_bundle', 'molded_rectangle', 'molded_cylinder_wide', 'heat_insert',
+                    'motorcycle_eraser', 'tennis_ball', 'wooden_sheet', 'chopstick', 'charger_cable', 'power_cable', 'mousepad',
                     'orange_elastic_ball', 'rubber_pancake', 'magnetic_whiteboard_eraser', 'paper_towel_bundle', 'half_rose_eraser',
-                    'fake_half_rose', 'half_bumpy_ball_eraser', 'watermelon_eraser', 'strawberry_eraser', # 'golf_ball', 
+                    'fake_half_rose', 'half_bumpy_ball_eraser', 'watermelon_eraser', 'strawberry_eraser', 'golf_ball', 
                     'lion_eraser', 'crab_eraser', 'zebra_eraser', 'fox_eraser', 'bear_eraser', 'bee_eraser', 'banana_eraser', 'frog_eraser',
-                    'scotch_brite', 'fake_washer_stack', # 'lifesaver_hard',
+                    'scotch_brite', 'fake_washer_stack', 'lifesaver_hard',
 
                     # 'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
                     # 'wooden_spoon', 'metal_spoon', 'metal_knife',
@@ -1049,7 +1049,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Dropout0_ELU_CNNrelu_L2Norm_Transforms_NoFW_ExcludeTo200',
+        'run_name': 'DecoderFeatures16_ELU_CNNrelu_L2Norm_Transforms_NoFW_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 40,
@@ -1058,7 +1058,7 @@ if __name__ == "__main__":
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
-        'dropout_pct'       : 0.0,
+        'dropout_pct'       : 0.4,
         'learning_rate'     : 3e-6, # 5e-6, # 1e-5,
         'gamma'             : 0.975, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 1,
