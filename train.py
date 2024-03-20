@@ -288,7 +288,7 @@ class ModulusModel():
         # Resize image as expected by thee pretrained network weights
         if self.pretrained_CNN:
             self.resize_transformer = torchvision.transforms.Resize(
-                (self.pretrained_img_size, self.pretrained_img_size), interpolation=torchvision.transforms.InterpolationMode.BILINEAR
+                (self.pretrained_img_size, self.pretrained_img_size), interpolation=torchvision.transforms.InterpolationMode.BILINEAR, antialias=True
             )
 
         # Load data
@@ -1098,7 +1098,7 @@ if __name__ == "__main__":
         'run_name': 'PreTrainedVIT_NoTransforms_NoFW_LessExclusions',
 
         # Training and model parameters
-        'epochs'            : 50,
+        'epochs'            : 150,
         'batch_size'        : 32,
         'pretrained_CNN'    : True,
         'img_feature_size'  : 128,
