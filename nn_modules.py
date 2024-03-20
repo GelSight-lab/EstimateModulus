@@ -17,14 +17,14 @@ def conv3D_output_size(img_size, padding, kernel_size, stride):
 				  np.floor((img_size[2] + 2 * padding[2] - (kernel_size[2] - 1) - 1) / stride[2] + 1).astype(int))
 	return output_shape 
 
-class LogDifferenceLoss(torch.nn.Module):
+class MSLogDiffLoss(torch.nn.Module):
     def __init__(self):
         self.epsilon = 1e-6
-        super(LogDifferenceLoss, self).__init__()
+        super(MSLogDiffLoss, self).__init__()
 
     def forward(self, predicted, labels):
-        log_diff = torch.abs(torch.log10(predicted) - torch.log10(labels))
-        return torch.sum(log_diff)
+        log_diff = (torch.log10(predicted) - torch.log10(labels))
+        return torch.mean(log_diff**2)
 
 class EncoderCNN(nn.Module):
     def __init__(self,
