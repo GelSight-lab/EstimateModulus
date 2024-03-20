@@ -1098,7 +1098,7 @@ if __name__ == "__main__":
         'run_name': 'PreTrainedVIT_NoTransforms_NoFW_LessExclusions',
 
         # Training and model parameters
-        'epochs'            : 80,
+        'epochs'            : 100,
         'batch_size'        : 32,
         'pretrained_CNN'    : True,
         'img_feature_size'  : 128,
