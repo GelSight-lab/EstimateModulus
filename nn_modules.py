@@ -22,7 +22,7 @@ class EncoderCNN(nn.Module):
                  img_x=200,
                  img_y=200,
                  input_channels=1,
-                 fc_hidden=1024,
+                 fc_hidden=512, # 1024,
                  dropout_pct=0.5,
                  CNN_embed_dim=128):
         super(EncoderCNN, self).__init__()
@@ -36,7 +36,7 @@ class EncoderCNN(nn.Module):
         self.dropout_pct = dropout_pct
 
         # CNN architechtures
-        self.ch1, self.ch2, self.ch3, self.ch4, self.ch5 = 32, 64, 128, 256, 512
+        self.ch1, self.ch2, self.ch3, self.ch4, self.ch5 = 32, 64, 128, 256 #, 512
         self.k1, self.k2, self.k3, self.k4, self.k5 = (5, 5), (3, 3), (3, 3), (3, 3), (3, 3)  # 2d kernal size
         self.s1, self.s2, self.s3, self.s4, self.s5 = (2, 2), (2, 2), (2, 2), (2, 2), (2, 2)  # 2d strides
         self.pd1, self.pd2, self.pd3, self.pd4, self.pd5 = (0, 0), (0, 0), (0, 0), (0, 0), (0, 0)  # 2d padding
@@ -119,10 +119,10 @@ class EncoderCNN(nn.Module):
     def forward(self, x):
         x = self.conv1(x)
         x = self.conv2(x)
-        x = self.conv3(x)
         x = self.pool(x)
+        x = self.conv3(x)
         x = self.conv4(x)
-        x = self.conv5(x)
+        # x = self.conv5(x)
         x = self.avgpool(x)
         x = x.view(x.size(0), -1) # Flatten the output of conv
         x = self.drop(x)
