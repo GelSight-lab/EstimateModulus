@@ -1026,7 +1026,7 @@ if __name__ == "__main__":
                     'blue_foam_brick', 'green_foam_brick', # 'yellow_foam_brick', 'red_foam_brick', 
                     'apple', 'orange', 'strawberry', 'ripe_banana', 'unripe_banana', 'tennis_ball', 
                     'lacrosse_ball', 'cork', # 'rubber_spatula', # 'fake_washer_stack',
-                    'baseball', 'plastic_measuring_cup', 'whiteboard_eraser', # 'cutting_board',
+                    'baseball', 'plastic_measuring_cup', # 'whiteboard_eraser', # 'cutting_board',
                     'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white',
                     
                     # Decrease to 200
@@ -1049,7 +1049,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Dropout0.4_ELU_CNNrelu_L2Norm_Transforms_NoFW_ExcludeTo200',
+        'run_name': 'Dropout0_ELU_CNNrelu_L2Norm_Transforms_NoFW_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 40,
@@ -1058,7 +1058,7 @@ if __name__ == "__main__":
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
-        'dropout_pct'       : 0.4,
+        'dropout_pct'       : 0.0,
         'learning_rate'     : 3e-6, # 5e-6, # 1e-5,
         'gamma'             : 0.975, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 1,
