@@ -1019,27 +1019,27 @@ if __name__ == "__main__":
         'use_force': False,
         'use_width': False,
         'use_estimation': True,
-        'use_transformations': False,
+        'use_transformations': True,
         'use_width_transforms': True,
         'exclude': [
-                    'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', # 'blue_sponge_wet', \
+                    'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
                     'blue_foam_brick', 'green_foam_brick', # 'yellow_foam_brick', 'red_foam_brick', 
                     'apple', 'orange', 'strawberry', 'ripe_banana', 'unripe_banana', 'tennis_ball', 
-                    'lacrosse_ball', 'cork', 'rubber_spatula', # 'fake_washer_stack',
-                    'baseball', 'plastic_measuring_cup', 'whiteboard_eraser', 'cutting_board',
+                    'lacrosse_ball', 'cork', # 'rubber_spatula', # 'fake_washer_stack',
+                    'baseball', 'plastic_measuring_cup', 'whiteboard_eraser', # 'cutting_board',
                     'plastic_knife', 'plastic_fork', 'plastic_spoon', 'plastic_fork_white',
                     
                     # Decrease to 200
                     'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
                     'gel', 'gel_big', 'gel_double_wide', 'wooden_spoon', 'metal_fork', 'metal_spoon', 'metal_knife',
-                    'key_ring', 'ring', 'white_bottle_cap', 'blue_bottle_cap', 'red_foam_brick', 'buckle', 'peeler',
-                    'insole', 'pi_usb_cable', 'hdmi_adapter', 'mechanical_pencil', 'red_electrical_piece',
-                    'heat_insert', 'iphone_brick', 'rubber_band', 'rubber_band_bundle', 'molded_rectangle', 'molded_cylinder_wide',
-                    'motorcycle_eraser', 'tennis_ball', 'mousepad', 'charger_cable', 'power_cable', 'wooden_sheet', 'chopstick', 
+                    'key_ring', 'white_bottle_cap', 'blue_bottle_cap', 'red_foam_brick', 'buckle', 'peeler', # 'ring',
+                    'insole', 'pi_usb_cable', 'hdmi_adapter', 'red_electrical_piece', # 'mechanical_pencil', 
+                    'iphone_brick', 'rubber_band', 'rubber_band_bundle', 'molded_rectangle', 'molded_cylinder_wide', # 'heat_insert',
+                    'motorcycle_eraser', 'tennis_ball', 'wooden_sheet', # 'chopstick', 'charger_cable', 'power_cable', 'mousepad',
                     'orange_elastic_ball', 'rubber_pancake', 'magnetic_whiteboard_eraser', 'paper_towel_bundle', 'half_rose_eraser',
-                    'fake_half_rose', 'half_bumpy_ball_eraser', 'golf_ball', 'watermelon_eraser', 'strawberry_eraser',
+                    'fake_half_rose', 'half_bumpy_ball_eraser', 'watermelon_eraser', 'strawberry_eraser', # 'golf_ball', 
                     'lion_eraser', 'crab_eraser', 'zebra_eraser', 'fox_eraser', 'bear_eraser', 'bee_eraser', 'banana_eraser', 'frog_eraser',
-                    'scotch_brite', 'lifesaver_hard', 'blue_sponge_wet', 'fake_washer_stack'
+                    'scotch_brite', 'fake_washer_stack', # 'lifesaver_hard',
 
                     # 'bowl_small_plastic', 'bowl_big_plastic', 'bowl_ceramic', 'plate_small', 'plate_big',
                     # 'wooden_spoon', 'metal_spoon', 'metal_knife',
@@ -1049,7 +1049,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'ELU_CNNrelu_L2Norm_NoTransforms_NoFW_ExcludeTo200',
+        'run_name': 'Dropout0.4_ELU_CNNrelu_L2Norm_Transforms_NoFW_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 40,
@@ -1058,7 +1058,7 @@ if __name__ == "__main__":
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
-        'dropout_pct'       : 0.3,
+        'dropout_pct'       : 0.4,
         'learning_rate'     : 3e-6, # 5e-6, # 1e-5,
         'gamma'             : 0.975, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 1,
