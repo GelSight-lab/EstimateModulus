@@ -202,7 +202,7 @@ class ModulusModel():
         # self.width_encoder = WidthFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
         self.force_encoder = ForceFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size, dropout_pct=self.dropout_pct) if self.use_force else None
         self.width_encoder = WidthFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size, dropout_pct=self.dropout_pct) if self.use_width else None
-        self.estimation_decoder = EstimationDecoderFC(input_dim=9, output_dim=1, dropout_pct=self.dropout_pct) if self.use_estimation else None
+        self.estimation_decoder = EstimationDecoderFC(input_dim=6, output_dim=1, dropout_pct=self.dropout_pct) if self.use_estimation else None
 
         # Compute the size of the input to the decoder based on config
         self.decoder_input_size = self.n_frames * self.img_feature_size
@@ -212,7 +212,7 @@ class ModulusModel():
         if self.use_width: 
             self.decoder_input_size += self.fwe_feature_size
         if self.use_estimation:
-            self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=6, dropout_pct=self.dropout_pct)
+            self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=3, dropout_pct=self.dropout_pct)
         else:
             self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
 
@@ -1019,7 +1019,7 @@ if __name__ == "__main__":
         'use_force': False,
         'use_width': False,
         'use_estimation': True,
-        'use_transformations': True,
+        'use_transformations': False,
         'use_width_transforms': True,
         'exclude': [
                     'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
@@ -1049,7 +1049,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'WideDecoder_DecoderFeatures6_ELU_CNNrelu_L2Norm_Transforms_NoFW_ExcludeTo200',
+        'run_name': 'WideDecoder_DecoderFeatures6_NoTransforms_NoFW_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 40,
@@ -1058,7 +1058,7 @@ if __name__ == "__main__":
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
-        'dropout_pct'       : 0.4,
+        'dropout_pct'       : 0.3,
         'learning_rate'     : 3e-6, # 5e-6, # 1e-5,
         'gamma'             : 0.975, # 100**(-5/150), # 100**(-lr_step_size / epochs)
         'lr_step_size'      : 1,
