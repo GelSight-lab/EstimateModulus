@@ -429,26 +429,24 @@ class ModulusModel():
             self.paths_to_files = clean_paths_to_files
 
         # Remove those with no force change
-        if self.use_force:
-            clean_paths_to_files = []
-            for file_path in self.paths_to_files:
-                file_prefix = file_path[:file_path.find('_aug=')+6]
-                with open(file_prefix + '_forces.pkl', 'rb') as file:
-                    F = pickle.load(file)
-                if F[-1] > F[0]:
-                    clean_paths_to_files.append(file_path)
-            self.paths_to_files = clean_paths_to_files
+        clean_paths_to_files = []
+        for file_path in self.paths_to_files:
+            file_prefix = file_path[:file_path.find('_aug=')+6]
+            with open(file_prefix + '_forces.pkl', 'rb') as file:
+                F = pickle.load(file)
+            if F[-1] > F[0]:
+                clean_paths_to_files.append(file_path)
+        self.paths_to_files = clean_paths_to_files
 
         # Remove those with no width change
-        if self.use_width:
-            clean_paths_to_files = []
-            for file_path in self.paths_to_files:
-                file_prefix = file_path[:file_path.find('_aug=')+6]
-                with open(file_prefix + '_widths.pkl', 'rb') as file:
-                    w = pickle.load(file)
-                if w[-1] < w[0]:
-                    clean_paths_to_files.append(file_path)
-            self.paths_to_files = clean_paths_to_files
+        clean_paths_to_files = []
+        for file_path in self.paths_to_files:
+            file_prefix = file_path[:file_path.find('_aug=')+6]
+            with open(file_prefix + '_widths.pkl', 'rb') as file:
+                w = pickle.load(file)
+            if w[-1] < w[0]:
+                clean_paths_to_files.append(file_path)
+        self.paths_to_files = clean_paths_to_files
         
         clean_paths_to_files = []
         for file_path in self.paths_to_files:
