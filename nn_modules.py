@@ -61,7 +61,7 @@ class EncoderCNN(nn.Module):
                       stride=self.s1,
                       padding=self.pd1),
             nn.BatchNorm2d(self.ch1),
-            nn.ELU(inplace=True),
+            nn.ReLU(inplace=True),
         )
         self.conv2 = nn.Sequential(
             nn.Conv2d(in_channels=self.ch1,
@@ -70,7 +70,7 @@ class EncoderCNN(nn.Module):
                       stride=self.s2,
                       padding=self.pd2),
             nn.BatchNorm2d(self.ch2),
-            nn.ELU(inplace=True),
+            nn.ReLU(inplace=True),
         )
 
         self.conv3 = nn.Sequential(
@@ -80,7 +80,7 @@ class EncoderCNN(nn.Module):
                       stride=self.s3,
                       padding=self.pd3),
             nn.BatchNorm2d(self.ch3),
-            nn.ELU(inplace=True),
+            nn.ReLU(inplace=True),
         )
 
         self.conv4 = nn.Sequential(
@@ -90,7 +90,7 @@ class EncoderCNN(nn.Module):
                       stride=self.s4,
                       padding=self.pd4),
             nn.BatchNorm2d(self.ch4),
-            nn.ELU(inplace=True),
+            nn.ReLU(inplace=True),
         )
 
         self.conv5 = nn.Sequential(
@@ -100,7 +100,7 @@ class EncoderCNN(nn.Module):
                       stride=self.s5,
                       padding=self.pd5),
             nn.BatchNorm2d(self.ch5),
-            nn.ELU(inplace=True),
+            nn.ReLU(inplace=True),
         )
 
         self.drop = nn.Dropout(self.dropout_pct)
