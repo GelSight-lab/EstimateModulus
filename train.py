@@ -1052,7 +1052,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'MSLogDiffLossWithOutlierPenalty_L2Norm_NoTransforms_NoFW_LessExclusions',
+        'run_name': 'MSLogDiffLossWithLARGEOutlierPenalty_L2Norm_NoTransforms_NoFW_LessExclusions',
 
         # Training and model parameters
         'epochs'            : 50,

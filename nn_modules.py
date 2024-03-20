@@ -4,8 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 
-from train import N_FRAMES
-
 def conv2D_output_size(img_size, padding, kernel_size, stride):
 	output_shape=(np.floor((img_size[0] + 2 * padding[0] - (kernel_size[0] - 1) - 1) / stride[0] + 1).astype(int),
 				  np.floor((img_size[1] + 2 * padding[1] - (kernel_size[1] - 1) - 1) / stride[1] + 1).astype(int))
@@ -24,7 +22,7 @@ class MSLogDiffLoss(torch.nn.Module):
 
     def forward(self, predicted, labels):
         log_diff = (torch.log10(predicted) - torch.log10(labels))
-        return torch.mean(log_diff**2) + 0.1*torch.sum(log_diff > 2)
+        return torch.mean(log_diff**2) + torch.sum(log_diff > 2) # 0.1*torch.sum(log_diff > 2)
 
 class EncoderCNN(nn.Module):
     def __init__(self,
@@ -222,7 +220,7 @@ class DecoderRNN(nn.Module):
  
 class DecoderFC(nn.Module):
     def __init__(self,
-                input_dim=N_FRAMES * 512,
+                input_dim=3 * 512,
                 FC_layer_nodes=[256, 256, 64],
                 dropout_pct=0.5,
                 output_dim=1):
