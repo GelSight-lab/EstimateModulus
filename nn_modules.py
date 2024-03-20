@@ -36,7 +36,7 @@ class EncoderCNN(nn.Module):
         self.dropout_pct = dropout_pct
 
         # CNN architechtures
-        self.ch1, self.ch2, self.ch3, self.ch4, self.ch5 = 32, 64, 128, 256 #, 512
+        self.ch1, self.ch2, self.ch3, self.ch4, self.ch5 = 32, 64, 128, 256, 512
         self.k1, self.k2, self.k3, self.k4, self.k5 = (5, 5), (3, 3), (3, 3), (3, 3), (3, 3)  # 2d kernal size
         self.s1, self.s2, self.s3, self.s4, self.s5 = (2, 2), (2, 2), (2, 2), (2, 2), (2, 2)  # 2d strides
         self.pd1, self.pd2, self.pd3, self.pd4, self.pd5 = (0, 0), (0, 0), (0, 0), (0, 0), (0, 0)  # 2d padding
@@ -93,28 +93,28 @@ class EncoderCNN(nn.Module):
             nn.ReLU(inplace=True),
         )
 
-        self.conv5 = nn.Sequential(
-            nn.Conv2d(in_channels=self.ch4,
-                      out_channels=self.ch5,
-                      kernel_size=self.k5,
-                      stride=self.s5,
-                      padding=self.pd5),
-            nn.BatchNorm2d(self.ch5),
-            nn.ReLU(inplace=True),
-        )
+        # self.conv5 = nn.Sequential(
+        #     nn.Conv2d(in_channels=self.ch4,
+        #               out_channels=self.ch5,
+        #               kernel_size=self.k5,
+        #               stride=self.s5,
+        #               padding=self.pd5),
+        #     nn.BatchNorm2d(self.ch5),
+        #     nn.ReLU(inplace=True),
+        # )
 
         self.drop = nn.Dropout(self.dropout_pct)
         self.pool = nn.MaxPool2d(2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         self.fc1 = nn.Linear(
-            self.ch5, # self.ch5 * self.conv5_outshape[0] * self.conv5_outshape[1],
+            self.ch4, # self.ch5, # self.ch5 * self.conv5_outshape[0] * self.conv5_outshape[1],
             self.fc_hidden
-        ) # Fully connected layer, output k classes
+        )
         self.fc2 = nn.Linear(
             self.fc_hidden,
             self.CNN_embed_dim
-        )  # Output = CNN embedding latent variables
+        )
 
     def forward(self, x):
         x = self.conv1(x)
