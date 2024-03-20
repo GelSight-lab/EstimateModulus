@@ -24,7 +24,7 @@ class MSLogDiffLoss(torch.nn.Module):
 
     def forward(self, predicted, labels):
         log_diff = (torch.log10(predicted) - torch.log10(labels))
-        return torch.mean(log_diff**2)
+        return torch.mean(log_diff**2) + 0.1*torch.sum(log_diff > 2)
 
 class EncoderCNN(nn.Module):
     def __init__(self,
