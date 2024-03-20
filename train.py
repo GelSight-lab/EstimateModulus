@@ -194,7 +194,7 @@ class ModulusModel():
 
             self.pretrained_img_size = 224
             self.video_encoder = VisionTransformer(
-                img_size=self.pretrained_img_size, patch_size=16, embed_dim=768, depth=12, num_heads=12, in_chans=self.n_channels, pre_norm=True, device=self.device
+                img_size=self.pretrained_img_size, patch_size=16, embed_dim=768, depth=12, num_heads=12, in_chans=self.n_channels, pre_norm=True
             )
             self.video_encoder.head = nn.Identity(device=self.device)
             self.video_encoder.eval()
