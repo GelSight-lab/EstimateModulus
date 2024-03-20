@@ -202,7 +202,7 @@ class ModulusModel():
         # self.width_encoder = WidthFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
         self.force_encoder = ForceFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size, dropout_pct=self.dropout_pct) if self.use_force else None
         self.width_encoder = WidthFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size, dropout_pct=self.dropout_pct) if self.use_width else None
-        self.estimation_decoder = EstimationDecoderFC(input_dim=19, output_dim=1, dropout_pct=self.dropout_pct) if self.use_estimation else None
+        self.estimation_decoder = EstimationDecoderFC(input_dim=9, output_dim=1, dropout_pct=self.dropout_pct) if self.use_estimation else None
 
         # Compute the size of the input to the decoder based on config
         self.decoder_input_size = self.n_frames * self.img_feature_size
@@ -212,7 +212,7 @@ class ModulusModel():
         if self.use_width: 
             self.decoder_input_size += self.fwe_feature_size
         if self.use_estimation:
-            self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=16, dropout_pct=self.dropout_pct)
+            self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=6, dropout_pct=self.dropout_pct)
         else:
             self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
 
@@ -1049,7 +1049,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'DecoderFeatures16_ELU_CNNrelu_L2Norm_Transforms_NoFW_ExcludeTo200',
+        'run_name': 'DecoderFeatures6_ELU_CNNrelu_L2Norm_Transforms_NoFW_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 40,
