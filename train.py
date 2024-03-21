@@ -914,6 +914,8 @@ class ModulusModel():
                 os.remove(f'./model/{method}/{self.run_name}/val_object_performance.json')
             if os.path.exists(f'./model/{method}/{self.run_name}/video_encoder.pth'):
                 os.remove(f'./model/{method}/{self.run_name}/video_encoder.pth')
+            if os.path.exists(f'./model/{method}/{self.run_name}/video_encoder_head.pth'):
+                os.remove(f'./model/{method}/{self.run_name}/video_encoder_head.pth')
             if os.path.exists(f'./model/{method}/{self.run_name}/force_encoder.pth'):
                 os.remove(f'./model/{method}/{self.run_name}/force_encoder.pth')
             if os.path.exists(f'./model/{method}/{self.run_name}/width_encoder.pth'):
@@ -929,6 +931,7 @@ class ModulusModel():
         with open(f'./model/{method}/{self.run_name}/config.json', 'w') as json_file:
             json.dump(self.config, json_file)
         torch.save(self.video_encoder.state_dict(), f'./model/{method}/{self.run_name}/video_encoder.pth')
+        if self.pretrained_CNN: torch.save(self.video_encoder_head.state_dict(), f'./model/{method}/{self.run_name}/video_encoder_head.pth')
         if self.use_force: torch.save(self.force_encoder.state_dict(), f'./model/{method}/{self.run_name}/force_encoder.pth')
         if self.use_width: torch.save(self.width_encoder.state_dict(), f'./model/{method}/{self.run_name}/width_encoder.pth')
         if self.use_estimation: torch.save(self.estimation_decoder.state_dict(), f'./model/{method}/{self.run_name}/estimation_decoder.pth')
@@ -948,6 +951,7 @@ class ModulusModel():
         self._unpack_config(config)
 
         self.video_encoder.load_state_dict(torch.load(f'{folder_path}/video_encoder.pth', map_location=self.device))
+        if self.pretrained_CNN: self.video_encoder_head.load_state_dict(torch.load(f'{folder_path}/video_encoder_head.pth', map_location=self.device))
         if self.use_force: self.force_encoder.load_state_dict(torch.load(f'{folder_path}/force_encoder.pth', map_location=self.device))
         if self.use_width: self.width_encoder.load_state_dict(torch.load(f'{folder_path}/width_encoder.pth', map_location=self.device))
         if self.use_estimation: self.estimation_decoder.load_state_dict(torch.load(f'{folder_path}/estimation_decoder.pth', map_location=self.device))
