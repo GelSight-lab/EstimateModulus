@@ -7,3 +7,4 @@ figures/
 plotting_data/
 visually_inspect.py
 calc_mean_std_rgb.py
+example_data/
