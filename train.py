@@ -626,12 +626,12 @@ class ModulusModel():
            
             loss = self.criterion(self.log_unnormalize(outputs.squeeze(1)), self.log_unnormalize(y.squeeze(1)))
 
-            # Add regularization to loss
-            l2_reg = torch.tensor(0., device=self.device)
-            for param in self.params:
-                l2_reg += torch.norm(param)
-            alpha = 0.001 # 0.00005 (for MSE)
-            loss += alpha * l2_reg
+            # # Add regularization to loss
+            # l2_reg = torch.tensor(0., device=self.device)
+            # for param in self.params:
+            #     l2_reg += torch.norm(param)
+            # alpha = 0.001 # 0.00005 (for MSE)
+            # loss += alpha * l2_reg
 
             loss.backward()
             self.optimizer.step()
@@ -1095,7 +1095,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'LargerModel_FW_Transforms_PreTrainedVIT_LessExclusions',
+        'run_name': 'PreTrainedVIT_LargerModel_NoL2Norm_FW_Transforms_LessExclusions',
 
         # Training and model parameters
         'epochs'            : 100,
