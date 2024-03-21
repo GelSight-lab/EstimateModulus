@@ -28,7 +28,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.cuda.empty_cache()
 torch.autograd.set_detect_anomaly(True)
 
-DATA_DIR = '/media/mike/Elements/data'
+DATA_DIR = './data' # '/media/mike/Elements/data'
 ESTIMATION_DIR = 'training_estimations_nan_filtered'
 N_FRAMES = 3
 WARPED_CROPPED_IMG_SIZE = (250, 350) # WARPED_CROPPED_IMG_SIZE[::-1]
@@ -1062,10 +1062,10 @@ if __name__ == "__main__":
         'img_size': WARPED_CROPPED_IMG_SIZE,
         'img_style': 'diff',
         'use_markers': True,
-        'use_force': False,
-        'use_width': False,
+        'use_force': True,
+        'use_width': True,
         'use_estimation': True,
-        'use_transformations': False,
+        'use_transformations': True,
         'use_width_transforms': True,
         'exclude': [
                     'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', 'blue_sponge_wet', \
@@ -1095,13 +1095,13 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'PreTrainedVIT_NoTransforms_NoFW_LessExclusions',
+        'run_name': 'FW_Transforms_PreTrainedVIT_LessExclusions',
 
         # Training and model parameters
         'epochs'            : 100,
         'batch_size'        : 32,
         'pretrained_CNN'    : True,
-        'img_feature_size'  : 128,
+        'img_feature_size'  : 64,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
