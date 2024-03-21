@@ -1503,7 +1503,7 @@ class ModulusModel():
         self.gamma              = config['gamma']
         self.lr_step_size       = config['lr_step_size']
         self.random_state       = config['random_state']
-        self.criterion          = nn.MSELoss()
+        self.criterion          = MSLogDiffLoss() # nn.MSELoss()
         return
     
     # Normalize labels to maximum on log scale
@@ -1741,10 +1741,12 @@ class ModulusModel():
 
             
             
+            # Add regularization to loss
             l2_reg = torch.tensor(0., device=self.device)
             for param in self.params:
                 l2_reg += torch.norm(param)
-            loss += 0.00005 * l2_reg
+            alpha = 0.001 # 0.00005 (for MSE)
+            loss += alpha * l2_reg
 
 
 
@@ -2192,7 +2194,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'ELU_CNNrelu_L2Norm_NoTransforms_NoFW_ExcludeTo200',
+        'run_name': 'MSLogDiffLoss_ELU_CNNrelu_L2Norm_NoTransforms_NoFW_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 60,
@@ -2215,8 +2217,6 @@ if __name__ == "__main__":
     chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
     for i in range(20):
         config['run_name'] = f'{base_run_name}__t={i}'
-
-        if i < 2: continue
         
         if i < len(chosen_random_states):
             config['random_state'] = chosen_random_states[i]

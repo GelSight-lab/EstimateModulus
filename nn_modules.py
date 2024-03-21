@@ -350,6 +350,16 @@ import torchvision.models as models
 
 from train import N_FRAMES
 
+
+class MSLogDiffLoss(torch.nn.Module):
+    def __init__(self):
+        self.epsilon = 1e-6
+        super(MSLogDiffLoss, self).__init__()
+
+    def forward(self, predicted, labels):
+        log_diff = (torch.log10(predicted) - torch.log10(labels))
+        return torch.mean(log_diff**2) + torch.sum(log_diff > 2) # 0.1*torch.sum(log_diff > 2)
+
 def conv2D_output_size(img_size, padding, kernel_size, stride):
 	output_shape=(np.floor((img_size[0] + 2 * padding[0] - (kernel_size[0] - 1) - 1) / stride[0] + 1).astype(int),
 				  np.floor((img_size[1] + 2 * padding[1] - (kernel_size[1] - 1) - 1) / stride[1] + 1).astype(int))
