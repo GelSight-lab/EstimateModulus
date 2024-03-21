@@ -2197,7 +2197,7 @@ if __name__ == "__main__":
         'run_name': 'MSLogDiffNoPenalty_ELU_CNNrelu_L2Norm_NoTransforms_NoFW_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 60,
+        'epochs'            : 40,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'img_feature_size'  : 128,
