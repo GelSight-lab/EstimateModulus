@@ -1095,13 +1095,13 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'FW_Transforms_PreTrainedVIT_LessExclusions',
+        'run_name': 'LargerModel_FW_Transforms_PreTrainedVIT_LessExclusions',
 
         # Training and model parameters
         'epochs'            : 100,
         'batch_size'        : 32,
         'pretrained_CNN'    : True,
-        'img_feature_size'  : 64,
+        'img_feature_size'  : 128,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
