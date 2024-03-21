@@ -197,9 +197,9 @@ class ModulusModel():
                 img_size=self.pretrained_img_size, patch_size=16, embed_dim=768, depth=12, num_heads=12, in_chans=self.n_channels, pre_norm=True
             )
             self.video_encoder.head = nn.Identity(device=self.device)
-            # self.video_encoder.eval()
-            # for param in self.video_encoder.parameters():
-            #     param.requires_grad = False
+            self.video_encoder.eval()
+            for param in self.video_encoder.parameters():
+                param.requires_grad = False
             self.video_encoder_head = nn.Linear(768, self.img_feature_size, device=self.device)
 
             # self.video_encoder = ModifiedResNet18(CNN_embed_dim=self.img_feature_size)
@@ -255,7 +255,6 @@ class ModulusModel():
 
         # Concatenate parameters of all models
         if self.pretrained_CNN:
-            self.params = list(self.video_encoder.parameters())
             self.params = list(self.video_encoder_head.parameters())
         else:
             self.params = list(self.video_encoder.parameters())
@@ -554,7 +553,6 @@ class ModulusModel():
 
     def _train_epoch(self):
         if self.pretrained_CNN:
-            self.video_encoder.train()
             self.video_encoder_head.train()
         else:
             self.video_encoder.train()
@@ -666,7 +664,6 @@ class ModulusModel():
 
     def _val_epoch(self, track_predictions=False):
         if self.pretrained_CNN:
-            self.video_encoder.eval()
             self.video_encoder_head.eval()
         else:
             self.video_encoder.eval()
