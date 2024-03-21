@@ -2195,7 +2195,7 @@ if __name__ == "__main__":
         'run_name': 'ELU_CNNrelu_L2Norm_NoTransforms_NoFW_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 40,
+        'epochs'            : 60,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'img_feature_size'  : 128,
@@ -2203,7 +2203,7 @@ if __name__ == "__main__":
         'val_pct'           : 0.175,
         'dropout_pct'       : 0.3,
         'learning_rate'     : 3e-6, # 5e-6, # 1e-5,
-        'gamma'             : 0.975, # 100**(-5/150), # 100**(-lr_step_size / epochs)
+        'gamma'             : 0.975,
         'lr_step_size'      : 1,
         'random_state'      : 27,
     }
@@ -2215,6 +2215,8 @@ if __name__ == "__main__":
     chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
     for i in range(20):
         config['run_name'] = f'{base_run_name}__t={i}'
+
+        if i < 2: continue
         
         if i < len(chosen_random_states):
             config['random_state'] = chosen_random_states[i]
