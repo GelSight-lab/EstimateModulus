@@ -45,7 +45,7 @@ def list_files(folder_path, file_paths, config):
             list_files(item_path, file_paths, config)
 
 class CustomDataset(Dataset):
-    def __init__(self, config, paths_to_files, labels, normalization_values, \
+    def __init__(self, config, paths_to_files, labels, normalization_values,
                  validation_dataset=False,
                  frame_tensor=torch.zeros((N_FRAMES, 3, WARPED_CROPPED_IMG_SIZE[0], WARPED_CROPPED_IMG_SIZE[1])),
                  force_tensor=torch.zeros((N_FRAMES, 1)),
@@ -453,7 +453,7 @@ class ModulusModel():
             file_prefix = file_path[:file_path.find('_aug=')+6]
             with open(file_prefix + '_forces.pkl', 'rb') as file:
                 F = pickle.load(file)
-            if F[-1] > F[0]:
+            if F[-1] > F[0] and F.max() > 0.5:
                 clean_paths_to_files.append(file_path)
         self.paths_to_files = clean_paths_to_files
 
@@ -473,7 +473,7 @@ class ModulusModel():
             marker_signal = '_other' if config['use_markers'] else ''
             with open(file_prefix + f'_depth{marker_signal}.pkl', 'rb') as file:
                 depth_images = pickle.load(file)
-            if depth_images[-1, 50:200, 75:275].max() > 0.5*depth_images[-1, :, :].max():
+            if depth_images[-1, 75:175, 100:250].max() > 0.75*depth_images[-1, :, :].max():
                 clean_paths_to_files.append(file_path)
         self.paths_to_files = clean_paths_to_files
 
