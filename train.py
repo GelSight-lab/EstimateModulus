@@ -2109,45 +2109,31 @@ class ModulusModel():
     
     def save_model(self, method='by_loss'):
         assert method in ['by_loss', 'by_acc', 'by_outliers']
-        if not os.path.exists(f'./model/{method}/{self.run_name}'):
-            os.mkdir(f'./model/{method}/{self.run_name}')
+        model_save_dir = f'./model/{method}/{self.run_name}'
+        if not os.path.exists(model_save_dir):
+            os.mkdir(model_save_dir)
         else:
-            if os.path.exists(f'./model/{method}/{self.run_name}/config.json'):
-                os.remove(f'./model/{method}/{self.run_name}/config.json')
-            if os.path.exists(f'./model/{method}/{self.run_name}/train_object_performance.json'):
-                os.remove(f'./model/{method}/{self.run_name}/train_object_performance.json')
-            if os.path.exists(f'./model/{method}/{self.run_name}/val_object_performance.json'):
-                os.remove(f'./model/{method}/{self.run_name}/val_object_performance.json')
-            if os.path.exists(f'./model/{method}/{self.run_name}/video_encoder.pth'):
-                os.remove(f'./model/{method}/{self.run_name}/video_encoder.pth')
-            if os.path.exists(f'./model/{method}/{self.run_name}/video_encoder_head.pth'):
-                os.remove(f'./model/{method}/{self.run_name}/video_encoder_head.pth')
-            if os.path.exists(f'./model/{method}/{self.run_name}/force_encoder.pth'):
-                os.remove(f'./model/{method}/{self.run_name}/force_encoder.pth')
-            if os.path.exists(f'./model/{method}/{self.run_name}/width_encoder.pth'):
-                os.remove(f'./model/{method}/{self.run_name}/width_encoder.pth')
-            if os.path.exists(f'./model/{method}/{self.run_name}/estimation_decoder.pth'):
-                os.remove(f'./model/{method}/{self.run_name}/estimation_decoder.pth')
-            if os.path.exists(f'./model/{method}/{self.run_name}/decoder.pth'):
-                os.remove(f'./model/{method}/{self.run_name}/decoder.pth')
-            if os.path.exists(f'./model/{method}/{self.run_name}/decoderRNN.pth'):
-                os.remove(f'./model/{method}/{self.run_name}/decoderRNN.pth')
+            [os.remove(f'{model_save_dir}/{filename}') for filename in os.listdir(model_save_dir)]
 
         # Save configuration dictionary and all files for the model(s)
         with open(f'./model/{method}/{self.run_name}/config.json', 'w') as json_file:
             json.dump(self.config, json_file)
-        if not self.pretrained_CNN: torch.save(self.video_encoder.state_dict(), f'./model/{method}/{self.run_name}/video_encoder.pth')
-        if self.pretrained_CNN: torch.save(self.video_encoder_head.state_dict(), f'./model/{method}/{self.run_name}/video_encoder_head.pth')
-        if self.use_force: torch.save(self.force_encoder.state_dict(), f'./model/{method}/{self.run_name}/force_encoder.pth')
-        if self.use_width: torch.save(self.width_encoder.state_dict(), f'./model/{method}/{self.run_name}/width_encoder.pth')
-        if self.use_estimation: torch.save(self.estimation_decoder.state_dict(), f'./model/{method}/{self.run_name}/estimation_decoder.pth')
-
-        torch.save(self.decoder.state_dict(), f'./model/{method}/{self.run_name}/decoder.pth')
+        if not self.pretrained_CNN: 
+            torch.save(self.video_encoder.state_dict(), f'{model_save_dir}/video_encoder.pth')
+        if self.pretrained_CNN: 
+            torch.save(self.video_encoder_head.state_dict(), f'{model_save_dir}/video_encoder_head.pth')
+        if self.use_force: 
+            torch.save(self.force_encoder.state_dict(), f'{model_save_dir}/force_encoder.pth')
+        if self.use_width: 
+            torch.save(self.width_encoder.state_dict(), f'{model_save_dir}/width_encoder.pth')
+        if self.use_estimation: 
+            torch.save(self.estimation_decoder.state_dict(), f'{model_save_dir}/estimation_decoder.pth')
+        torch.save(self.decoder.state_dict(), f'{model_save_dir}/decoder.pth')
 
         # Save performance data
-        with open(f'./model/{method}/{self.run_name}/train_object_performance.json', 'w') as json_file:
+        with open(f'{model_save_dir}/train_object_performance.json', 'w') as json_file:
             json.dump(self.train_object_performance, json_file)
-        with open(f'./model/{method}/{self.run_name}/val_object_performance.json', 'w') as json_file:
+        with open(f'{model_save_dir}/val_object_performance.json', 'w') as json_file:
             json.dump(self.val_object_performance, json_file)
         return
     
