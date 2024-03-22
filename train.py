@@ -1112,8 +1112,8 @@ if __name__ == "__main__":
         'img_style': 'diff',
         'use_markers': True,
         'use_both_sides': False,
-        'use_force': False,
-        'use_width': False,
+        'use_force': True,
+        'use_width': True,
         'use_estimation': True,
         'use_transformations': False,
         'use_width_transforms': True,
@@ -1146,7 +1146,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoDropout_ELU_CNNrelu_L2Norm_NoTransforms_NoFW_ExcludeTo200',
+        'run_name': 'FW_ELU_CNNrelu_L2Norm_NoTransforms_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 40,
@@ -1156,7 +1156,7 @@ if __name__ == "__main__":
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
-        'dropout_pct'       : 0.0,
+        'dropout_pct'       : 0.3,
         'learning_rate'     : 3e-6, # 5e-6, # 1e-5,
         'gamma'             : 0.975,
         'lr_step_size'      : 1,
