@@ -1149,7 +1149,7 @@ if __name__ == "__main__":
         'run_name': 'FW_ELU_CNNrelu_L2Norm_NoTransforms_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 40,
+        'epochs'            : 60,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'frozen_pretrained' : False,
