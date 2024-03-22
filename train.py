@@ -1486,6 +1486,7 @@ class ModulusModel():
         self.use_estimation         = config['use_estimation']
         self.use_transformations    = config['use_transformations']
         self.use_width_transforms   = config['use_width_transforms']
+        self.loss_function          = config['loss_function']
         self.exclude                = config['exclude']
         
         self.use_wandb              = config['use_wandb']
@@ -1503,7 +1504,10 @@ class ModulusModel():
         self.gamma              = config['gamma']
         self.lr_step_size       = config['lr_step_size']
         self.random_state       = config['random_state']
-        self.criterion          = MSLogDiffLoss() # nn.MSELoss()
+        if self.loss_function == 'mse':
+            self.criterion      = nn.MSELoss()
+        elif self.loss_function == 'log_diff':
+            self.criterion      = MSLogDiffLoss()
         return
     
     # Normalize labels to maximum on log scale
@@ -1599,7 +1603,7 @@ class ModulusModel():
             marker_signal = '_other' if config['use_markers'] else ''
             with open(file_prefix + f'_depth{marker_signal}.pkl', 'rb') as file:
                 depth_images = pickle.load(file)
-            if depth_images[-1, 50:200, 75:275].max() > 0.5*depth_images[-1, :, :].max():
+            if depth_images[-1, 75:175, 100:250].max() > 0.75*depth_images[-1, :, :].max():
                 clean_paths_to_files.append(file_path)
         self.paths_to_files = clean_paths_to_files
 
@@ -1738,17 +1742,16 @@ class ModulusModel():
                 outputs = self.estimation_decoder(torch.cat([outputs, x_estimations.squeeze(-1)], -1))
            
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
-
-            
             
             # Add regularization to loss
             l2_reg = torch.tensor(0., device=self.device)
             for param in self.params:
                 l2_reg += torch.norm(param)
-            alpha = 0.001 # 0.00005 (for MSE)
+            if self.loss_function == 'mse':
+                alpha = 0.00005
+            elif self.loss_function == 'log_diff':
+                alpha = 0.001
             loss += alpha * l2_reg
-
-
 
             loss.backward()
             self.optimizer.step()
@@ -1855,6 +1858,17 @@ class ModulusModel():
             print('Final Outputs:', outputs[0:5,:])
 
             loss = self.criterion(outputs.squeeze(1), y.squeeze(1))
+            
+            # Add regularization to loss
+            l2_reg = torch.tensor(0., device=self.device)
+            for param in self.params:
+                l2_reg += torch.norm(param)
+            if self.loss_function == 'mse':
+                alpha = 0.00005
+            elif self.loss_function == 'log_diff':
+                alpha = 0.001
+            loss += alpha * l2_reg
+            
             val_stats['loss'] += loss.item()
             val_stats['batch_count'] += 1
 
@@ -2166,6 +2180,7 @@ if __name__ == "__main__":
         'use_estimation': True,
         'use_transformations': False,
         'use_width_transforms': True,
+        'loss_function': 'mse',
         'exclude': [
                     'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', # 'blue_sponge_wet', \
                     'blue_foam_brick', 'green_foam_brick', # 'yellow_foam_brick', 'red_foam_brick', 
@@ -2194,7 +2209,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'MSLogDiffNoPenalty_ELU_CNNrelu_L2Norm_NoTransforms_NoFW_ExcludeTo200',
+        'run_name': 'CenterCuration_ELU_CNNrelu_L2Norm_NoTransforms_NoFW_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 40,
@@ -2210,6 +2225,7 @@ if __name__ == "__main__":
         'random_state'      : 27,
     }
     assert config['img_style'] in ['diff', 'depth']
+    assert config['loss_function'] in ['mse', 'log_diff']
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
 
     # Train the model over some data
