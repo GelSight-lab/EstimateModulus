@@ -1197,18 +1197,19 @@ class CustomDataset(Dataset):
                  label_tensor=torch.zeros((1, 1))
         ):
         # Data parameters 
-        self.data_dir = config['data_dir']
-        self.n_frames = config['n_frames']
-        self.img_size = config['img_size']
-        self.img_style = config['img_style']
-        self.n_channels = config['n_channels']
-        self.use_markers = config['use_markers']
-        self.use_force = config['use_force']
-        self.use_width = config['use_width']
-        self.use_estimation = config['use_estimation']
-        self.use_transformations  = config['use_transformations']
-        self.use_width_transforms  = config['use_width_transforms']
-        self.exclude = config['exclude']
+        self.data_dir               = config['data_dir']
+        self.n_frames               = config['n_frames']
+        self.img_size               = config['img_size']
+        self.img_style              = config['img_style']
+        self.n_channels             = config['n_channels']
+        self.use_both_sides         = config['use_both_sides']
+        self.use_markers            = config['use_markers']
+        self.use_force              = config['use_force']
+        self.use_width              = config['use_width']
+        self.use_estimation         = config['use_estimation']
+        self.use_transformations    = config['use_transformations']
+        self.use_width_transforms   = config['use_width_transforms']
+        self.exclude                = config['exclude']
 
         # Define training parameters
         self.epochs             = config['epochs']
@@ -1234,7 +1235,7 @@ class CustomDataset(Dataset):
         # Define attributes to use to conserve memory
         self.base_name      = ''
         self.x_frames       = frame_tensor
-        # self.x_frames_other = frame_tensor
+        self.x_frames_other = frame_tensor if self.use_both_sides else None
         self.x_forces       = force_tensor
         self.x_widths       = width_tensor
         self.x_estimations  = estimation_tensor
@@ -1260,12 +1261,13 @@ class CustomDataset(Dataset):
                 self.x_frames[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
                 self.x_frames /= self.normalization_values['max_depth']
                 
-        # with open(self.input_paths[idx].replace('_other', ''), 'rb') as file:
-        #     if self.img_style == 'diff':
-        #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
-        #     elif self.img_style == 'depth':
-        #         self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
-        #         self.x_frames_other /= self.normalization_values['max_depth']
+        if self.use_both_sides:
+            with open(self.input_paths[idx].replace('_other', ''), 'rb') as file:
+                if self.img_style == 'diff':
+                    self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).permute(0, 3, 1, 2)
+                elif self.img_style == 'depth':
+                    self.x_frames_other[:] = torch.from_numpy(pickle.load(file).astype(np.float32)).unsqueeze(3).permute(0, 3, 1, 2)
+                    self.x_frames_other /= self.normalization_values['max_depth']
 
         # Unpack force measurements
         self.base_name = self.input_paths[idx][:self.input_paths[idx].find(self.img_style)-1] 
@@ -1305,8 +1307,10 @@ class CustomDataset(Dataset):
         # Unpack label
         self.y_label[0] = self.normalized_modulus_labels[idx]
 
-        # return self.x_frames.clone(), self.x_frames_other.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
-        return self.x_frames.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
+        if self.use_both_sides:
+            return self.x_frames.clone(), self.x_frames_other.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
+        else:
+            return self.x_frames.clone(), self.x_forces.clone(), self.x_widths.clone(), self.x_estimations.clone(), self.y_label.clone(), object_name
 
 
 class ModulusModel():
@@ -1334,34 +1338,67 @@ class ModulusModel():
 
         # Initialize CNN based on config
         if self.pretrained_CNN:
-            self.video_encoder = ModifiedResNet18(CNN_embed_dim=self.img_feature_size)
-            # self.other_video_encoder = ModifiedResNet18(CNN_embed_dim=self.img_feature_size)
+
+            # Incorporate ViT pretrained CNN encoder
+            self.pretrained_img_size = 224
+            self.video_encoder = VisionTransformer(
+                img_size=self.pretrained_img_size,
+                patch_size=16,
+                embed_dim=768,
+                in_chans=self.n_channels,
+                pre_norm=True
+            )
+            self.video_encoder.head = nn.Identity(device=self.device) # Remove head to retrain
+            assert self.frozen_pretrained, 'Currently do not have the resources to retrain ViT.'
+            self.video_encoder.eval()
+            for param in self.video_encoder.parameters():
+                param.requires_grad = False
+            self.video_encoder_head = nn.Linear(768, self.img_feature_size, device=self.device)
+
+            # self.video_encoder = ModifiedResNet18(CNN_embed_dim=self.img_feature_size, frozen=self.frozen_pretrained)
         else:
-            self.video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size, dropout_pct=self.dropout_pct)
-            # self.other_video_encoder = EncoderCNN(img_x=self.img_size[0], img_y=self.img_size[1], input_channels=self.n_channels, CNN_embed_dim=self.img_feature_size)
-    
+            self.video_encoder = EncoderCNN(
+                img_x=self.img_size[0],
+                img_y=self.img_size[1],
+                input_channels=self.n_channels,
+                CNN_embed_dim=self.img_feature_size,
+                dropout_pct=self.dropout_pct
+            )
+
         # Initialize force, width, estimation based on config
-        # self.force_encoder = ForceFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_force else None
-        # self.width_encoder = WidthFC(input_dim=1, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size) if self.use_width else None
-        self.force_encoder = ForceFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size, dropout_pct=self.dropout_pct) if self.use_force else None
-        self.width_encoder = WidthFC(input_dim=self.n_frames, hidden_size=self.fwe_feature_size, output_dim=self.fwe_feature_size, dropout_pct=self.dropout_pct) if self.use_width else None
-        self.estimation_decoder = EstimationDecoderFC(input_dim=6, output_dim=1, dropout_pct=self.dropout_pct) if self.use_estimation else None
+        self.force_encoder = ForceFC(
+                                    input_dim=self.n_frames,
+                                    hidden_size=self.fwe_feature_size, 
+                                    output_dim=self.fwe_feature_size, 
+                                    dropout_pct=self.dropout_pct
+                                ) if self.use_force else None
+        self.width_encoder = WidthFC(
+                                    input_dim=self.n_frames,
+                                    hidden_size=self.fwe_feature_size,
+                                    output_dim=self.fwe_feature_size,
+                                    dropout_pct=self.dropout_pct
+                                ) if self.use_width else None
+        self.estimation_decoder = EstimationDecoderFC(
+                                    input_dim=3 + self.decoder_output_size,
+                                    output_dim=1,
+                                    dropout_pct=self.dropout_pct
+                                ) if self.use_estimation else None
 
         # Compute the size of the input to the decoder based on config
         self.decoder_input_size = self.n_frames * self.img_feature_size
-        # self.decoder_input_size += self.n_frames * self.img_feature_size
+        if self.use_both_sides:
+            self.decoder_input_size += self.n_frames * self.img_feature_size
         if self.use_force: 
             self.decoder_input_size += self.fwe_feature_size
         if self.use_width: 
             self.decoder_input_size += self.fwe_feature_size
-        if self.use_estimation:
-            self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=3, dropout_pct=self.dropout_pct)
-        else:
-            self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=1, dropout_pct=self.dropout_pct)
+        self.decoder_output_size = 3 if self.use_estimation else 1
+        self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=self.decoder_output_size, dropout_pct=self.dropout_pct)
 
         # Send models to device
         self.video_encoder.to(self.device)
-        # self.other_video_encoder.to(self.device)
+        if self.pretrained_CNN:
+            self.video_encoder_head.to(self.device)
         if self.use_force:
             self.force_encoder.to(self.device)
         if self.use_width:
@@ -1384,8 +1421,10 @@ class ModulusModel():
         '''
 
         # Concatenate parameters of all models
-        self.params = list(self.video_encoder.parameters())
-        # self.params += list(self.other_video_encoder.parameters())
+        if self.pretrained_CNN:
+            self.params = list(self.video_encoder_head.parameters())
+        else:
+            self.params = list(self.video_encoder.parameters())
         if self.use_force: 
             self.params += list(self.force_encoder.parameters())
         if self.use_width: 
@@ -1401,19 +1440,33 @@ class ModulusModel():
 
         # Normalize based on mean and std computed over the dataset
         if self.n_channels == 3:
-            self.image_normalization = torchvision.transforms.Normalize( \
-                                            [0.49638007, 0.49770336, 0.49385751], \
-                                            [0.04634926, 0.06181679, 0.07152624] \
-                                        )
+            if self.pretrained_CNN:
+                # Use the RGB mean and std for custom model
+                self.image_normalization = torchvision.transforms.Normalize( \
+                                                [0.485, 0.456, 0.406], \
+                                                [0.229, 0.224, 0.225] \
+                                            )
+            else:
+                # Use the RGB mean and std computed for our dataset
+                self.image_normalization = torchvision.transforms.Normalize( \
+                                                [0.49638007, 0.49770336, 0.49385751], \
+                                                [0.04634926, 0.06181679, 0.07152624] \
+                                            )
 
+        # Apply random flipping transformations
         if self.use_transformations:
             self.random_transformer = torchvision.transforms.Compose([
                     torchvision.transforms.RandomHorizontalFlip(0.5),
                     torchvision.transforms.RandomVerticalFlip(0.5),
-                    # torchvision.transforms.ColorJitter(brightness=0.1, contrast=0.0, saturation=0.0, hue=0.0),
-                    # torchvision.transforms.RandomResizedCrop(size=(self.img_size[0], self.img_size[1]), scale=(0.975, 1.0), antialias=True),
-                    # torchvision.transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.0001, 1.5)),
                 ])
+
+        # Resize image as expected by thee pretrained network weights
+        if self.pretrained_CNN:
+            self.resize_transformer = torchvision.transforms.Resize(
+                (self.pretrained_img_size, self.pretrained_img_size), 
+                interpolation=torchvision.transforms.InterpolationMode.BILINEAR, 
+                antialias=True
+            )
 
         # Load data
         self.object_names = []
@@ -1448,9 +1501,11 @@ class ModulusModel():
                     "random_state": self.random_state,
                     "num_params": len(self.params),
                     "optimizer": "Adam",
-                    "loss": "MSE",
+                    "loss_function": self.loss_function,
                     "scheduler": "StepLR",
                     "pretrained_CNN": self.pretrained_CNN,
+                    "frozen_pretrained": self.frozen_pretrained,
+                    "use_both_sides": self.use_both_sides,
                     "use_markers": self.use_markers,
                     "use_force": self.use_force,
                     "use_width": self.use_width,
@@ -1481,6 +1536,7 @@ class ModulusModel():
         self.img_style              = config['img_style']
         self.n_channels             = config['n_channels']
         self.use_markers            = config['use_markers']
+        self.use_both_sides         = config['use_both_sides']
         self.use_force              = config['use_force']
         self.use_width              = config['use_width']
         self.use_estimation         = config['use_estimation']
@@ -1496,6 +1552,7 @@ class ModulusModel():
         self.epochs             = config['epochs']
         self.batch_size         = config['batch_size']
         self.pretrained_CNN     = config['pretrained_CNN']
+        self.frozen_pretrained  = config['frozen_pretrained']
         self.img_feature_size   = config['img_feature_size']
         self.fwe_feature_size   = config['fwe_feature_size']
         self.val_pct            = config['val_pct']
@@ -1680,7 +1737,12 @@ class ModulusModel():
         return
 
     def _train_epoch(self):
-        self.video_encoder.train()
+        if self.pretrained_CNN:
+            if not self.frozen_pretrained: 
+                self.video_encoder.train()
+            self.video_encoder_head.train()
+        else:
+            self.video_encoder.train()
         if self.use_force:
             self.force_encoder.train()
         if self.use_width:
@@ -1696,34 +1758,49 @@ class ModulusModel():
             'pct_w_100_factor_err': 0,
             'batch_count': 0,
         }
-        for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.train_loader:
+        for batch_data in self.train_loader:
             self.optimizer.zero_grad()
+
+            # Unpack data
+            if self.use_both_sides:
+                x_frames, x_frames_other, x_forces, x_widths, x_estimations, y, object_names = batch_data
+            else:
+                x_frames, x_forces, x_widths, x_estimations, y, object_names = batch_data
                 
             x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
+            if self.use_both_sides:
+                x_frames_other = x_frames_other.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
 
             # Normalize images
             if self.n_channels == 3:
                 x_frames = self.image_normalization(x_frames)
+                if self.use_both_sides:
+                    x_frames_other = self.image_normalization(x_frames_other)
 
             # Apply random transformations for training
             if self.use_transformations:
                 x_frames = self.random_transformer(x_frames) # Apply V/H flips
+                if self.use_both_sides:
+                    x_frames_other = self.random_transformer(x_frames_other)
                 
             x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
+            if self.use_both_sides:
+                x_frames_other = x_frames_other.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
             # Concatenate features across frames into a single vector
             features = []
             for i in range(N_FRAMES):
                 
                 # Execute CNN on video frames
-                features.append(self.video_encoder(x_frames[:, i, :, :, :]))
-                # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
-                
-                # # Execute FC layers on other data and append
-                # if self.use_force: # Force measurements
-                #     features.append(self.force_encoder(x_forces[:, i, :]))
-                # if self.use_width: # Width measurements
-                #     features.append(self.width_encoder(x_widths[:, i, :]))
+                if self.pretrained_CNN:
+                    features.append(self.video_encoder_head(self.video_encoder(x_frames[:, i, :, :, :])))
+                    if self.use_both_sides:
+                        features.append(self.video_encoder_head(self.video_encoder(x_frames_other[:, i, :, :, :])))
+                else:
+                    features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                    if self.use_both_sides:
+                        features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
+                    print('CNN Outputs:', self.video_encoder(x_frames[:, i, :, :, :])[0:5,:])
 
             # Execute FC layers on other data and append
             if self.use_force: # Force measurements
@@ -1733,9 +1810,10 @@ class ModulusModel():
             
             features = torch.cat(features, -1)
 
-            # Send aggregated features to the FC decode
+            # Send aggregated features to the FC decoder
             outputs = self.decoder(features)
 
+            # Send to decoder with deterministic estimations
             if self.use_estimation:
                 x_estimations = torch.clamp(x_estimations, min=self.normalization_values['min_estimate'], max=self.normalization_values['max_estimate'])
                 x_estimations = self.log_normalize(x_estimations, x_max=self.normalization_values['max_estimate'], x_min=self.normalization_values['min_estimate'], use_torch=True)
@@ -1781,7 +1859,12 @@ class ModulusModel():
         return train_stats
 
     def _val_epoch(self, track_predictions=False):
-        self.video_encoder.eval()
+        if self.pretrained_CNN:
+            if not self.frozen_pretrained: 
+                self.video_encoder.eval()
+            self.video_encoder_head.eval()
+        else:
+            self.video_encoder.eval()
         if self.use_force:
             self.force_encoder.eval()
         if self.use_width:
@@ -1807,31 +1890,42 @@ class ModulusModel():
             'hard_count': 0,
             'batch_count': 0,
         }
-        for x_frames, x_forces, x_widths, x_estimations, y, object_names in self.val_loader:
+        for batch_data in self.val_loader:
+
+            # Unpack data
+            if self.use_both_sides:
+                x_frames, x_frames_other, x_forces, x_widths, x_estimations, y, object_names = batch_data
+            else:
+                x_frames, x_forces, x_widths, x_estimations, y, object_names = batch_data
                 
             x_frames = x_frames.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
+            if self.use_both_sides:
+                x_frames_other = x_frames_other.view(-1, self.n_channels, self.img_size[0], self.img_size[1])
 
             # Normalize images
             if self.n_channels == 3:
                 x_frames = self.image_normalization(x_frames)
+                if self.use_both_sides:
+                    x_frames_other = self.image_normalization(x_frames_other)
                 
             x_frames = x_frames.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
+            if self.use_both_sides:
+                x_frames_other = x_frames_other.view(self.batch_size, self.n_frames, self.n_channels, self.img_size[0], self.img_size[1])
 
             # Concatenate features across frames into a single vector
             features = []
             for i in range(N_FRAMES):
                 
                 # Execute CNN on video frames
-                features.append(self.video_encoder(x_frames[:, i, :, :, :]))
-                print('CNN Outputs:', self.video_encoder(x_frames[:, i, :, :, :])[0:5,:])
-
-                # features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
-
-                # # Execute FC layers on other data and append
-                # if self.use_force: # Force measurements
-                #     features.append(self.force_encoder(x_forces[:, i, :]))
-                # if self.use_width: # Width measurements
-                #     features.append(self.width_encoder(x_widths[:, i, :]))
+                if self.pretrained_CNN:
+                    features.append(self.video_encoder_head(self.video_encoder(x_frames[:, i, :, :, :])))
+                    if self.use_both_sides:
+                        features.append(self.video_encoder_head(self.video_encoder(x_frames_other[:, i, :, :, :])))
+                else:
+                    features.append(self.video_encoder(x_frames[:, i, :, :, :]))
+                    if self.use_both_sides:
+                        features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
+                    print('CNN Outputs:', self.video_encoder(x_frames[:, i, :, :, :])[0:5,:])
 
             # Execute FC layers on other data and append
             if self.use_force: # Force measurements
@@ -1850,6 +1944,7 @@ class ModulusModel():
 
             print('Decoder Outputs:', outputs[0:5,:])
 
+            # Send to decoder with deterministic estimations
             if self.use_estimation:
                 x_estimations = torch.clamp(x_estimations, min=self.normalization_values['min_estimate'], max=self.normalization_values['max_estimate'])
                 x_estimations = self.log_normalize(x_estimations, x_max=self.normalization_values['max_estimate'], x_min=self.normalization_values['min_estimate'], use_torch=True)
@@ -1868,7 +1963,7 @@ class ModulusModel():
             elif self.loss_function == 'log_diff':
                 alpha = 0.001
             loss += alpha * l2_reg
-            
+
             val_stats['loss'] += loss.item()
             val_stats['batch_count'] += 1
 
@@ -2025,6 +2120,8 @@ class ModulusModel():
                 os.remove(f'./model/{method}/{self.run_name}/val_object_performance.json')
             if os.path.exists(f'./model/{method}/{self.run_name}/video_encoder.pth'):
                 os.remove(f'./model/{method}/{self.run_name}/video_encoder.pth')
+            if os.path.exists(f'./model/{method}/{self.run_name}/video_encoder_head.pth'):
+                os.remove(f'./model/{method}/{self.run_name}/video_encoder_head.pth')
             if os.path.exists(f'./model/{method}/{self.run_name}/force_encoder.pth'):
                 os.remove(f'./model/{method}/{self.run_name}/force_encoder.pth')
             if os.path.exists(f'./model/{method}/{self.run_name}/width_encoder.pth'):
@@ -2039,7 +2136,8 @@ class ModulusModel():
         # Save configuration dictionary and all files for the model(s)
         with open(f'./model/{method}/{self.run_name}/config.json', 'w') as json_file:
             json.dump(self.config, json_file)
-        torch.save(self.video_encoder.state_dict(), f'./model/{method}/{self.run_name}/video_encoder.pth')
+        if not self.pretrained_CNN: torch.save(self.video_encoder.state_dict(), f'./model/{method}/{self.run_name}/video_encoder.pth')
+        if self.pretrained_CNN: torch.save(self.video_encoder_head.state_dict(), f'./model/{method}/{self.run_name}/video_encoder_head.pth')
         if self.use_force: torch.save(self.force_encoder.state_dict(), f'./model/{method}/{self.run_name}/force_encoder.pth')
         if self.use_width: torch.save(self.width_encoder.state_dict(), f'./model/{method}/{self.run_name}/width_encoder.pth')
         if self.use_estimation: torch.save(self.estimation_decoder.state_dict(), f'./model/{method}/{self.run_name}/estimation_decoder.pth')
@@ -2052,13 +2150,14 @@ class ModulusModel():
         with open(f'./model/{method}/{self.run_name}/val_object_performance.json', 'w') as json_file:
             json.dump(self.val_object_performance, json_file)
         return
-
+    
     def load_model(self, folder_path):
         with open(f'{folder_path}/config.json', 'r') as file:
             config = json.load(file)
         self._unpack_config(config)
 
-        self.video_encoder.load_state_dict(torch.load(f'{folder_path}/video_encoder.pth', map_location=self.device))
+        if not self.pretrained_CNN: self.video_encoder.load_state_dict(torch.load(f'{folder_path}/video_encoder.pth', map_location=self.device))
+        if self.pretrained_CNN: self.video_encoder_head.load_state_dict(torch.load(f'{folder_path}/video_encoder_head.pth', map_location=self.device))
         if self.use_force: self.force_encoder.load_state_dict(torch.load(f'{folder_path}/force_encoder.pth', map_location=self.device))
         if self.use_width: self.width_encoder.load_state_dict(torch.load(f'{folder_path}/width_encoder.pth', map_location=self.device))
         if self.use_estimation: self.estimation_decoder.load_state_dict(torch.load(f'{folder_path}/estimation_decoder.pth', map_location=self.device))
@@ -2175,6 +2274,7 @@ if __name__ == "__main__":
         'img_size': WARPED_CROPPED_IMG_SIZE,
         'img_style': 'diff',
         'use_markers': True,
+        'use_both_sides': False,
         'use_force': False,
         'use_width': False,
         'use_estimation': True,
@@ -2215,6 +2315,7 @@ if __name__ == "__main__":
         'epochs'            : 40,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
+        'frozen_pretrained' : False,
         'img_feature_size'  : 128,
         'fwe_feature_size'  : 32,
         'val_pct'           : 0.175,
@@ -2227,6 +2328,9 @@ if __name__ == "__main__":
     assert config['img_style'] in ['diff', 'depth']
     assert config['loss_function'] in ['mse', 'log_diff']
     config['n_channels'] = 3 if config['img_style'] == 'diff' else 1
+
+    if config['frozen_pretrained'] and not config['pretrained_CNN']:
+        raise ValueError('Frozen option is only necessary when training with a pretrained CNN.')
 
     # Train the model over some data
     base_run_name = config['run_name']

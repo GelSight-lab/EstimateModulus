@@ -350,6 +350,7 @@ import torchvision.models as models
 
 from train import N_FRAMES
 
+from timm.models.vision_transformer import VisionTransformer
 
 class MSLogDiffLoss(torch.nn.Module):
     def __init__(self):
@@ -486,13 +487,15 @@ class EncoderCNN(nn.Module):
         return x # F.elu(x)
 
 class ModifiedResNet18(nn.Module):
-    def __init__(self, CNN_embed_dim=128):
+    def __init__(self, CNN_embed_dim=128, frozen=False):
         super(ModifiedResNet18, self).__init__()
 
         self.resnet18 = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
-        # self.resnet18.eval()
-        # for param in self.resnet18.parameters():
-        #     param.requires_grad = False
+        self.frozen = frozen
+        if self.frozen:
+            self.resnet18.eval()
+            for param in self.resnet18.parameters():
+                param.requires_grad = False
         self.fc = nn.Linear(1024, CNN_embed_dim)
 
     def forward(self, x):
@@ -503,7 +506,8 @@ class ModifiedResNet18(nn.Module):
     def train(self, mode=True):
         super(ModifiedResNet18, self).train(mode)
         self.resnet18.train(mode)
-        # self.resnet18.train(mode=False)
+        if self.frozen:
+            self.resnet18.train(mode=False)
         return
     
     def eval(self):
