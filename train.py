@@ -2118,7 +2118,7 @@ class ModulusModel():
         # Save configuration dictionary and all files for the model(s)
         with open(f'./model/{method}/{self.run_name}/config.json', 'w') as json_file:
             json.dump(self.config, json_file)
-        if not self.pretrained_CNN: 
+        if not (self.frozen_pretrained and self.pretrained_CNN): 
             torch.save(self.video_encoder.state_dict(), f'{model_save_dir}/video_encoder.pth')
         if self.pretrained_CNN: 
             torch.save(self.video_encoder_head.state_dict(), f'{model_save_dir}/video_encoder_head.pth')
@@ -2142,11 +2142,16 @@ class ModulusModel():
             config = json.load(file)
         self._unpack_config(config)
 
-        if not self.pretrained_CNN: self.video_encoder.load_state_dict(torch.load(f'{folder_path}/video_encoder.pth', map_location=self.device))
-        if self.pretrained_CNN: self.video_encoder_head.load_state_dict(torch.load(f'{folder_path}/video_encoder_head.pth', map_location=self.device))
-        if self.use_force: self.force_encoder.load_state_dict(torch.load(f'{folder_path}/force_encoder.pth', map_location=self.device))
-        if self.use_width: self.width_encoder.load_state_dict(torch.load(f'{folder_path}/width_encoder.pth', map_location=self.device))
-        if self.use_estimation: self.estimation_decoder.load_state_dict(torch.load(f'{folder_path}/estimation_decoder.pth', map_location=self.device))
+        if not (self.frozen_pretrained and self.pretrained_CNN): 
+            self.video_encoder.load_state_dict(torch.load(f'{folder_path}/video_encoder.pth', map_location=self.device))
+        if self.pretrained_CNN: 
+            self.video_encoder_head.load_state_dict(torch.load(f'{folder_path}/video_encoder_head.pth', map_location=self.device))
+        if self.use_force: 
+            self.force_encoder.load_state_dict(torch.load(f'{folder_path}/force_encoder.pth', map_location=self.device))
+        if self.use_width: 
+            self.width_encoder.load_state_dict(torch.load(f'{folder_path}/width_encoder.pth', map_location=self.device))
+        if self.use_estimation: 
+            self.estimation_decoder.load_state_dict(torch.load(f'{folder_path}/estimation_decoder.pth', map_location=self.device))
         self.decoder.load_state_dict(torch.load(f'{folder_path}/decoder.pth', map_location=self.device))
 
         with open(f'{folder_path}/train_object_performance.json', 'r') as file:
