@@ -221,6 +221,16 @@ class ModulusModel():
                 CNN_embed_dim=self.img_feature_size,
                 dropout_pct=self.dropout_pct
             )
+            
+        # Compute the size of the input to the decoder based on config
+        self.decoder_input_size = self.n_frames * self.img_feature_size
+        if self.use_both_sides:
+            self.decoder_input_size += self.n_frames * self.img_feature_size
+        if self.use_force: 
+            self.decoder_input_size += self.fwe_feature_size
+        if self.use_width: 
+            self.decoder_input_size += self.fwe_feature_size
+        self.decoder_output_size = 3 if self.use_estimation else 1
 
         # Initialize force, width, estimation based on config
         self.force_encoder = ForceFC(
@@ -240,16 +250,6 @@ class ModulusModel():
                                     output_dim=1,
                                     dropout_pct=self.dropout_pct
                                 ) if self.use_estimation else None
-
-        # Compute the size of the input to the decoder based on config
-        self.decoder_input_size = self.n_frames * self.img_feature_size
-        if self.use_both_sides:
-            self.decoder_input_size += self.n_frames * self.img_feature_size
-        if self.use_force: 
-            self.decoder_input_size += self.fwe_feature_size
-        if self.use_width: 
-            self.decoder_input_size += self.fwe_feature_size
-        self.decoder_output_size = 3 if self.use_estimation else 1
         self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=self.decoder_output_size, dropout_pct=self.dropout_pct)
 
         # Send models to device
