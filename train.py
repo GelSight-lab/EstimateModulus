@@ -1116,7 +1116,7 @@ if __name__ == "__main__":
         'use_width': True,
         'use_estimation': True,
         'use_transformations': False,
-        'use_width_transforms': False,
+        'use_width_transforms': True,
         'loss_function': 'mse',
         'exclude': [
                     'playdoh', 'silly_puty', 'racquet_ball', 'blue_sponge_dry', # 'blue_sponge_wet', \
