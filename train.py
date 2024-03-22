@@ -221,7 +221,7 @@ class ModulusModel():
                 CNN_embed_dim=self.img_feature_size,
                 dropout_pct=self.dropout_pct
             )
-            
+
         # Compute the size of the input to the decoder based on config
         self.decoder_input_size = self.n_frames * self.img_feature_size
         if self.use_both_sides:
@@ -657,7 +657,6 @@ class ModulusModel():
                     features.append(self.video_encoder(x_frames[:, i, :, :, :]))
                     if self.use_both_sides:
                         features.append(self.video_encoder(x_frames_other[:, i, :, :, :]))
-                    print('CNN Outputs:', self.video_encoder(x_frames[:, i, :, :, :])[0:5,:])
 
             # Execute FC layers on other data and append
             if self.use_force: # Force measurements
