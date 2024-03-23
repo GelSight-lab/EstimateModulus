@@ -889,7 +889,7 @@ class ModulusModel():
         
     # Try pretraining on images without markers
     def pretrain(self):
-        for epoch in range(30):
+        for epoch in range(10):
             train_stats = self._train_epoch(train_loader=self.pretrain_loader)
             print(f'Pretain Epoch: {epoch}, Training Loss: {train_stats["loss"]:.4f},\n')
 
