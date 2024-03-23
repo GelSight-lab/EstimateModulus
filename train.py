@@ -1212,8 +1212,6 @@ if __name__ == "__main__":
     chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
     for i in range(50):
         config['run_name'] = f'{base_run_name}__t={i}'
-
-        if i == 0: continue
         
         if i < len(chosen_random_states):
             config['random_state'] = chosen_random_states[i]
