@@ -891,6 +891,8 @@ class ModulusModel():
     def pretrain(self, epochs=10):
         for epoch in range(epochs):
             train_stats = self._train_epoch(train_loader=self.pretrain_loader)
+            if self.gamma is not None:
+                self.scheduler.step()
             print(f'Pretain Epoch: {epoch}, Training Loss: {train_stats["loss"]:.4f},\n')
 
         return
