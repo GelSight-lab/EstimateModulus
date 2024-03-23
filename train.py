@@ -903,6 +903,7 @@ class ModulusModel():
 
         if not self.use_both_sides:
             self.pretrain()
+            self.optimizer.param_groups[0]['lr'] = self.learning_rate
 
         for epoch in range(self.epochs):
 
