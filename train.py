@@ -39,9 +39,11 @@ def list_files(folder_path, file_paths, config):
     for item in os.listdir(folder_path):
         item_path = f'{folder_path}/{item}'
         marker_signal = '_other' if config['use_markers'] else '.pkl'
-        if os.path.isfile(item_path) and item.count(config['img_style']) > 0:
-            if item.count(marker_signal) > 0 or config['use_both_sides'] == False:
-                file_paths.append(item_path)
+        if os.path.isfile(item_path) and item.count(config['img_style']) > 0 and item.count(marker_signal) > 0:
+            file_paths.append(item_path)            
+        # if os.path.isfile(item_path) and item.count(config['img_style']) > 0:
+        #     if item.count(marker_signal) > 0 or config['use_both_sides'] == False:
+        #         file_paths.append(item_path)
         elif os.path.isdir(item_path):
             list_files(item_path, file_paths, config)
 
@@ -1147,7 +1149,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'TrainWNonMarkersToo_NoFW_NoTransforms_ExcludeTo200',
+        'run_name': 'NoFW_NoTransforms_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 60,
