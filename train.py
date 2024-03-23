@@ -584,9 +584,28 @@ class ModulusModel():
                                             label_tensor=empty_label_tensor)
         self.train_loader   = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, **kwargs)
         self.val_loader     = DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=True, **kwargs)
+
+
+        if not self.use_both_sides:
+            if self.use_markers:
+                x_pretrain = [ file_path.replace('_other', '') for file_path in x_train ]
+            else:
+                x_pretrain = [ file_path.replace(f'_{self.img_style}', '_{self.img_style}_other') for file_path in x_train ]
+            y_pretrain = y_train
+            self.pretrain_dataset = CustomDataset(self.config, x_pretrain, y_pretrain,
+                                                    self.normalization_values,
+                                                    validation_dataset=False,
+                                                    frame_tensor=empty_frame_tensor, 
+                                                    force_tensor=empty_force_tensor,
+                                                    width_tensor=empty_width_tensor,
+                                                    estimation_tensor=empty_estimation_tensor,
+                                                    label_tensor=empty_label_tensor)
+            self.pretrain_loader  = DataLoader(self.pretrain_dataset, batch_size=self.batch_size, shuffle=True, **kwargs)
+
+
         return
 
-    def _train_epoch(self):
+    def _train_epoch(self, train_loader=None):
         if self.pretrained_CNN:
             if not self.frozen_pretrained: 
                 self.video_encoder.train()
@@ -608,6 +627,7 @@ class ModulusModel():
             'pct_w_100_factor_err': 0,
             'batch_count': 0,
         }
+        if train_loader is None: train_loader = self.train_loader
         for batch_data in self.train_loader:
             self.optimizer.zero_grad()
 
@@ -866,12 +886,24 @@ class ModulusModel():
             return predictions
         else:
             return val_stats
+        
+    # Try pretraining on images without markers
+    def pretrain(self):
+        for epoch in range(30):
+            train_stats = self._train_epoch(train_loader=self.pretrain_loader)
+            print(f'Pretain Epoch: {epoch}, Training Loss: {train_stats["loss"]:.4f},\n')
+
+        return
 
     def train(self):
         learning_rate = self.learning_rate 
         max_val_log_acc = 0.0
         min_val_loss = 1e10
         min_val_outlier_pct = 1e10
+
+        if not self.use_both_sides:
+            self.pretrain()
+
         for epoch in range(self.epochs):
 
             # Clean performance trackers
@@ -1149,7 +1181,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoFW_NoTransforms_ExcludeTo200',
+        'run_name': 'PretrainWithoutMarkers_NoFW_NoTransforms_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 60,
