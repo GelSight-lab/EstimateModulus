@@ -1213,16 +1213,16 @@ if __name__ == "__main__":
         raise ValueError('Frozen option is only necessary when training with a pretrained CNN.')
     
     ARCHITECTURES = {
-        'Base': ([256, 256, 64], [64, 64, 32]),
-        'FatDecoder': ([512, 512, 128], [64, 64, 32]),
-        'FatEst': ([256, 256, 64], [128, 128, 64]),
-        'FatBoth': ([512, 512, 128], [128, 128, 64]),
-        'LeanBoth': ([128, 128, 32], [32, 32, 16]),
+        'Base':         ([256, 256, 64], [64, 64, 32]),
+        'FatDecoder':   ([512, 512, 128], [64, 64, 32]),
+        'FatEst':       ([256, 256, 64], [128, 128, 64]),
+        'FatBoth':      ([512, 512, 128], [128, 128, 64]),
+        'LeanBoth':     ([128, 128, 32], [32, 32, 16]),
     }
 
     # Train the model over some data
     base_run_name = config['run_name']
-    chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
+    chosen_random_states = [27, 60, 24, 16, 12] # [27, 60, 74, 24, 16, 12, 4, 8]
 
     for arch_name in ARCHITECTURES.keys():
         for i in range(len(chosen_random_states)):
