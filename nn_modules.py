@@ -227,7 +227,7 @@ class DecoderRNN(nn.Module):
 class DecoderFC(nn.Module):
     def __init__(self,
                 input_dim=N_FRAMES * 512,
-                FC_layer_nodes=[512, 512, 128], # [256, 256, 64],
+                FC_layer_nodes=[256, 256, 64],
                 dropout_pct=0.5,
                 output_dim=1):
         super(DecoderFC, self).__init__()
