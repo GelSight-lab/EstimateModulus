@@ -250,10 +250,11 @@ class ModulusModel():
                                 ) if self.use_width else None
         self.estimation_decoder = EstimationDecoderFC(
                                     input_dim=3 + self.decoder_output_size,
+                                    FC_layer_nodes=config['est_decoder_size'],
                                     output_dim=1,
                                     dropout_pct=self.dropout_pct
                                 ) if self.use_estimation else None
-        self.decoder = DecoderFC(input_dim=self.decoder_input_size, output_dim=self.decoder_output_size, dropout_pct=self.dropout_pct)
+        self.decoder = DecoderFC(input_dim=self.decoder_input_size, FC_layer_nodes=config['decoder_size'], output_dim=self.decoder_output_size, dropout_pct=self.dropout_pct)
 
         # Send models to device
         self.video_encoder.to(self.device)
@@ -1199,6 +1200,10 @@ if __name__ == "__main__":
         'gamma'             : 0.975,
         'lr_step_size'      : 1,
         'random_state'      : 27,
+
+
+        'decoder_size'      : [256, 256, 64],
+        'est_decoder_size'  : [64, 64, 32],
     }
     assert config['img_style'] in ['diff', 'depth']
     assert config['loss_function'] in ['mse', 'log_diff']
@@ -1206,20 +1211,33 @@ if __name__ == "__main__":
 
     if config['frozen_pretrained'] and not config['pretrained_CNN']:
         raise ValueError('Frozen option is only necessary when training with a pretrained CNN.')
+    
+    ARCHITECTURES = {
+        'Base': ([256, 256, 64], [64, 64, 32]),
+        'FatDecoder': ([512, 512, 128], [64, 64, 32]),
+        'FatEst': ([256, 256, 64], [128, 128, 64]),
+        'FatBoth': ([512, 512, 128], [128, 128, 64]),
+        'LeanBoth': ([128, 128, 32], [32, 32, 16]),
+    }
 
     # Train the model over some data
     base_run_name = config['run_name']
     chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
-    for i in range(len(chosen_random_states)):
-        config['run_name'] = f'{base_run_name}__t={i}'
-        
-        if i < len(chosen_random_states):
-            config['random_state'] = chosen_random_states[i]
-        else:
-            config['random_state'] = random.randint(1, 100)
 
-        train_modulus = ModulusModel(config, device=device)
-        train_modulus.train()
+    for arch_name in ARCHITECTURES.keys():
+        for i in range(len(chosen_random_states)):
+            config['run_name'] = f'{arch_name}_{base_run_name}__t={i}'
+            
+            if i < len(chosen_random_states):
+                config['random_state'] = chosen_random_states[i]
+            else:
+                config['random_state'] = random.randint(1, 100)
+
+            config['decoder_size'] = ARCHITECTURES[arch_name][0]
+            config['est_decoder_size'] = ARCHITECTURES[arch_name][1]
+
+            train_modulus = ModulusModel(config, device=device)
+            train_modulus.train()
 
     # for run_name in ['Layer4Decoder_Normalized_ExcludeTo200__t=0']:
     #     train_modulus = ModulusModel(config, device=device)
