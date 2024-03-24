@@ -904,9 +904,9 @@ class ModulusModel():
         min_val_loss = 1e10
         min_val_outlier_pct = 1e10
 
-        if not self.use_both_sides:
-            self.pretrain()
-            self.optimizer.param_groups[0]['lr'] = self.learning_rate
+        # if not self.use_both_sides:
+        #     self.pretrain()
+        #     self.optimizer.param_groups[0]['lr'] = self.learning_rate
 
         for epoch in range(self.epochs):
 
@@ -1185,10 +1185,10 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'FatDecoder_PretrainWithoutMarkers_NoFW_NoTransforms_ExcludeTo200',
+        'run_name': 'NoPretrain_NoFW_NoTransforms_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 40,
+        'epochs'            : 60,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'frozen_pretrained' : False,
