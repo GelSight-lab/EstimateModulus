@@ -1184,7 +1184,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'PretrainWithoutMarkers_NoFW_NoTransforms_ExcludeTo200',
+        'run_name': 'FatDecoder_PretrainWithoutMarkers_NoFW_NoTransforms_ExcludeTo200',
 
         # Training and model parameters
         'epochs'            : 40,
@@ -1210,7 +1210,7 @@ if __name__ == "__main__":
     # Train the model over some data
     base_run_name = config['run_name']
     chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
-    for i in range(50):
+    for i in range(len(chosen_random_states)):
         config['run_name'] = f'{base_run_name}__t={i}'
         
         if i < len(chosen_random_states):
