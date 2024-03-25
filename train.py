@@ -1188,7 +1188,7 @@ if __name__ == "__main__":
         'run_name': 'NoPretrain_NoFW_NoTransforms_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 60,
+        'epochs'            : 50,
         'batch_size'        : 32,
         'pretrained_CNN'    : False,
         'frozen_pretrained' : False,
