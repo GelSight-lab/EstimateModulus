@@ -1213,8 +1213,8 @@ if __name__ == "__main__":
         raise ValueError('Frozen option is only necessary when training with a pretrained CNN.')
     
     ARCHITECTURES = {
-        'Base':         ([256, 256, 64], [64, 64, 32]),
-        'FatDecoder':   ([512, 512, 128], [64, 64, 32]),
+        # 'Base':         ([256, 256, 64], [64, 64, 32]),
+        # 'FatDecoder':   ([512, 512, 128], [64, 64, 32]),
         'FatEst':       ([256, 256, 64], [128, 128, 64]),
         'FatBoth':      ([512, 512, 128], [128, 128, 64]),
         'LeanBoth':     ([128, 128, 32], [32, 32, 16]),
