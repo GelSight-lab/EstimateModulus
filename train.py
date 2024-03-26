@@ -1229,7 +1229,7 @@ if __name__ == "__main__":
     for decoder_output_size in [6, 9, 1, 3]:
         for i in range(len(chosen_random_states)):
             config['run_name'] = f'DecOut={decoder_output_size}_{base_run_name}__t={i}'
-            config['decoder_output_size'] = float(decoder_output_size)
+            config['decoder_output_size'] = decoder_output_size
             
             if i < len(chosen_random_states):
                 config['random_state'] = chosen_random_states[i]
