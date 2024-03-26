@@ -233,7 +233,7 @@ class ModulusModel():
             self.decoder_input_size += self.fwe_feature_size
         if self.use_width: 
             self.decoder_input_size += self.fwe_feature_size
-        self.decoder_output_size = 3 if self.use_estimation else 1
+        self.decoder_output_size = config['decoder_output_size'] if self.use_estimation else 1
 
         # Initialize force, width, estimation based on config
         self.force_encoder = ForceFC(
@@ -1188,20 +1188,21 @@ if __name__ == "__main__":
         'run_name': 'NoPretrain_NoFW_NoTransforms_ExcludeTo200',
 
         # Training and model parameters
-        'epochs'            : 70,
-        'batch_size'        : 32,
-        'pretrained_CNN'    : False,
-        'frozen_pretrained' : False,
-        'img_feature_size'  : 128,
-        'fwe_feature_size'  : 32,
-        'val_pct'           : 0.175,
-        'dropout_pct'       : 0.3,
-        'learning_rate'     : 3e-6, # 5e-6, # 1e-5,
-        'gamma'             : 0.975,
-        'lr_step_size'      : 1,
-        'random_state'      : 27,
-        'decoder_size'      : [512, 512, 128, 16],
-        'est_decoder_size'  : [64, 64, 32],
+        'epochs'                : 70,
+        'batch_size'            : 32,
+        'pretrained_CNN'        : False,
+        'frozen_pretrained'     : False,
+        'img_feature_size'      : 128,
+        'fwe_feature_size'      : 32,
+        'val_pct'               : 0.175,
+        'dropout_pct'           : 0.3,
+        'learning_rate'         : 3e-6,
+        'gamma'                 : 0.975,
+        'lr_step_size'          : 1,
+        'random_state'          : 27,
+        'decoder_size'          : [512, 512, 128],
+        'est_decoder_size'      : [64, 64, 32],
+        'decoder_output_size'   : 3,
     }
     assert config['img_style'] in ['diff', 'depth']
     assert config['loss_function'] in ['mse', 'log_diff']
@@ -1225,10 +1226,10 @@ if __name__ == "__main__":
     base_run_name = config['run_name']
     chosen_random_states = [27, 60, 24] # , 16, 12] # [27, 60, 74, 24, 16, 12, 4, 8]
 
-    for lr in ['5e-6', '3e-6']:
+    for decoder_output_size in [6, 9, 1, 3]:
         for i in range(len(chosen_random_states)):
-            config['run_name'] = f'LR={lr}_{base_run_name}__t={i}'
-            config['learning_rate'] = float(lr)
+            config['run_name'] = f'DecOut={decoder_output_size}_{base_run_name}__t={i}'
+            config['decoder_output_size'] = float(decoder_output_size)
             
             if i < len(chosen_random_states):
                 config['random_state'] = chosen_random_states[i]
