@@ -1200,9 +1200,7 @@ if __name__ == "__main__":
         'gamma'             : 0.975,
         'lr_step_size'      : 1,
         'random_state'      : 27,
-
-
-        'decoder_size'      : [256, 256, 64],
+        'decoder_size'      : [512, 512, 128, 16],
         'est_decoder_size'  : [64, 64, 32],
     }
     assert config['img_style'] in ['diff', 'depth']
@@ -1218,26 +1216,24 @@ if __name__ == "__main__":
         # 'FatEst':       ([256, 256, 64], [128, 128, 64]),
         # 'FatBoth':      ([512, 512, 128], [128, 128, 64]),
         # 'LeanBoth':     ([128, 128, 32], [32, 32, 16]),
-        'DeepBase':     ([256, 256, 64, 64], [64, 64, 32]),
-        'DeepFat':      ([512, 512, 128, 128], [128, 128, 64]),
-        'LeanFat':      ([128, 128, 64, 32], [32, 32, 16]),
+        # 'DeepBase':     ([256, 256, 64, 64], [64, 64, 32]),
+        # 'DeepFat':      ([512, 512, 128, 128], [128, 128, 64]),
+        # 'DeepLean':     ([128, 128, 64, 32], [32, 32, 16]),
     }
 
     # Train the model over some data
     base_run_name = config['run_name']
-    chosen_random_states = [27, 60, 24, 16, 12] # [27, 60, 74, 24, 16, 12, 4, 8]
+    chosen_random_states = [27, 60, 24] # , 16, 12] # [27, 60, 74, 24, 16, 12, 4, 8]
 
-    for arch_name in ARCHITECTURES.keys():
+    for lr in ['1e-6', '5e-6', '3e-6']:
         for i in range(len(chosen_random_states)):
-            config['run_name'] = f'{arch_name}_{base_run_name}__t={i}'
+            config['run_name'] = f'LR={lr}_{base_run_name}__t={i}'
+            config['learning_rate'] = float(lr)
             
             if i < len(chosen_random_states):
                 config['random_state'] = chosen_random_states[i]
             else:
                 config['random_state'] = random.randint(1, 100)
-
-            config['decoder_size'] = ARCHITECTURES[arch_name][0]
-            config['est_decoder_size'] = ARCHITECTURES[arch_name][1]
 
             train_modulus = ModulusModel(config, device=device)
             train_modulus.train()
