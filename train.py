@@ -1225,7 +1225,7 @@ if __name__ == "__main__":
     base_run_name = config['run_name']
     chosen_random_states = [27, 60, 24] # , 16, 12] # [27, 60, 74, 24, 16, 12, 4, 8]
 
-    for lr in ['1e-6', '5e-6', '3e-6']:
+    for lr in ['5e-6', '3e-6']:
         for i in range(len(chosen_random_states)):
             config['run_name'] = f'LR={lr}_{base_run_name}__t={i}'
             config['learning_rate'] = float(lr)
