@@ -924,12 +924,14 @@ class ModulusModel():
         max_val_log_acc = 0.0
         min_val_loss = 1e10
         min_val_outlier_pct = 1e10
+        pretrained = False
 
         for epoch in range(self.epochs):
 
-            if epoch >= self.epochs/2 and not self.use_both_sides:
+            if epoch >= self.epochs/2 and not self.use_both_sides and not pretrained:
                 self.pretrain()
                 self.optimizer.param_groups[0]['lr'] = self.learning_rate
+                pretrained = True
 
             # Clean performance trackers
             for object_name in self.train_object_performance.keys():
