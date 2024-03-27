@@ -617,20 +617,30 @@ class ModulusModel():
 
         return
 
-    def _train_epoch(self, train_loader=None):
+    def _train_epoch(self, train_loader=None, CNN_only=False):
         if self.pretrained_CNN:
             if not self.frozen_pretrained: 
                 self.video_encoder.train()
             self.video_encoder_head.train()
         else:
             self.video_encoder.train()
-        if self.use_force:
-            self.force_encoder.train()
-        if self.use_width:
-            self.width_encoder.train()
-        if self.use_estimation:
-            self.estimation_decoder.train()
-        self.decoder.train()
+
+        if not CNN_only:
+            if self.use_force:
+                self.force_encoder.train()
+            if self.use_width:
+                self.width_encoder.train()
+            if self.use_estimation:
+                self.estimation_decoder.train()
+            self.decoder.train()
+        else:
+            if self.use_force:
+                self.force_encoder.eval()
+            if self.use_width:
+                self.width_encoder.eval()
+            if self.use_estimation:
+                self.estimation_decoder.eval()
+            self.decoder.eval()
 
         train_stats = {
             'loss': 0,
@@ -902,7 +912,7 @@ class ModulusModel():
     # Try pretraining on images without markers
     def pretrain(self, epochs=10):
         for epoch in range(epochs):
-            train_stats = self._train_epoch(train_loader=self.pretrain_loader)
+            train_stats = self._train_epoch(train_loader=self.pretrain_loader, CNN_only=True)
             if self.gamma is not None:
                 self.scheduler.step()
             print(f'Pretain Epoch: {epoch}, Training Loss: {train_stats["loss"]:.4f},\n')
@@ -1196,7 +1206,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'PretrainInMiddle_FW_NoTransforms_ExcludeTo200',
+        'run_name': 'PretrainCNNInMiddle_FW_NoTransforms_ExcludeTo200',
 
         # Training and model parameters
         'epochs'                : 70,
