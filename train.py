@@ -900,7 +900,7 @@ class ModulusModel():
             return val_stats
         
     # Try pretraining on images without markers
-    def pretrain(self, epochs=5):
+    def pretrain(self, epochs=10):
         for epoch in range(epochs):
             train_stats = self._train_epoch(train_loader=self.pretrain_loader)
             if self.gamma is not None:
@@ -915,11 +915,11 @@ class ModulusModel():
         min_val_loss = 1e10
         min_val_outlier_pct = 1e10
 
-        if not self.use_both_sides:
-            self.pretrain()
-            self.optimizer.param_groups[0]['lr'] = self.learning_rate
-
         for epoch in range(self.epochs):
+
+            if epoch >= self.epochs/2 and not self.use_both_sides:
+                self.pretrain()
+                self.optimizer.param_groups[0]['lr'] = self.learning_rate
 
             # Clean performance trackers
             for object_name in self.train_object_performance.keys():
@@ -1196,7 +1196,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Pretrain5Epochs_NoFW_NoTransforms_ExcludeTo200',
+        'run_name': 'PretrainInMiddle_FW_NoTransforms_ExcludeTo200',
 
         # Training and model parameters
         'epochs'                : 70,
