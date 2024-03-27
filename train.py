@@ -517,9 +517,10 @@ class ModulusModel():
 
         # Remove those where depth is not monotonically increasing
         clean_paths_to_files = []
+        marker_str = '_other' if self.use_markers else ''
         for file_path in self.paths_to_files:
             file_prefix = file_path[:file_path.find('_aug=')+6]
-            with open(file_prefix + '_depth_other.pkl', 'rb') as file:
+            with open(file_prefix + f'_depth{marker_str}.pkl', 'rb') as file:
                 depth = pickle.load(file)
             if depth[-1].max() > depth[-2].max():
                 clean_paths_to_files.append(file_path)
@@ -914,9 +915,9 @@ class ModulusModel():
         min_val_loss = 1e10
         min_val_outlier_pct = 1e10
 
-        # if not self.use_both_sides:
-        #     self.pretrain()
-        #     self.optimizer.param_groups[0]['lr'] = self.learning_rate
+        if not self.use_both_sides:
+            self.pretrain()
+            self.optimizer.param_groups[0]['lr'] = self.learning_rate
 
         for epoch in range(self.epochs):
 
@@ -1195,7 +1196,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'MonotonicDepth_NoPretrain_NoFW_NoTransforms_ExcludeTo200',
+        'run_name': 'Pretrain_NoFW_NoTransforms_ExcludeTo200',
 
         # Training and model parameters
         'epochs'                : 70,
