@@ -515,6 +515,16 @@ class ModulusModel():
                     clean_paths_to_files.append(file_path)
             self.paths_to_files = clean_paths_to_files
 
+        # Remove those where depth is not monotonically increasing
+        clean_paths_to_files = []
+        for file_path in self.paths_to_files:
+            file_prefix = file_path[:file_path.find('_aug=')+6]
+            with open(file_prefix + '_depth_other.pkl', 'rb') as file:
+                depth = pickle.load(file)
+            if depth[-1].max() > depth[-2].max():
+                clean_paths_to_files.append(file_path)
+        self.paths_to_files = clean_paths_to_files
+
         # Create data loaders based on training / validation break-up
         self._create_data_loaders()
         return
@@ -1185,7 +1195,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoPretrain_NoFW_NoTransforms_ExcludeTo200',
+        'run_name': 'MonotonicDepth_NoPretrain_NoFW_NoTransforms_ExcludeTo200',
 
         # Training and model parameters
         'epochs'                : 70,
@@ -1211,7 +1221,7 @@ if __name__ == "__main__":
     if config['frozen_pretrained'] and not config['pretrained_CNN']:
         raise ValueError('Frozen option is only necessary when training with a pretrained CNN.')
     
-    ARCHITECTURES = {
+    # ARCHITECTURES = {
         # 'Base':         ([256, 256, 64], [64, 64, 32]),
         # 'FatDecoder':   ([512, 512, 128], [64, 64, 32]),
         # 'FatEst':       ([256, 256, 64], [128, 128, 64]),
@@ -1220,24 +1230,22 @@ if __name__ == "__main__":
         # 'DeepBase':     ([256, 256, 64, 64], [64, 64, 32]),
         # 'DeepFat':      ([512, 512, 128, 128], [128, 128, 64]),
         # 'DeepLean':     ([128, 128, 64, 32], [32, 32, 16]),
-    }
+    # }
 
     # Train the model over some data
     base_run_name = config['run_name']
-    chosen_random_states = [27, 60, 24] # , 16, 12] # [27, 60, 74, 24, 16, 12, 4, 8]
+    chosen_random_states = [27, 60, 24, 16, 12] # [27, 60, 74, 24, 16, 12, 4, 8]
 
-    for decoder_output_size in [6, 9, 1, 3]:
-        for i in range(len(chosen_random_states)):
-            config['run_name'] = f'DecOut={decoder_output_size}_{base_run_name}__t={i}'
-            config['decoder_output_size'] = decoder_output_size
-            
-            if i < len(chosen_random_states):
-                config['random_state'] = chosen_random_states[i]
-            else:
-                config['random_state'] = random.randint(1, 100)
+    for i in range(len(chosen_random_states)):
+        config['run_name'] = f'{base_run_name}__t={i}'
+        
+        if i < len(chosen_random_states):
+            config['random_state'] = chosen_random_states[i]
+        else:
+            config['random_state'] = random.randint(1, 100)
 
-            train_modulus = ModulusModel(config, device=device)
-            train_modulus.train()
+        train_modulus = ModulusModel(config, device=device)
+        train_modulus.train()
 
     # for run_name in ['Layer4Decoder_Normalized_ExcludeTo200__t=0']:
     #     train_modulus = ModulusModel(config, device=device)
