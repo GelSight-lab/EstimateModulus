@@ -900,7 +900,7 @@ class ModulusModel():
             return val_stats
         
     # Try pretraining on images without markers
-    def pretrain(self, epochs=10):
+    def pretrain(self, epochs=5):
         for epoch in range(epochs):
             train_stats = self._train_epoch(train_loader=self.pretrain_loader)
             if self.gamma is not None:
@@ -1196,7 +1196,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'Pretrain_NoFW_NoTransforms_ExcludeTo200',
+        'run_name': 'Pretrain5Epochs_NoFW_NoTransforms_ExcludeTo200',
 
         # Training and model parameters
         'epochs'                : 70,
