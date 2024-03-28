@@ -1208,7 +1208,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'PretrainInMiddle_FW_NoTransforms_ExcludeTo200',
+        'run_name': 'NoScheduler_PretrainInMiddle_FW_NoTransforms_ExcludeTo200',
 
         # Training and model parameters
         'epochs'                : 70,
@@ -1220,7 +1220,7 @@ if __name__ == "__main__":
         'val_pct'               : 0.175,
         'dropout_pct'           : 0.3,
         'learning_rate'         : 3e-6,
-        'gamma'                 : 0.975,
+        'gamma'                 : 1, # 0.975,
         'lr_step_size'          : 1,
         'random_state'          : 27,
         'decoder_size'          : [512, 512, 128],
