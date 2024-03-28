@@ -924,14 +924,13 @@ class ModulusModel():
         max_val_log_acc = 0.0
         min_val_loss = 1e10
         min_val_outlier_pct = 1e10
-        pretrained = False
+
+        # if not self.use_both_sides:
+        #     self.pretrain()
+        #     self.optimizer.param_groups[0]['lr'] = self.learning_rate
+        #     pretrained = True
 
         for epoch in range(self.epochs):
-
-            if epoch >= self.epochs/2 and not self.use_both_sides and not pretrained:
-                self.pretrain()
-                self.optimizer.param_groups[0]['lr'] = self.learning_rate
-                pretrained = True
 
             # Clean performance trackers
             for object_name in self.train_object_performance.keys():
@@ -1174,8 +1173,8 @@ if __name__ == "__main__":
         'img_style': 'diff',
         'use_markers': True,
         'use_both_sides': False,
-        'use_force': True,
-        'use_width': True,
+        'use_force': False,
+        'use_width': False,
         'use_estimation': True,
         'use_transformations': False,
         'use_width_transforms': True,
@@ -1208,7 +1207,7 @@ if __name__ == "__main__":
 
         # Logging on/off
         'use_wandb': True,
-        'run_name': 'NoScheduler_PretrainInMiddle_FW_NoTransforms_ExcludeTo200',
+        'run_name': 'NoFW_NoTransforms_ExcludeTo200',
 
         # Training and model parameters
         'epochs'                : 70,
@@ -1220,7 +1219,7 @@ if __name__ == "__main__":
         'val_pct'               : 0.175,
         'dropout_pct'           : 0.3,
         'learning_rate'         : 3e-6,
-        'gamma'                 : 1, # 0.975,
+        'gamma'                 : 0.975,
         'lr_step_size'          : 1,
         'random_state'          : 27,
         'decoder_size'          : [512, 512, 128],
@@ -1247,9 +1246,9 @@ if __name__ == "__main__":
 
     # Train the model over some data
     base_run_name = config['run_name']
-    chosen_random_states = [27, 60, 24, 16, 12] # [27, 60, 74, 24, 16, 12, 4, 8]
+    chosen_random_states = [27, 60, 74, 24, 16, 12, 4, 8]
 
-    for i in range(len(chosen_random_states)):
+    for i in range(len(chosen_random_states) + 10):
         config['run_name'] = f'{base_run_name}__t={i}'
         
         if i < len(chosen_random_states):
